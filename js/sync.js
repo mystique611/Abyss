@@ -16,7 +16,7 @@
  */
 
 const GRAPH_ROOT = 'https://graph.microsoft.com/v1.0';
-const APP_FOLDER = 'special/approot'; // Graph's per-app sandboxed OneDrive folder
+const APP_FOLDER = 'me/drive/special/approot'; // Graph's per-app sandboxed OneDrive folder
 const SNAPSHOT_PATH = 'dive_data.json';
 
 let syncInProgress = false;
