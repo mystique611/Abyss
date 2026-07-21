@@ -43,7 +43,13 @@ function getMsalInstance() {
  *  restores any already-signed-in account from cache. */
 async function initAuth() {
     const instance = getMsalInstance();
-    await instance.initialize();
+
+    // .initialize() was introduced in MSAL v3 and isn't present in v2 (the
+    // version this app loads, since Microsoft deprecated CDN hosting for
+    // v3+). Guard so this works correctly against the CDN-available v2 API.
+    if (typeof instance.initialize === 'function') {
+        await instance.initialize();
+    }
 
     const response = await instance.handleRedirectPromise().catch(() => null);
     if (response && response.account) {
