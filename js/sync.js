@@ -118,7 +118,24 @@ async function syncNow() {
         };
 
         const remoteSnapshot = await downloadSnapshot(token);
-        const winner = mergeSnapshots(localSnapshot, remoteSnapshot);
+        let winner = mergeSnapshots(localSnapshot, remoteSnapshot);
+
+        // Belt-and-suspenders safety net, independent of the timestamp fix
+        // above: this device/browser has NEVER completed a sync before
+        // (e.g. storage was just cleared, or this is a brand-new device),
+        // local has zero dives, and remote already has real data. Never
+        // push an empty snapshot over that, no matter what any timestamp
+        // says — always prefer the real data. Once this device has synced
+        // successfully at least once (lastSyncedAt gets set below), this
+        // guard steps aside and trusts the normal comparison, so genuinely
+        // deleting all your dives on an established device still syncs fine.
+        const hasSyncedBefore = await window.AbyssDB.getMeta('lastSyncedAt', null);
+        const localHasNoDives = (localSnapshot.dives || []).length === 0;
+        const remoteHasDives = remoteSnapshot && (remoteSnapshot.dives || []).length > 0;
+        if (winner === localSnapshot && !hasSyncedBefore && localHasNoDives && remoteHasDives) {
+            console.warn('Refusing to push an empty local snapshot over existing remote data on first-ever sync — pulling remote instead.');
+            winner = remoteSnapshot;
+        }
 
         if (winner === remoteSnapshot && remoteSnapshot) {
             // Remote copy is newer — pull it down so this device catches up

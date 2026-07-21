@@ -2040,7 +2040,20 @@
             // recent logs and the Logbook consistently showing the latest
             // dive on top right from initial load, not just after a save.
             state.dives.sort((a, b) => b.diveNo - a.diveNo);
-            if (dives.length === 0) await saveState();
+            // NOTE: deliberately NOT calling saveState() here even when the
+            // local store is empty (e.g. right after clearing browser data).
+            // saveState() calls enqueueSync(), which bumps localDataVersion
+            // to "now" — but at this exact moment we don't yet know whether
+            // OneDrive still has real data waiting to be pulled down. Stamping
+            // an empty local snapshot as "just changed" before that check
+            // happens is exactly what caused an empty snapshot to win a sync
+            // comparison and overwrite real remote data. If there's genuinely
+            // nothing local yet, just leave IndexedDB as-is; replaceAllDives
+            // below persists the (empty) seed list without touching
+            // localDataVersion or triggering a sync.
+            if (dives.length === 0 && state.dives.length > 0) {
+                await window.AbyssDB.replaceAllDives(state.dives);
+            }
 
             const profile = await window.AbyssDB.getMeta('diverProfile', null);
             if (profile) state.diverProfile = profile;
