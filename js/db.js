@@ -129,13 +129,34 @@ async function replaceAllDives(divesArray) {
 // file (simplest reliable approach for a small personal dataset), each queue
 // entry mostly just acts as a "dirty flag" — sync.js only needs to know
 // "something changed, push a fresh copy" rather than replay every entry.
+//
+// enqueueSync() also bumps `localDataVersion` in meta — a timestamp that only
+// ever changes when a real local edit happens (new/edited/deleted dive,
+// profile update, theme change). sync.js uses THIS as the snapshot's
+// updatedAt when comparing against the remote copy, instead of stamping
+// Date.now() fresh on every sync attempt. That distinction matters: if every
+// sync attempt got a brand-new "now" timestamp regardless of whether
+// anything actually changed, then opening the app on a second device (with
+// zero local dives) would always look "newer" than the real data already on
+// OneDrive, and last-write-wins would pick the empty local copy — silently
+// overwriting/hiding the real data. Only bumping this on genuine changes
+// keeps that comparison honest.
 
 async function enqueueSync(action, payload = {}) {
+    await setMeta('localDataVersion', Date.now());
     return dbPut('syncQueue', {
         action,          // e.g. 'dives-updated', 'profile-updated', 'theme-updated'
         payload,
         createdAt: Date.now()
     });
+}
+
+async function getLocalDataVersion() {
+    return getMeta('localDataVersion', 0);
+}
+
+async function setLocalDataVersion(timestamp) {
+    return setMeta('localDataVersion', timestamp);
 }
 
 async function getSyncQueue() {
@@ -157,6 +178,8 @@ window.AbyssDB = {
     enqueueSync,
     getSyncQueue,
     clearSyncQueue,
+    getLocalDataVersion,
+    setLocalDataVersion,
     dbGetAll,
     dbPut,
     dbDelete

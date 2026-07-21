@@ -101,27 +101,39 @@ async function syncNow() {
 
         const queue = await window.AbyssDB.getSyncQueue();
 
-        // Build the current local snapshot
+        // Build the current local snapshot. updatedAt comes from
+        // localDataVersion — a timestamp that only advances when a real
+        // local edit happens (see db.js enqueueSync) — NOT a fresh
+        // Date.now() on every sync attempt. Stamping "now" here regardless
+        // of whether anything changed was the root cause of a data-loss bug:
+        // a freshly-opened second device with zero local dives would always
+        // look "newer" than the real data already on OneDrive, so
+        // last-write-wins picked the empty local copy and hid/overwrote the
+        // real one. Using the real last-edit time keeps the comparison honest.
         const localSnapshot = {
             dives: await window.AbyssDB.getAllDives(),
             diverProfile: await window.AbyssDB.getMeta('diverProfile', null),
             theme: await window.AbyssDB.getMeta('theme', 'dark'),
-            updatedAt: Date.now()
+            updatedAt: await window.AbyssDB.getLocalDataVersion()
         };
 
         const remoteSnapshot = await downloadSnapshot(token);
         const winner = mergeSnapshots(localSnapshot, remoteSnapshot);
 
-        // If the remote copy won, pull it back into IndexedDB so this device
-        // catches up (e.g. data changed on another device while offline here).
         if (winner === remoteSnapshot && remoteSnapshot) {
+            // Remote copy is newer — pull it down so this device catches up
+            // (e.g. data changed on another device, or this is a fresh
+            // device signing in for the first time).
             await window.AbyssDB.replaceAllDives(remoteSnapshot.dives || []);
             await window.AbyssDB.setMeta('diverProfile', remoteSnapshot.diverProfile);
             await window.AbyssDB.setMeta('theme', remoteSnapshot.theme);
+            await window.AbyssDB.setLocalDataVersion(remoteSnapshot.updatedAt || Date.now());
             if (window.onRemoteDataApplied) window.onRemoteDataApplied(remoteSnapshot);
+        } else {
+            // Local copy is newer (a real change happened here), or this is
+            // the very first sync ever (no remote snapshot exists yet) — push it.
+            await uploadSnapshot(token, winner);
         }
-
-        await uploadSnapshot(token, winner);
 
         // Flush any queued photo uploads (queue entries of type 'photo-pending')
         for (const item of queue) {
@@ -144,17 +156,30 @@ async function syncNow() {
 }
 
 /* ---------------- Auto-sync triggers ---------------- */
+// Sync is meant to fire only when there's an actual reason to: a real local
+// change (new/edited dive, profile update — see the direct syncNow() calls
+// right after those writes in index.html), or reconnecting with a change
+// that was queued while offline. There's deliberately no blind interval
+// polling here — that burned battery/data for no reason and wasn't what
+// "sync" should mean for a personal offline-first log.
 
-function initAutoSync() {
-    window.addEventListener('online', syncNow);
+async function initAutoSync() {
+    window.addEventListener('online', async () => {
+        // Only push if something actually changed while we were offline —
+        // reconnecting by itself isn't a change worth syncing over.
+        const queue = await window.AbyssDB.getSyncQueue();
+        if (queue.length > 0) syncNow();
+    });
     window.addEventListener('offline', () => emitStatus('offline'));
 
-    // Also retry periodically in case 'online' fires before Wi-Fi actually
-    // has a route to the internet (common on mobile / dive-site wifi).
-    setInterval(() => { if (navigator.onLine) syncNow(); }, 60000);
-
-    // Sync once on startup if we're online and already signed in
-    if (navigator.onLine) syncNow();
+    // One check on startup, if already signed in: this is what makes
+    // opening the app on another device (or after reinstalling) pick up
+    // whatever's already on OneDrive, since a fresh device has nothing
+    // local to have "changed" yet. Safe now that updatedAt reflects real
+    // edit history rather than the moment this check happens to run.
+    if (navigator.onLine && window.AbyssAuth && window.AbyssAuth.isSignedIn()) {
+        syncNow();
+    }
 }
 
 window.AbyssSync = {
