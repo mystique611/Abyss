@@ -17,7 +17,7 @@
 
 const MSAL_CONFIG = {
     auth: {
-        clientId: 'REPLACE_WITH_YOUR_AZURE_APP_CLIENT_ID',
+        clientId: 'bc25f0fc-5cbb-4de4-8cee-eab8bc24dff2',
         authority: 'https://login.microsoftonline.com/common',
         redirectUri: window.location.origin + window.location.pathname
     },
