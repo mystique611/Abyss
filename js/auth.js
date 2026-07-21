@@ -66,15 +66,38 @@ function getSignedInUserName() {
 /** Opens the Microsoft login popup. Falls back to full-page redirect if the
  *  popup is blocked (common on mobile browsers / iOS Safari). */
 async function signIn() {
+    if (MSAL_CONFIG.auth.clientId === 'REPLACE_WITH_YOUR_AZURE_APP_CLIENT_ID') {
+        throw new Error(
+            "OneDrive sign-in isn't configured yet: js/auth.js still has the placeholder " +
+            "clientId. Register an app at portal.azure.com and paste your Application " +
+            "(client) ID into MSAL_CONFIG.auth.clientId in js/auth.js — see README.md."
+        );
+    }
+
     const instance = getMsalInstance();
     try {
         const result = await instance.loginPopup({ scopes: GRAPH_SCOPES });
         activeAccount = result.account;
         return activeAccount;
     } catch (popupError) {
-        // Popup blocked or unsupported (typical on mobile) — use redirect flow instead
-        await instance.loginRedirect({ scopes: GRAPH_SCOPES });
-        return null; // page will reload after redirect; initAuth() picks it up
+        // Don't retry via redirect if the user simply closed/cancelled the
+        // popup themselves — only fall back when the popup couldn't open at
+        // all (blocked by the browser), which is a different failure mode.
+        const isUserCancelled = popupError && (
+            popupError.errorCode === 'user_cancelled' ||
+            popupError.errorCode === 'popup_window_error' && /closed/i.test(popupError.errorMessage || '')
+        );
+        if (isUserCancelled) {
+            throw popupError;
+        }
+
+        try {
+            await instance.loginRedirect({ scopes: GRAPH_SCOPES });
+            return null; // page will reload after redirect; initAuth() picks it up
+        } catch (redirectError) {
+            console.error('Both popup and redirect sign-in failed:', { popupError, redirectError });
+            throw redirectError;
+        }
     }
 }
 
