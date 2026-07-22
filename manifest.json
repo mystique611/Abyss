@@ -2,7 +2,7 @@
     "name": "Abyss - Sub-Surface Explorer",
     "short_name": "Abyss",
     "description": "Dive log, progression tracker, and critter database with offline support and OneDrive sync.",
-    "start_url": "./index.html",
+    "start_url": "./",
     "scope": "./",
     "display": "standalone",
     "background_color": "#04141f",
