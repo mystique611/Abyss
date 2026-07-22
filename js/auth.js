@@ -19,7 +19,8 @@ const MSAL_CONFIG = {
     auth: {
         clientId: 'bc25f0fc-5cbb-4de4-8cee-eab8bc24dff2',
         authority: 'https://login.microsoftonline.com/common',
-        redirectUri: window.location.origin + window.location.pathname
+        redirectUri: 'https://mystique611.github.io/Abyss/'
+
     },
     cache: {
         cacheLocation: 'localStorage', // MSAL needs this to persist the session across reloads
