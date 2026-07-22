@@ -1,5 +1,10 @@
 # Changelog
 
+## Sync
+
+- **Fixed: signing in on a new/reinstalled device could still overwrite real OneDrive data with an empty logbook.** Added a dedicated `syncAfterSignIn()` path (in `js/sync.js`) that runs on every sign-in — whether via the button or the popup-blocked redirect fallback — and on any app startup where this device has never completed a sync before. Instead of comparing timestamps, it always downloads the OneDrive snapshot first: if it already contains dives, that data always wins and is pulled down, no exceptions; only if the OneDrive file is missing entirely or genuinely empty does it fall back to the normal push flow. The regular timestamp-based `syncNow()` (used for every edit on an already-synced device) is unchanged, so deleting all your dives on an established device still syncs correctly.
+- Service worker cache bumped (`abyss-shell-v8` → `abyss-shell-v9`) to ship the above fix to existing installs.
+
 ## Log a Dive
 
 - **Dive Site field**: placeholder text updated to `e.g. Crystal Bay, Nusa Penida`.

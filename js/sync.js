@@ -172,6 +172,61 @@ async function syncNow() {
     }
 }
 
+/* ---------------- Post-sign-in safe sync ---------------- */
+// The riskiest moment for the "empty local device silently overwrites real
+// remote data" failure mode is the very first sync a device ever does after
+// signing in — local IndexedDB is empty, and if anything causes local's
+// timestamp to look newer than it should, plain last-write-wins in syncNow()
+// would push that emptiness over real remote data.
+//
+// syncAfterSignIn() sidesteps timestamps entirely for that one moment: it
+// always downloads the remote snapshot FIRST, and only ever allows a push of
+// local data if the remote snapshot doesn't exist yet (true first-ever sync)
+// or is itself genuinely empty. If remote already has real dives, remote
+// always wins here — no comparison, no exceptions.
+async function syncAfterSignIn() {
+    if (syncInProgress) return;
+    if (!navigator.onLine) { emitStatus('offline'); return; }
+    if (!window.AbyssAuth || !window.AbyssAuth.isSignedIn()) { emitStatus('signed-out'); return; }
+
+    emitStatus('syncing');
+    let pulledRemote = false;
+
+    try {
+        const token = await window.AbyssAuth.getGraphAccessToken();
+        if (!token) { emitStatus('signed-out'); return; }
+
+        const remoteSnapshot = await downloadSnapshot(token);
+        const remoteHasDives = remoteSnapshot && (remoteSnapshot.dives || []).length > 0;
+
+        if (remoteHasDives) {
+            syncInProgress = true;
+            await window.AbyssDB.replaceAllDives(remoteSnapshot.dives || []);
+            await window.AbyssDB.setMeta('diverProfile', remoteSnapshot.diverProfile);
+            await window.AbyssDB.setMeta('theme', remoteSnapshot.theme);
+            await window.AbyssDB.setLocalDataVersion(remoteSnapshot.updatedAt || Date.now());
+            await window.AbyssDB.clearSyncQueue();
+            await window.AbyssDB.setMeta('lastSyncedAt', Date.now());
+            if (window.onRemoteDataApplied) window.onRemoteDataApplied(remoteSnapshot);
+            emitStatus('synced');
+            pulledRemote = true;
+        }
+    } catch (err) {
+        console.error('Post-sign-in sync check failed:', err);
+        emitStatus('error', err.message);
+        return;
+    } finally {
+        if (pulledRemote) syncInProgress = false;
+    }
+
+    if (!pulledRemote) {
+        // Remote is missing entirely (true first-ever sync, no device has
+        // ever pushed anything) or exists but has zero dives — safe to fall
+        // through to the normal compare-and-push flow.
+        await syncNow();
+    }
+}
+
 /* ---------------- Auto-sync triggers ---------------- */
 // Sync is meant to fire only when there's an actual reason to: a real local
 // change (new/edited dive, profile update — see the direct syncNow() calls
@@ -192,15 +247,29 @@ async function initAutoSync() {
     // One check on startup, if already signed in: this is what makes
     // opening the app on another device (or after reinstalling) pick up
     // whatever's already on OneDrive, since a fresh device has nothing
-    // local to have "changed" yet. Safe now that updatedAt reflects real
-    // edit history rather than the moment this check happens to run.
+    // local to have "changed" yet.
+    //
+    // This branch also covers the mobile/redirect sign-in flow: the popup
+    // fallback does a full-page redirect back to the app, so the very first
+    // time this device learns it's signed in is right here on the reload —
+    // not via the button-click handler in index.html. If this device has
+    // never completed a sync before, treat it exactly like a fresh sign-in
+    // and use the safe pull-first path instead of timestamp-based
+    // last-write-wins, since local is empty and has nothing legitimate to
+    // protect yet.
     if (navigator.onLine && window.AbyssAuth && window.AbyssAuth.isSignedIn()) {
-        syncNow();
+        const hasSyncedBefore = await window.AbyssDB.getMeta('lastSyncedAt', null);
+        if (hasSyncedBefore) {
+            syncNow();
+        } else {
+            syncAfterSignIn();
+        }
     }
 }
 
 window.AbyssSync = {
     syncNow,
+    syncAfterSignIn,
     initAutoSync,
     onSyncStatusChange
 };

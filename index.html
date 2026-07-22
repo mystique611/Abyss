@@ -101,6 +101,7 @@
         if (typeof window.AbyssSync === 'undefined') {
             window.AbyssSync = {
                 async syncNow() { /* no-op in preview mode */ },
+                async syncAfterSignIn() { /* no-op in preview mode */ },
                 initAutoSync() { },
                 onSyncStatusChange() { }
             };
@@ -2086,7 +2087,11 @@
                     await window.AbyssAuth.signIn();
                     updateSyncStatusUI('signed-in');
                     showToast("Signed in — syncing your logbook to OneDrive", "success");
-                    window.AbyssSync.syncNow();
+                    // Use the safe pull-first sync here, not the regular
+                    // timestamp-based syncNow(): this device may have never
+                    // synced before, and if it hasn't, remote data (if any)
+                    // must always win over an empty local logbook.
+                    window.AbyssSync.syncAfterSignIn();
                 } catch (e) {
                     updateSyncStatusUI('signed-out');
                     console.error('OneDrive sign-in failed:', e);
