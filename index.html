@@ -439,6 +439,28 @@
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                         <input type="text" id="log-search" oninput="renderLogs()" placeholder="Search dive site, location..." class="w-full pl-10 pr-4 py-2 rounded-xl bg-ocean-900/20 dark:bg-ocean-900/20 light:bg-slate-200 border border-ocean-800/30 dark:border-ocean-800/30 light:border-slate-300 focus:outline-none focus:border-cyan-400 dark:focus:border-cyan-400 light:focus:border-ocean-500 text-sm">
                     </div>
+                    <label class="px-4 py-2 rounded-xl border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 hover:bg-ocean-900/20 dark:hover:bg-ocean-900/20 light:hover:bg-slate-200 text-slate-300 dark:text-slate-300 light:text-slate-700 text-sm font-semibold flex items-center space-x-2 cursor-pointer transition-colors" title="Import dives from a UDDF file">
+                        <i class="fa-solid fa-file-import"></i>
+                        <span class="hidden sm:inline">Import</span>
+                        <input type="file" id="uddf-import-input" accept=".uddf,.xml" onchange="handleUDDFImport(this)" class="hidden">
+                    </label>
+                    <div class="relative">
+                        <button type="button" onclick="toggleExportMenu(event)" id="export-menu-btn" class="px-4 py-2 rounded-xl border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 hover:bg-ocean-900/20 dark:hover:bg-ocean-900/20 light:hover:bg-slate-200 text-slate-300 dark:text-slate-300 light:text-slate-700 text-sm font-semibold flex items-center space-x-2 transition-colors">
+                            <i class="fa-solid fa-file-export"></i>
+                            <span class="hidden sm:inline">Export</span>
+                            <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                        </button>
+                        <div id="export-menu" class="hidden absolute right-0 mt-2 w-52 rounded-xl glass-panel border border-ocean-800/40 dark:border-ocean-800/40 light:border-slate-200 shadow-2xl z-30 overflow-hidden">
+                            <button type="button" onclick="exportDivesToUDDF(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors">
+                                <i class="fa-solid fa-file-code text-cyan-400 w-4"></i>
+                                <span>Export to UDDF</span>
+                            </button>
+                            <button type="button" onclick="exportDivesToCSV(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors border-t border-ocean-900/20 dark:border-ocean-900/20 light:border-slate-200">
+                                <i class="fa-solid fa-file-csv text-emerald-400 w-4"></i>
+                                <span>Export to CSV</span>
+                            </button>
+                        </div>
+                    </div>
                     <button onclick="prepareNewDiveLogTab()" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold flex items-center space-x-2 shadow-md">
                         <i class="fa-solid fa-plus"></i>
                         <span>New Entry</span>
@@ -2260,6 +2282,388 @@
             if (navigator.onLine) window.AbyssSync.syncNow();
         }
 
+        /* ==================== IMPORT / EXPORT (UDDF + CSV) ==================== */
+
+        function toggleExportMenu(event) {
+            if (event) event.stopPropagation();
+            document.getElementById('export-menu').classList.toggle('hidden');
+        }
+
+        function closeExportMenu() {
+            document.getElementById('export-menu').classList.add('hidden');
+        }
+
+        // Close the export dropdown when clicking anywhere outside of it.
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('export-menu');
+            const btn = document.getElementById('export-menu-btn');
+            if (!menu || menu.classList.contains('hidden')) return;
+            if (!menu.contains(event.target) && event.target !== btn && !btn.contains(event.target)) {
+                closeExportMenu();
+            }
+        });
+
+        // Turns a free-text name into a safe filename fragment: spaces become
+        // underscores, anything that isn't alphanumeric/underscore/hyphen is
+        // stripped. Falls back to "diver" if nothing usable is left.
+        function sanitizeFilenamePart(str) {
+            const cleaned = (str || '').trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+            return cleaned || 'diver';
+        }
+
+        function downloadTextFile(filename, content, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /* ---------------- CSV export ---------------- */
+
+        function csvEscape(value) {
+            if (value === null || value === undefined) return '';
+            const str = String(value);
+            return /[",\n\r]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+        }
+
+        function exportDivesToCSV() {
+            if (!state.dives || state.dives.length === 0) {
+                showToast("No dive logs to export yet", "info");
+                return;
+            }
+
+            // One row per dive, one column per field captured in the Log a
+            // Dive form — dive number ascending (chronological logbook order).
+            const headers = [
+                "Dive Number", "Date", "Dive Type", "Country", "Dive Site", "Time In", "Time Out",
+                "Bottom Time (min)", "Max Depth (m)", "Avg Depth (m)", "Air Temp (C)", "Surface Temp (C)",
+                "Water Temp (C)", "Visibility (m)", "Weather", "Water Type", "Body of Water", "Waves",
+                "Current", "Surge", "Weight (kg)", "Exposure Suit", "Tank Type", "Tank Volume (L)",
+                "Gas", "Gas O2 (%)", "Gas N2 (%)", "Gas He (%)", "Start Pressure", "End Pressure",
+                "Pressure Unit", "Additional Gear", "Dive Buddy/Guide", "Verification Number",
+                "Marine Life Sightings", "Notes"
+            ];
+
+            const sortedDives = [...state.dives].sort((a, b) => (a.diveNo || 0) - (b.diveNo || 0));
+
+            const rows = sortedDives.map(dive => {
+                const crittersText = (dive.critters || []).map(c => {
+                    const template = CRITTER_DATABASE[c.id];
+                    return c.customName || (template ? template.name : 'Unknown species');
+                }).join('; ');
+
+                return [
+                    dive.diveNo, dive.date, dive.diveType, dive.country, dive.site, dive.timeIn, dive.timeOut,
+                    dive.bottomTime, dive.maxDepth, dive.avgDepth, dive.airTemp, dive.surfaceTemp,
+                    dive.waterTemp, dive.visibility, dive.weather, dive.waterType, dive.bodyOfWater, dive.waves,
+                    dive.current, dive.surge, dive.weight, dive.suit, dive.tankType, dive.tankVol,
+                    dive.gas, dive.gasO2, dive.gasN2, dive.gasHe, dive.gasStart, dive.gasEnd,
+                    dive.gasUnit, (dive.additionalGear || []).join('; '), dive.buddy, dive.buddyNo,
+                    crittersText, dive.notes
+                ].map(csvEscape).join(',');
+            });
+
+            // Leading BOM so Excel opens the UTF-8 file correctly (otherwise
+            // accented characters in notes/names can render as mojibake).
+            const csvContent = '﻿' + [headers.map(csvEscape).join(','), ...rows].join('\r\n');
+
+            const filename = `abyss-divelog-${sanitizeFilenamePart(state.diverProfile.name)}.csv`;
+            downloadTextFile(filename, csvContent, 'text/csv;charset=utf-8;');
+            showToast(`Exported ${sortedDives.length} dive${sortedDives.length !== 1 ? 's' : ''} to ${filename}`, "success");
+        }
+
+        /* ---------------- UDDF export ---------------- */
+        // UDDF (Universal Dive Data Format) uses SI-ish units: depth in
+        // meters (matches our storage already), temperature in Kelvin,
+        // pressure in bar, time in seconds. This app logs dive summaries
+        // rather than full per-second computer profiles, so each exported
+        // dive gets a minimal 3-point depth profile (surface -> max depth ->
+        // surface) purely so UDDF-reading software has *some* profile to
+        // plot — the real data lives in the informationafterdive fields.
+
+        function xmlEscape(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function celsiusToKelvin(c) {
+            return (c === null || c === undefined || c === '' || isNaN(c)) ? null : (parseFloat(c) + 273.15).toFixed(2);
+        }
+
+        function pressureToBar(value, unit) {
+            if (value === null || value === undefined || value === '' || isNaN(value)) return null;
+            const v = parseFloat(value);
+            return (unit === 'PSI' ? v / 14.50377 : v).toFixed(2);
+        }
+
+        function exportDivesToUDDF() {
+            if (!state.dives || state.dives.length === 0) {
+                showToast("No dive logs to export yet", "info");
+                return;
+            }
+
+            const sortedDives = [...state.dives].sort((a, b) => (a.diveNo || 0) - (b.diveNo || 0));
+            const nameParts = (state.diverProfile.name || 'Explorer').trim().split(/\s+/);
+            const firstName = nameParts[0] || 'Explorer';
+            const lastName = nameParts.slice(1).join(' ');
+
+            const diveBlocks = sortedDives.map(dive => {
+                const dateTimeStr = dive.date ? `${dive.date}T${dive.timeIn || '00:00'}:00` : null;
+                const airTempK = celsiusToKelvin(dive.airTemp);
+                const waterTempSource = (dive.waterTemp !== null && dive.waterTemp !== undefined) ? dive.waterTemp : dive.surfaceTemp;
+                const waterTempK = celsiusToKelvin(waterTempSource);
+                const durationSec = (dive.bottomTime !== null && dive.bottomTime !== undefined) ? Math.round(dive.bottomTime * 60) : null;
+                const gasStartBar = pressureToBar(dive.gasStart, dive.gasUnit);
+                const gasEndBar = pressureToBar(dive.gasEnd, dive.gasUnit);
+                const hasDepth = dive.maxDepth !== null && dive.maxDepth !== undefined;
+
+                let samplesXml = '';
+                if (hasDepth && durationSec) {
+                    const mid = Math.round(durationSec / 2);
+                    samplesXml = `
+                <samples>
+                    <waypoint><depth>0</depth><divetime>0</divetime></waypoint>
+                    <waypoint><depth>${dive.maxDepth}</depth><divetime>${mid}</divetime></waypoint>
+                    <waypoint><depth>0</depth><divetime>${durationSec}</divetime></waypoint>
+                </samples>`;
+                }
+
+                const noteParts = [];
+                if (dive.notes) noteParts.push(dive.notes);
+                if (dive.buddy) noteParts.push(`Buddy: ${dive.buddy}`);
+                if (dive.country) noteParts.push(`Country: ${dive.country}`);
+
+                return `
+            <dive id="dive${dive.diveNo}">
+                <informationbeforedive>${dateTimeStr ? `
+                    <datetime>${xmlEscape(dateTimeStr)}</datetime>` : ''}
+                    <internaldivenumber>${dive.diveNo}</internaldivenumber>${airTempK ? `
+                    <airtemperature>${airTempK}</airtemperature>` : ''}
+                </informationbeforedive>${samplesXml}
+                <informationafterdive>${hasDepth ? `
+                    <greatestdepth>${dive.maxDepth}</greatestdepth>` : ''}${(dive.avgDepth !== null && dive.avgDepth !== undefined) ? `
+                    <averagedepth>${dive.avgDepth}</averagedepth>` : ''}${durationSec !== null ? `
+                    <diveduration>${durationSec}</diveduration>` : ''}${waterTempK ? `
+                    <lowesttemperature>${waterTempK}</lowesttemperature>` : ''}${(dive.visibility !== null && dive.visibility !== undefined) ? `
+                    <visibility>${dive.visibility}</visibility>` : ''}${gasStartBar ? `
+                    <tankpressurebegin>${gasStartBar}</tankpressurebegin>` : ''}${gasEndBar ? `
+                    <tankpressureend>${gasEndBar}</tankpressureend>` : ''}${noteParts.length ? `
+                    <notes><para>${xmlEscape(noteParts.join(' — '))}</para></notes>` : ''}
+                </informationafterdive>
+            </dive>`;
+            }).join('');
+
+            const uddfXml = `<?xml version="1.0" encoding="UTF-8"?>
+<uddf version="3.2.1" xmlns="http://www.streit.cc/uddf/3.2/">
+    <generator>
+        <name>Abyss Dive Log</name>
+        <manufacturer>
+            <name>Abyss</name>
+        </manufacturer>
+        <datetime>${new Date().toISOString().slice(0, 19)}</datetime>
+    </generator>
+    <diver>
+        <owner id="owner">
+            <personal>
+                <firstname>${xmlEscape(firstName)}</firstname>
+                <lastname>${xmlEscape(lastName)}</lastname>
+            </personal>
+        </owner>
+    </diver>
+    <profiledata>
+        <repetitiongroup id="rg1">${diveBlocks}
+        </repetitiongroup>
+    </profiledata>
+</uddf>
+`;
+
+            const filename = `abyss-divelog-${sanitizeFilenamePart(state.diverProfile.name)}.uddf`;
+            downloadTextFile(filename, uddfXml, 'application/xml;charset=utf-8;');
+            showToast(`Exported ${sortedDives.length} dive${sortedDives.length !== 1 ? 's' : ''} to ${filename}`, "success");
+        }
+
+        /* ---------------- UDDF import ---------------- */
+        // Best-effort: UDDF is produced by many different dive computers and
+        // logbook apps with varying levels of detail. This reads the fields
+        // that are actually part of the UDDF standard (dive date/time, site
+        // name, greatest/average depth, duration, temperatures, visibility,
+        // tank pressures) and leaves anything Abyss-specific that UDDF has no
+        // concept of (buddy, gear checklist, weight, critters, etc.) blank
+        // for manual follow-up after import.
+
+        function kelvinToCelsius(k) {
+            if (k === null || k === undefined || k === '' || isNaN(k)) return null;
+            return Math.round((parseFloat(k) - 273.15) * 10) / 10;
+        }
+
+        function handleUDDFImport(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    importUDDFContent(e.target.result);
+                } catch (err) {
+                    console.error('UDDF import failed:', err);
+                    showToast("Couldn't read that UDDF file — check it's a valid UDDF/XML export.", "error");
+                }
+                input.value = ''; // allow re-selecting the same file again later
+            };
+            reader.onerror = () => {
+                showToast("Couldn't read that file.", "error");
+                input.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function importUDDFContent(xmlText) {
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(xmlText, 'application/xml');
+
+            if (xml.querySelector('parsererror')) {
+                showToast("That file isn't valid XML/UDDF.", "error");
+                return;
+            }
+
+            const diveNodes = Array.from(xml.getElementsByTagName('dive'));
+            if (diveNodes.length === 0) {
+                showToast("No dives found in that UDDF file.", "info");
+                return;
+            }
+
+            // Resolve <site ref="..."/> references against any <divesite><site>
+            // definitions the file includes.
+            const siteNames = {};
+            Array.from(xml.getElementsByTagName('site')).forEach(siteEl => {
+                const id = siteEl.getAttribute('id');
+                const nameEl = siteEl.getElementsByTagName('name')[0];
+                if (id && nameEl) siteNames[id] = nameEl.textContent.trim();
+            });
+
+            const text = (parent, tag) => {
+                if (!parent) return null;
+                const el = parent.getElementsByTagName(tag)[0];
+                const val = el ? el.textContent.trim() : '';
+                return val || null;
+            };
+            const num = (parent, tag) => {
+                const val = text(parent, tag);
+                return (val !== null && !isNaN(val)) ? parseFloat(val) : null;
+            };
+
+            let nextDiveNo = state.dives.reduce((max, d) => Math.max(max, d.diveNo || 0), 0) + 1;
+            let importedCount = 0;
+
+            diveNodes.forEach(diveEl => {
+                try {
+                    const before = diveEl.getElementsByTagName('informationbeforedive')[0] || null;
+                    const after = diveEl.getElementsByTagName('informationafterdive')[0] || null;
+
+                    const datetimeStr = text(before, 'datetime');
+                    let date = null, timeIn = null;
+                    if (datetimeStr) {
+                        const parts = datetimeStr.split('T');
+                        date = parts[0] || null;
+                        timeIn = parts[1] ? parts[1].slice(0, 5) : null;
+                    }
+
+                    let siteName = null;
+                    const siteRefEl = before ? before.getElementsByTagName('site')[0] : null;
+                    if (siteRefEl) {
+                        const ref = siteRefEl.getAttribute('ref');
+                        if (ref && siteNames[ref]) siteName = siteNames[ref];
+                    }
+
+                    let maxDepth = num(after, 'greatestdepth');
+                    let avgDepth = num(after, 'averagedepth');
+                    const durationSec = num(after, 'diveduration');
+                    const visibility = num(after, 'visibility');
+                    const waterTempK = num(after, 'lowesttemperature');
+                    const airTempK = num(before, 'airtemperature');
+                    const tankBeginBar = num(after, 'tankpressurebegin');
+                    const tankEndBar = num(after, 'tankpressureend');
+                    const notesText = text(after, 'notes');
+
+                    // Fall back to computing depth stats from sample waypoints
+                    // if the summary fields weren't provided.
+                    const waypoints = Array.from(diveEl.getElementsByTagName('waypoint'));
+                    if (waypoints.length > 0) {
+                        const depths = waypoints.map(w => num(w, 'depth')).filter(d => d !== null);
+                        if (maxDepth === null && depths.length) maxDepth = Math.max(...depths);
+                        if (avgDepth === null && depths.length) avgDepth = Math.round((depths.reduce((a, b) => a + b, 0) / depths.length) * 10) / 10;
+                    }
+
+                    if (!date && maxDepth === null && durationSec === null) {
+                        return; // nothing usable in this entry — skip it
+                    }
+
+                    const newDive = {
+                        id: 'log-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+                        diveNo: nextDiveNo++,
+                        date: date || new Date().toISOString().split('T')[0],
+                        diveType: null,
+                        country: null,
+                        site: siteName || 'Imported dive',
+                        airTemp: kelvinToCelsius(airTempK),
+                        surfaceTemp: null,
+                        waterTemp: kelvinToCelsius(waterTempK),
+                        visibility: visibility,
+                        weather: null,
+                        waterType: null,
+                        bodyOfWater: null,
+                        waves: null,
+                        current: null,
+                        surge: null,
+                        weight: null,
+                        suit: null,
+                        tankType: null,
+                        tankVol: 12.0,
+                        gas: null,
+                        gasO2: null,
+                        gasN2: null,
+                        gasHe: null,
+                        additionalGear: [],
+                        timeIn: timeIn,
+                        timeOut: null,
+                        bottomTime: durationSec !== null ? Math.round(durationSec / 60) : null,
+                        maxDepth: maxDepth,
+                        avgDepth: avgDepth,
+                        gasStart: tankBeginBar,
+                        gasEnd: tankEndBar,
+                        gasUnit: 'BAR',
+                        buddy: null,
+                        buddyNo: null,
+                        notes: notesText ? `Imported from UDDF. ${notesText}` : 'Imported from UDDF.',
+                        critters: []
+                    };
+
+                    state.dives.unshift(newDive);
+                    importedCount++;
+                } catch (err) {
+                    console.warn('Skipped one dive entry during UDDF import:', err);
+                }
+            });
+
+            if (importedCount > 0) {
+                state.dives.sort((a, b) => b.diveNo - a.diveNo);
+                saveState();
+                updateUI();
+                showToast(`Imported ${importedCount} dive${importedCount !== 1 ? 's' : ''} from UDDF. Country, Dive Type, and Buddy aren't part of the UDDF standard — review and fill those in manually.`, "success");
+            } else {
+                showToast("Couldn't find any usable dive data in that file.", "info");
+            }
+        }
 
         /* ---------------- OneDrive sign-in + sync status UI ---------------- */
 
