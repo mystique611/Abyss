@@ -52,6 +52,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
+    <!-- Chart.js (Diver Detail trend charts: SAC rate, weight, dives by quarter) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.min.js"></script>
+
     <!-- Microsoft Authentication Library (OneDrive login).
          Vendored locally (js/msal-browser.min.js) instead of loaded from the
          alcdn.msauth.net CDN: on some mobile browsers/networks that CDN
@@ -379,7 +382,7 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
                     <div>
                         <h2 class="text-lg font-bold tracking-tight text-white dark:text-white light:text-slate-900">Global Exploration Footprint</h2>
-                        <p class="text-xs text-slate-400 light:text-slate-500">your logged dives, mapped worldwide</p>
+                        <p class="text-xs text-slate-400 light:text-slate-500">Your logged dives, mapped worldwide</p>
                     </div>
                     <div class="flex items-center space-x-4 bg-ocean-950/50 light:bg-slate-200/50 px-3 py-1.5 rounded-xl border border-ocean-800/40 dark:border-ocean-800/40 light:border-slate-300/60">
                         <div class="flex items-center space-x-2">
@@ -1061,16 +1064,16 @@
                 </div>
                 <button onclick="openDiverProfileModal()" class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-xs font-bold rounded-xl flex items-center space-x-2 shadow-md">
                     <i class="fa-solid fa-user-pen"></i>
-                    <span>Edit Profile Credentials</span>
+                    <span>Edit Diver Info</span>
                 </button>
             </div>
 
-            <!-- Profile Summary & Certification Cards -->
+            <!-- Profile Summary: License card + Certification History, side by side -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- License & Card Details -->
                 <div class="diver-card-gradient p-6 rounded-3xl text-white space-y-6 flex flex-col justify-between">
                     <div class="flex justify-between items-center">
-                        <span id="prof-detail-org-card-label" class="text-xs font-bold tracking-widest font-mono-custom uppercase text-cyan-300">Certification Details</span>
+                        <span id="prof-detail-org-card-label" class="text-xs font-bold tracking-widest font-mono-custom uppercase text-cyan-300">Current Certification</span>
                         <i class="fa-solid fa-id-card text-2xl text-cyan-300"></i>
                     </div>
 
@@ -1099,61 +1102,157 @@
                     </div>
                 </div>
 
-                <!-- Diver Analytics Insight Box (merged Sub-surface Analytics Log + Diver Insights) -->
-                <div class="glass-panel p-6 rounded-3xl lg:col-span-2 space-y-4 flex flex-col justify-between">
-                    <div>
-                        <h3 class="text-lg font-bold">Sub-surface Analytics and Diver Insights</h3>
-                        <p class="text-xs text-slate-400">Sub-surface statistics calculated from your logs</p>
+                <!-- Certification History -->
+                <div class="glass-panel p-6 rounded-3xl lg:col-span-2 space-y-4">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div>
+                            <h3 class="text-lg font-bold">Certification History</h3>
+                            <p class="text-xs text-slate-400">Every certification you've earned, most recent first</p>
+                        </div>
+                        <button onclick="openCertificationModal(null)" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold flex items-center space-x-2 shadow-md flex-shrink-0">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Add Certification</span>
+                        </button>
                     </div>
 
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
-                            <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Total Dives</span>
-                            <span id="prof-analytic-dives" class="text-2xl font-extrabold font-mono-custom text-cyan-400">0</span>
-                        </div>
-                        <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
-                            <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Total Time</span>
-                            <span id="prof-analytic-hours" class="text-xl font-extrabold font-mono-custom text-emerald-400">0m</span>
-                        </div>
-                        <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
-                            <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Maximum Depth</span>
-                            <span id="prof-analytic-depth" class="text-2xl font-extrabold font-mono-custom text-orange-400">0m</span>
-                        </div>
-                        <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
-                            <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Max Bottom Time</span>
-                            <span id="prof-analytic-max-bottom-time" class="text-2xl font-extrabold font-mono-custom text-cyan-400">0 min</span>
-                        </div>
+                    <div id="certifications-list-container" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                        <!-- JS renders certification entries here -->
+                    </div>
+                    <div id="certifications-empty-state" class="hidden py-10 text-center text-sm text-slate-400">
+                        No certifications added yet — tap "Add Certification" to log your first one.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 1: Lifetime Totals -->
+            <div class="glass-panel p-6 rounded-3xl space-y-4">
+                <div>
+                    <h3 class="text-lg font-bold">Lifetime Totals</h3>
+                    <p class="text-xs text-slate-400">Calculated across every dive you've logged</p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                        <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Total Dives</span>
+                        <span id="prof-analytic-dives" class="text-2xl font-extrabold font-mono-custom text-cyan-400">0</span>
+                    </div>
+                    <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                        <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Total Time</span>
+                        <span id="prof-analytic-hours" class="text-xl font-extrabold font-mono-custom text-emerald-400">0m</span>
+                    </div>
+                    <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                        <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Maximum Depth</span>
+                        <span id="prof-analytic-depth" class="text-2xl font-extrabold font-mono-custom text-orange-400">0m</span>
+                    </div>
+                    <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                        <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Max Bottom Time</span>
+                        <span id="prof-analytic-max-bottom-time" class="text-2xl font-extrabold font-mono-custom text-cyan-400">0 min</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2 & 3: Averages -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass-panel p-6 rounded-3xl space-y-4">
+                    <div>
+                        <h3 class="text-lg font-bold">Average (Last 20 Dives)</h3>
+                        <p class="text-xs text-slate-400">Rolling average across your 20 most recent dives</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
                         <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
                             <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Average Depth</span>
-                            <span id="profile-insight-avg-depth" class="text-2xl font-extrabold font-mono-custom text-emerald-400">0.0m</span>
-                            <span class="block text-[9px] text-slate-500 mt-1">Avg of last 20 dives</span>
+                            <span id="prof-analytic-avg-depth-20" class="text-2xl font-extrabold font-mono-custom text-emerald-400">0.0m</span>
                         </div>
                         <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
                             <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Avg Bottom Time</span>
-                            <span id="prof-analytic-avg-bottom-time" class="text-2xl font-extrabold font-mono-custom text-emerald-400">0 min</span>
-                            <span class="block text-[9px] text-slate-500 mt-1">Avg of last 20 dives</span>
+                            <span id="prof-analytic-avg-bottomtime-20" class="text-2xl font-extrabold font-mono-custom text-emerald-400">0 min</span>
                         </div>
                         <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
                             <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Average SAC Rate</span>
-                            <span id="profile-insight-sac-rate" class="text-sm font-extrabold font-mono-custom text-blue-400">N/A</span>
-                            <span class="block text-[9px] text-slate-500 mt-1">Avg of last 20 dives</span>
+                            <span id="prof-analytic-avg-sac-20" class="text-2xl font-extrabold font-mono-custom text-blue-400">N/A</span>
                         </div>
                         <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
                             <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Avg Weight</span>
-                            <span id="prof-analytic-weight" class="text-2xl font-extrabold font-mono-custom text-blue-400">0 kg</span>
-                            <span class="block text-[9px] text-slate-500 mt-1">Avg of last 20 dives</span>
+                            <span id="prof-analytic-avg-weight-20" class="text-2xl font-extrabold font-mono-custom text-blue-400">0 kg</span>
                         </div>
                     </div>
+                </div>
 
-                    <div class="pt-2">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-xs text-slate-400">Active Rank Progress</span>
-                            <span id="progression-ratio" class="text-xs font-mono-custom text-cyan-400">0 / 10 Dives</span>
+                <div class="glass-panel p-6 rounded-3xl space-y-4">
+                    <div>
+                        <h3 class="text-lg font-bold">Average (All Logged Dives)</h3>
+                        <p class="text-xs text-slate-400">Average across your entire logbook</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                            <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Average Depth</span>
+                            <span id="prof-analytic-avg-depth-all" class="text-2xl font-extrabold font-mono-custom text-emerald-400">0.0m</span>
                         </div>
-                        <div class="w-full bg-ocean-950 dark:bg-ocean-950 light:bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                            <div id="progression-progress-bar" class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                            <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Avg Bottom Time</span>
+                            <span id="prof-analytic-avg-bottomtime-all" class="text-2xl font-extrabold font-mono-custom text-emerald-400">0 min</span>
+                        </div>
+                        <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                            <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Average SAC Rate</span>
+                            <span id="prof-analytic-avg-sac-all" class="text-2xl font-extrabold font-mono-custom text-blue-400">N/A</span>
+                        </div>
+                        <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                            <span class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Avg Weight</span>
+                            <span id="prof-analytic-avg-weight-all" class="text-2xl font-extrabold font-mono-custom text-blue-400">0 kg</span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Trends -->
+            <div class="glass-panel p-6 rounded-3xl space-y-6">
+                <div>
+                    <h3 class="text-lg font-bold">Trends Over Time</h3>
+                    <div class="flex flex-wrap items-center gap-4 mt-1">
+                        <span class="flex items-center text-xs text-slate-400">
+                            <span class="h-2.5 w-2.5 rounded-full mr-1.5 flex-shrink-0" style="background-color:#7dd3fc;"></span>
+                            Last 20 dives
+                        </span>
+                        <span class="flex items-center text-xs text-slate-400">
+                            <span class="h-2.5 w-2.5 rounded-full mr-1.5 flex-shrink-0" style="background-color:#f0abfc;"></span>
+                            All logged dives
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                        <span class="block text-xs text-slate-400 uppercase tracking-wider mb-3">SAC Rate by Month (L/min)</span>
+                        <div class="relative h-64">
+                            <canvas id="chart-sac-monthly"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 p-4 rounded-2xl border border-ocean-800/10">
+                        <span class="block text-xs text-slate-400 uppercase tracking-wider mb-3">Average Weight by Month (kg)</span>
+                        <div class="relative h-64">
+                            <canvas id="chart-weight-monthly"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Dives (separate widget, togglable Quarter / Year) -->
+            <div class="glass-panel p-6 rounded-3xl space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                        <h3 class="text-lg font-bold">Total Dives</h3>
+                        <p class="text-xs text-slate-400">Number of dives logged per period</p>
+                    </div>
+                    <div class="flex items-center bg-ocean-900/20 dark:bg-ocean-900/20 light:bg-slate-200 rounded-xl p-1 flex-shrink-0">
+                        <button type="button" id="dives-granularity-btn-quarter" onclick="setDivesChartGranularity('quarter')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                            Quarter
+                        </button>
+                        <button type="button" id="dives-granularity-btn-year" onclick="setDivesChartGranularity('year')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                            Year
+                        </button>
+                    </div>
+                </div>
+                <div class="relative h-64">
+                    <canvas id="chart-dives-total"></canvas>
                 </div>
             </div>
 
@@ -1162,6 +1261,16 @@
                 <div>
                     <h3 class="text-lg font-bold">Diver Milestone</h3>
                     <p class="text-xs text-slate-400">Unlock credentials based on your logbook dive count sequence</p>
+                </div>
+
+                <div class="pt-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-slate-400">Active Rank Progress</span>
+                        <span id="progression-ratio" class="text-xs font-mono-custom text-cyan-400">0 / 10 Dives</span>
+                    </div>
+                    <div class="w-full bg-ocean-950 dark:bg-ocean-950 light:bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                        <div id="progression-progress-bar" class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
                 </div>
 
                 <div id="ranks-milestones-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -1180,40 +1289,13 @@
             </button>
             <div class="flex items-center space-x-3 text-cyan-400">
                 <i class="fa-solid fa-address-card text-xl"></i>
-                <h3 class="text-base font-bold uppercase tracking-wider">Update Diver Credentials</h3>
+                <h3 class="text-base font-bold uppercase tracking-wider">Update Diver Info</h3>
             </div>
-            
+
             <form id="diver-profile-form" onsubmit="saveDiverProfile(event)" class="space-y-4 text-sm">
                 <div>
                     <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Diver Full Name</label>
                     <input type="text" id="prof-name" placeholder="e.g., Jacques Cousteau" required class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
-                </div>
-                
-                <div>
-                    <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Certification Organisation</label>
-                    <select id="prof-org" required onchange="updateCertLevelOptions()" class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
-                        <option value="PADI">PADI</option>
-                        <option value="SSI">SSI</option>
-                        <option value="SDI">SDI</option>
-                        <option value="NAUI">NAUI</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Certification Level</label>
-                    <select id="prof-level" required class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
-                        <!-- JS populates options dynamically based on chosen Certification Organisation -->
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Certification Number</label>
-                    <input type="text" id="prof-cert-no" placeholder="e.g., DIV-102948" required class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Date of Certification</label>
-                    <input type="date" id="prof-date" required class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
                 <div>
@@ -1238,6 +1320,85 @@
                     <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold shadow-md">
                         Save Changes
                     </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: ADD / EDIT CERTIFICATION ==================== -->
+    <div id="certification-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeCertificationModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="flex items-center space-x-3 text-cyan-400">
+                <i class="fa-solid fa-award text-xl"></i>
+                <h3 id="certification-modal-title" class="text-base font-bold uppercase tracking-wider">Add Certification</h3>
+            </div>
+
+            <form id="certification-form" onsubmit="saveCertification(event)" class="space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Certification Organisation</label>
+                    <select id="cert-org" required onchange="updateCertLevelOptions()" class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
+                        <option value="PADI">PADI</option>
+                        <option value="SSI">SSI</option>
+                        <option value="SDI">SDI</option>
+                        <option value="NAUI">NAUI</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Certification Level</label>
+                    <select id="cert-level" required class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
+                        <!-- JS populates options dynamically based on chosen Certification Organisation -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Certification Number</label>
+                    <input type="text" id="cert-no" placeholder="e.g., DIV-102948" required class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Date of Certification</label>
+                    <input type="date" id="cert-date" required class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
+                </div>
+
+                <div class="pt-2 border-t border-ocean-900/20">
+                    <p class="text-[10px] font-mono-custom text-slate-500 uppercase tracking-wider mb-3">Optional details</p>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Dive Center Name</label>
+                            <input type="text" id="cert-dive-center" placeholder="e.g., Blue Corner Dive Resort" class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Dive Center Location</label>
+                            <input type="text" id="cert-dive-center-location" placeholder="e.g., Nusa Penida, Indonesia" class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Instructor Name</label>
+                            <input type="text" id="cert-instructor-name" placeholder="e.g., Jacques Cousteau" class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Instructor Certification Number</label>
+                            <input type="text" id="cert-instructor-certno" placeholder="e.g., INS-55213" class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between space-x-3 pt-3 border-t border-ocean-900/20">
+                    <button type="button" id="certification-delete-btn" onclick="deleteCertificationFromModal()" class="hidden px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold">
+                        Delete
+                    </button>
+                    <div class="flex items-center space-x-3 ml-auto">
+                        <button type="button" onclick="closeCertificationModal()" class="px-4 py-2 rounded-xl border border-ocean-850 dark:border-ocean-850 light:border-slate-300 hover:bg-ocean-900/10 text-xs font-semibold">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold shadow-md">
+                            Save Certification
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -1941,8 +2102,8 @@
         // still valid for the new organisation it stays selected; otherwise the
         // first level in that organisation's list is selected.
         function updateCertLevelOptions(preferredLevel) {
-            const orgSelect = document.getElementById('prof-org');
-            const levelSelect = document.getElementById('prof-level');
+            const orgSelect = document.getElementById('cert-org');
+            const levelSelect = document.getElementById('cert-level');
             if (!orgSelect || !levelSelect) return;
 
             const org = orgSelect.value || "PADI";
@@ -1968,7 +2129,13 @@
                 level: "Open Water Diver",
                 certNo: "DIV-104928",
                 date: "2026-01-10",
-                avatar: null
+                avatar: null,
+                // Full certification history. org/level/certNo/date above are
+                // kept in sync as a mirror of the most recent entry here (see
+                // syncCurrentCertificationMirror()) so existing code that
+                // reads those top-level fields for the credentials card
+                // doesn't need to change.
+                certifications: []
             }
         };
 
@@ -2033,6 +2200,7 @@
             state.dives = remoteSnapshot.dives || state.dives;
             state.dives.sort((a, b) => b.diveNo - a.diveNo);
             if (remoteSnapshot.diverProfile) state.diverProfile = remoteSnapshot.diverProfile;
+            migrateDiverProfileCertifications();
             updateUI();
             showToast("Synced latest data from OneDrive", "info");
         };
@@ -2065,6 +2233,7 @@
 
             const profile = await window.AbyssDB.getMeta('diverProfile', null);
             if (profile) state.diverProfile = profile;
+            migrateDiverProfileCertifications();
 
             // Dark mode only — light mode has been removed.
             state.isDark = true;
@@ -2169,7 +2338,18 @@
                     initLeafletMap();
                 }, 100);
             }
-            
+
+            // Chart.js sizes its canvases off the container's rendered
+            // dimensions — since view-profile is hidden (display:none) on
+            // first load, charts created while it's hidden can end up
+            // sized 0x0. Re-render them once the section is actually
+            // visible so they always come out correctly sized.
+            if (tabId === 'profile') {
+                setTimeout(() => {
+                    renderProfileAnalytics(computeDiveAnalytics());
+                }, 100);
+            }
+
             updateUI();
             window.scrollTo(0, 0);
         }
@@ -2775,78 +2955,7 @@
         function updateUI() {
             const totalDives = state.dives.length;
             const countriesCount = Array.from(new Set(state.dives.map(d => d.country))).length;
-            
-            let totalMins = 0;
-            let maxDepth = 0.0;
-            let sumWeight = 0;
-            let countWeight = 0;
-            let sumAvgDepth = 0;
-            let countAvgDepth = 0;
-            let maxBottomTime = 0;
-            let sumBottomTime = 0;
-            let countBottomTime = 0;
-
-            // Arrays to capture computed SAC values in both Liters and Bars separately
-            let sacLitersList = [];
-            let sacBarList = [];
-
-            const chronologicalDives = [...state.dives].sort((a,b) => new Date(b.date) - new Date(a.date));
-
-            chronologicalDives.forEach(dive => {
-                totalMins += dive.bottomTime || 0;
-                if (dive.maxDepth && dive.maxDepth > maxDepth) maxDepth = dive.maxDepth;
-
-                // Bottom time max/average are calculated across ALL logged dives
-                if (dive.bottomTime !== undefined && dive.bottomTime !== null && !isNaN(dive.bottomTime)) {
-                    if (dive.bottomTime > maxBottomTime) maxBottomTime = dive.bottomTime;
-                    sumBottomTime += dive.bottomTime;
-                    countBottomTime++;
-                }
-
-                // Dual SAC Calculation Logic using formula:
-                // SAC (Liters/min) = [(Pstart - Pend) x V] / (T x ATA) where ATA = (AvgDepth/10) + 1
-                if (dive.gasStart && dive.gasEnd && dive.bottomTime && (dive.avgDepth || dive.maxDepth)) {
-                    const dVal = dive.avgDepth !== null ? dive.avgDepth : dive.maxDepth;
-                    let startP = dive.gasStart;
-                    let endP = dive.gasEnd;
-                    const tankVol = dive.tankVol || 12.0;
-
-                    if (dive.gasUnit === 'PSI') {
-                        startP = startP / 14.50377;
-                        endP = endP / 14.50377;
-                    }
-
-                    const pressDelta = startP - endP;
-                    const ata = (dVal / 10) + 1;
-                    const time = dive.bottomTime;
-
-                    if (pressDelta > 0 && time > 0 && ata > 0 && tankVol > 0) {
-                        const sacLiters = (pressDelta * tankVol) / (time * ata);
-                        const sacBar = sacLiters / tankVol;
-
-                        sacLitersList.push(sacLiters);
-                        sacBarList.push(sacBar);
-                    }
-                }
-            });
-
-            // Calculate Weight Rig and Depth metrics strictly on the last 20 chronological logs
-            const last20Dives = chronologicalDives.slice(0, 20);
-            last20Dives.forEach(dive => {
-                if (dive.weight !== undefined && dive.weight !== null && !isNaN(dive.weight)) {
-                    sumWeight += dive.weight;
-                    countWeight++;
-                }
-
-                if (dive.avgDepth !== undefined && dive.avgDepth !== null && !isNaN(dive.avgDepth)) {
-                    sumAvgDepth += dive.avgDepth;
-                    countAvgDepth++;
-                } else if (dive.maxDepth !== undefined && dive.maxDepth !== null && !isNaN(dive.maxDepth)) {
-                    sumAvgDepth += dive.maxDepth;
-                    countAvgDepth++;
-                }
-            });
-
+            const totalMins = state.dives.reduce((sum, d) => sum + (d.bottomTime || 0), 0);
             const hoursPart = Math.floor(totalMins / 60);
             const minsPart = totalMins % 60;
             const unlockedCrittersCount = getUnlockedSpeciesCount();
@@ -2860,39 +2969,11 @@
             document.getElementById('stat-total-dives-detail').innerText = `${totalDives} dives logged all-time`;
             document.getElementById('stat-critters').innerText = `${unlockedCrittersCount}/${Object.keys(CRITTER_DATABASE).length}`;
 
-            // Refocused Insights calculations based on last 20 logs
-            const avgWeight = countWeight > 0 ? (sumWeight / countWeight).toFixed(1) : "0.0";
-            const avgDepth = countAvgDepth > 0 ? (sumAvgDepth / countAvgDepth).toFixed(1) : "0.0";
-            
-            // Average overall SAC rate displaying both Liter and Bar metric structures
-            let displaySAC = "N/A";
-            if (sacLitersList.length > 0) {
-                const sliceL = sacLitersList.slice(0, 20);
-                const sliceB = sacBarList.slice(0, 20);
-                const avgL = sliceL.reduce((a, b) => a + b, 0) / sliceL.length;
-                const avgB = sliceB.reduce((a, b) => a + b, 0) / sliceB.length;
-                displaySAC = `${avgL.toFixed(1)} L/min (${avgB.toFixed(2)} bar/min)`;
-            }
-
-            document.getElementById('profile-insight-avg-depth').innerText = `${avgDepth}m`;
-            document.getElementById('profile-insight-sac-rate').innerText = displaySAC;
-
-            // Bottom time analytics computed across all logged dives
-            const avgBottomTime = countBottomTime > 0 ? Math.round(sumBottomTime / countBottomTime) : 0;
-            document.getElementById('prof-analytic-max-bottom-time').innerText = `${maxBottomTime} min`;
-            document.getElementById('prof-analytic-avg-bottom-time').innerText = `${avgBottomTime} min`;
-
             // Set up form dates default
             if (!state.editingLogId) {
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('form-date').value = today;
             }
-
-            // Populate Diver detail tab analytics
-            document.getElementById('prof-analytic-dives').innerText = totalDives;
-            document.getElementById('prof-analytic-hours').innerText = `${hoursPart}h ${minsPart}m`;
-            document.getElementById('prof-analytic-weight').innerText = `${avgWeight} kg`;
-            document.getElementById('prof-analytic-depth').innerText = `${maxDepth.toFixed(1)}m`;
 
             // Compute Rank & progression details
             const rankResult = getDiverRankInfo(totalDives);
@@ -2905,16 +2986,18 @@
             const divRange = (nextRankMax - nextRankMin) || 1;
             const divProgress = Math.min(100, Math.max(0, ((totalDives - nextRankMin) / divRange) * 100));
 
-            document.getElementById('progression-ratio').innerText = rankResult.next 
+            document.getElementById('progression-ratio').innerText = rankResult.next
                 ? `${totalDives} / ${rankResult.max + 1} Dives to ${nextRankTitle}`
                 : `Highest Rank Unlocked: ${rankResult.current.title}!`;
             document.getElementById('progression-progress-bar').style.width = `${divProgress}%`;
 
             renderDiverProfileCard();
+            renderProfileAnalytics(computeDiveAnalytics());
             renderRecentLogsDashboard();
             renderLogs();
             renderCritterdex();
             renderMilestonesGrid(totalDives);
+            renderCertificationsList();
         }
 
         // Computes active milestone information depending on total dive list length
@@ -2980,6 +3063,516 @@
             });
         }
 
+        /* ---------------- Certification history ---------------- */
+        // A diver can hold many certifications over time (Open Water, then
+        // Advanced, then Rescue, etc.), each optionally tied to a dive
+        // center/instructor. state.diverProfile.certifications is the full
+        // list; the credentials card always shows the most recently earned
+        // one ("current"), mirrored onto the legacy top-level org/level/
+        // certNo/date fields so the rest of the app (which only ever reads
+        // those) doesn't need to know about the array underneath.
+
+        // One-time upgrade path for profiles saved before certification
+        // history existed (locally or pulled from an older OneDrive
+        // snapshot): fold the old single-certification fields into a first
+        // entry so nothing already saved is lost.
+        function migrateDiverProfileCertifications() {
+            if (!state.diverProfile.certifications) {
+                state.diverProfile.certifications = [];
+            }
+            if (state.diverProfile.certifications.length === 0 &&
+                (state.diverProfile.certNo || state.diverProfile.level || state.diverProfile.date)) {
+                state.diverProfile.certifications.push({
+                    id: `cert-legacy-${Date.now()}`,
+                    org: state.diverProfile.org || "PADI",
+                    level: state.diverProfile.level || "Open Water Diver",
+                    certNo: state.diverProfile.certNo || "",
+                    date: state.diverProfile.date || "",
+                    diveCenter: "",
+                    diveCenterLocation: "",
+                    instructorName: "",
+                    instructorCertNo: ""
+                });
+            }
+            syncCurrentCertificationMirror();
+        }
+
+        // "Current" certification = the one with the most recent date.
+        // Undated entries sort last so a dated cert always takes priority.
+        function getCurrentCertification() {
+            const certs = state.diverProfile.certifications || [];
+            if (certs.length === 0) return null;
+            return [...certs].sort(sortCertificationsByDateDesc)[0];
+        }
+
+        function sortCertificationsByDateDesc(a, b) {
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return new Date(b.date) - new Date(a.date);
+        }
+
+        function syncCurrentCertificationMirror() {
+            const current = getCurrentCertification();
+            if (current) {
+                state.diverProfile.org = current.org;
+                state.diverProfile.level = current.level;
+                state.diverProfile.certNo = current.certNo;
+                state.diverProfile.date = current.date;
+            } else {
+                state.diverProfile.org = state.diverProfile.org || "PADI";
+                state.diverProfile.level = state.diverProfile.level || "Open Water Diver";
+                state.diverProfile.certNo = "";
+                state.diverProfile.date = "";
+            }
+        }
+
+        function persistDiverProfile() {
+            window.AbyssDB.setMeta('diverProfile', state.diverProfile);
+            window.AbyssDB.enqueueSync('profile-updated');
+            if (navigator.onLine) window.AbyssSync.syncNow();
+        }
+
+        let editingCertificationId = null;
+
+        function openCertificationModal(certId) {
+            editingCertificationId = certId || null;
+            const form = document.getElementById('certification-form');
+            form.reset();
+
+            if (editingCertificationId) {
+                const cert = (state.diverProfile.certifications || []).find(c => c.id === editingCertificationId);
+                if (!cert) return;
+                document.getElementById('certification-modal-title').innerText = "Edit Certification";
+                document.getElementById('cert-org').value = cert.org || "PADI";
+                updateCertLevelOptions(cert.level || "Open Water Diver");
+                document.getElementById('cert-no').value = cert.certNo || "";
+                document.getElementById('cert-date').value = cert.date || "";
+                document.getElementById('cert-dive-center').value = cert.diveCenter || "";
+                document.getElementById('cert-dive-center-location').value = cert.diveCenterLocation || "";
+                document.getElementById('cert-instructor-name').value = cert.instructorName || "";
+                document.getElementById('cert-instructor-certno').value = cert.instructorCertNo || "";
+                document.getElementById('certification-delete-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('certification-modal-title').innerText = "Add Certification";
+                document.getElementById('cert-org').value = "PADI";
+                updateCertLevelOptions("Open Water Diver");
+                document.getElementById('certification-delete-btn').classList.add('hidden');
+            }
+
+            document.getElementById('certification-modal').classList.remove('hidden');
+        }
+
+        function closeCertificationModal() {
+            document.getElementById('certification-modal').classList.add('hidden');
+            editingCertificationId = null;
+        }
+
+        function saveCertification(event) {
+            event.preventDefault();
+
+            const certData = {
+                org: document.getElementById('cert-org').value,
+                level: document.getElementById('cert-level').value,
+                certNo: document.getElementById('cert-no').value,
+                date: document.getElementById('cert-date').value,
+                // Optional details — kept as empty strings rather than
+                // undefined so the shape stays consistent across entries.
+                diveCenter: document.getElementById('cert-dive-center').value.trim(),
+                diveCenterLocation: document.getElementById('cert-dive-center-location').value.trim(),
+                instructorName: document.getElementById('cert-instructor-name').value.trim(),
+                instructorCertNo: document.getElementById('cert-instructor-certno').value.trim()
+            };
+
+            if (!state.diverProfile.certifications) state.diverProfile.certifications = [];
+
+            if (editingCertificationId) {
+                const idx = state.diverProfile.certifications.findIndex(c => c.id === editingCertificationId);
+                if (idx !== -1) {
+                    state.diverProfile.certifications[idx] = { ...state.diverProfile.certifications[idx], ...certData };
+                }
+            } else {
+                state.diverProfile.certifications.push({
+                    id: `cert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    ...certData
+                });
+            }
+
+            syncCurrentCertificationMirror();
+            persistDiverProfile();
+
+            showToast(editingCertificationId ? "Certification updated" : "Certification added", "success");
+            closeCertificationModal();
+            renderDiverProfileCard();
+            renderCertificationsList();
+        }
+
+        function requestDeleteCertification(certId) {
+            const cert = (state.diverProfile.certifications || []).find(c => c.id === certId);
+            if (!cert) return;
+            openConfirmModal(
+                "Delete Certification?",
+                `This will permanently remove ${cert.level || 'this certification'} (${cert.org || ''}) from your certification history. This cannot be undone.`,
+                "Delete",
+                () => {
+                    state.diverProfile.certifications = (state.diverProfile.certifications || []).filter(c => c.id !== certId);
+                    syncCurrentCertificationMirror();
+                    persistDiverProfile();
+                    showToast("Certification deleted", "info");
+                    renderDiverProfileCard();
+                    renderCertificationsList();
+                }
+            );
+        }
+
+        function deleteCertificationFromModal() {
+            if (!editingCertificationId) return;
+            const id = editingCertificationId;
+            closeCertificationModal();
+            requestDeleteCertification(id);
+        }
+
+        function renderCertificationsList() {
+            const container = document.getElementById('certifications-list-container');
+            const emptyState = document.getElementById('certifications-empty-state');
+            if (!container) return;
+
+            const certs = state.diverProfile.certifications || [];
+            if (certs.length === 0) {
+                container.innerHTML = "";
+                if (emptyState) emptyState.classList.remove('hidden');
+                return;
+            }
+            if (emptyState) emptyState.classList.add('hidden');
+
+            const current = getCurrentCertification();
+            const sorted = [...certs].sort(sortCertificationsByDateDesc);
+
+            container.innerHTML = sorted.map(cert => {
+                const isCurrent = current && cert.id === current.id;
+                const dateStr = cert.date ? formatDateDMY(cert.date) : "Date not set";
+                const extraLines = [];
+                if (cert.diveCenter) {
+                    extraLines.push(`<div><i class="fa-solid fa-shop text-[10px] mr-1.5 text-slate-500"></i>${cert.diveCenter}${cert.diveCenterLocation ? ` — ${cert.diveCenterLocation}` : ''}</div>`);
+                }
+                if (cert.instructorName) {
+                    extraLines.push(`<div><i class="fa-solid fa-user-graduate text-[10px] mr-1.5 text-slate-500"></i>${cert.instructorName}${cert.instructorCertNo ? ` (# ${cert.instructorCertNo})` : ''}</div>`);
+                }
+
+                return `
+                <div class="bg-ocean-900/10 dark:bg-ocean-900/10 light:bg-slate-100 border border-ocean-800/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center flex-wrap gap-2">
+                            <span class="font-bold text-sm">${cert.level || 'Unknown Level'}</span>
+                            <span class="text-[10px] font-mono-custom text-slate-400 uppercase">${cert.org || ''}</span>
+                            ${isCurrent ? '<span class="text-[9px] font-bold uppercase tracking-wider bg-cyan-500 text-white px-2 py-0.5 rounded">Current</span>' : ''}
+                        </div>
+                        <div class="text-xs text-slate-400 mt-1"># ${cert.certNo || 'N/A'} &middot; ${dateStr}</div>
+                        ${extraLines.length ? `<div class="text-[11px] text-slate-500 mt-1.5 space-y-0.5">${extraLines.join('')}</div>` : ''}
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0 self-end sm:self-center">
+                        <button onclick="openCertificationModal('${cert.id}')" class="p-2 rounded-lg bg-ocean-900/20 hover:bg-ocean-900/40 text-cyan-400 text-xs transition-colors" title="Edit Certification">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="requestDeleteCertification('${cert.id}')" class="p-2 rounded-lg bg-ocean-900/20 hover:bg-rose-500/20 text-rose-400 text-xs transition-colors" title="Delete Certification">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        /* ---------------- Diver profile analytics (Sections 1-4) ---------------- */
+        // Every number on the Diver Detail page is derived from this one
+        // function, so the summary cards (sections 1-3) and the trend charts
+        // (section 4) can never disagree with each other.
+        function computeDiveAnalytics() {
+            const dives = state.dives || [];
+            const chronologicalAsc = [...dives].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const chronologicalDesc = [...chronologicalAsc].reverse();
+            const last20Dives = chronologicalDesc.slice(0, 20);
+
+            function diveDepth(d) {
+                if (d.avgDepth !== undefined && d.avgDepth !== null && !isNaN(d.avgDepth)) return d.avgDepth;
+                if (d.maxDepth !== undefined && d.maxDepth !== null && !isNaN(d.maxDepth)) return d.maxDepth;
+                return null;
+            }
+
+            // Same SAC formula used by the live "Log a Dive" SAC preview:
+            // SAC (L/min) = [(Pstart - Pend) x TankVolume] / (BottomTime x ATA)
+            // where ATA = (depth / 10) + 1
+            function diveSAC(d) {
+                if (!(d.gasStart && d.gasEnd && d.bottomTime && (d.avgDepth || d.maxDepth))) return null;
+                const dVal = diveDepth(d);
+                let startP = d.gasStart;
+                let endP = d.gasEnd;
+                const tankVol = d.tankVol || 12.0;
+                if (d.gasUnit === 'PSI') { startP /= 14.50377; endP /= 14.50377; }
+                const pressDelta = startP - endP;
+                const ata = (dVal / 10) + 1;
+                const time = d.bottomTime;
+                if (!(pressDelta > 0 && time > 0 && ata > 0 && tankVol > 0)) return null;
+                return (pressDelta * tankVol) / (time * ata);
+            }
+
+            const avgOf = (arr) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+            const collect = (list, fn) => list.map(fn).filter(v => v !== null && v !== undefined && !isNaN(v));
+
+            // ---- Section 1: lifetime totals ----
+            const totalDives = dives.length;
+            const totalMins = dives.reduce((sum, d) => sum + (d.bottomTime || 0), 0);
+            const maxDepth = dives.reduce((m, d) => Math.max(m, d.maxDepth || 0), 0);
+            const maxBottomTime = dives.reduce((m, d) => Math.max(m, d.bottomTime || 0), 0);
+
+            // ---- Section 2 (last 20) / Section 3 (all-time) averages ----
+            const avgDepth20 = avgOf(collect(last20Dives, diveDepth));
+            const avgDepthAll = avgOf(collect(dives, diveDepth));
+            const avgBottomTime20 = avgOf(collect(last20Dives, d => d.bottomTime));
+            const avgBottomTimeAll = avgOf(collect(dives, d => d.bottomTime));
+            const avgSAC20 = avgOf(collect(last20Dives, diveSAC));
+            const avgSACAll = avgOf(collect(dives, diveSAC));
+            const avgWeight20 = avgOf(collect(last20Dives, d => d.weight));
+            const avgWeightAll = avgOf(collect(dives, d => d.weight));
+
+            // ---- Section 4: monthly / quarterly trend buckets ----
+            function monthKey(dateStr) {
+                const d = new Date(dateStr);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            }
+            function monthLabel(key) {
+                const [y, m] = key.split('-');
+                return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            }
+            function quarterKey(dateStr) {
+                const d = new Date(dateStr);
+                return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+            }
+            function quarterLabel(key) {
+                const [y, q] = key.split('-');
+                return `${q} ${y}`;
+            }
+            function yearKey(dateStr) {
+                return String(new Date(dateStr).getFullYear());
+            }
+
+            // Build a continuous run of month/quarter/year buckets spanning
+            // the full dive history (oldest -> newest) so periods with zero
+            // dives still show up as gaps on the chart instead of being
+            // silently skipped.
+            const monthKeys = [];
+            const quarterKeys = [];
+            const yearKeys = [];
+            if (chronologicalAsc.length > 0) {
+                const first = new Date(chronologicalAsc[0].date);
+                const last = new Date(chronologicalAsc[chronologicalAsc.length - 1].date);
+
+                let mCursor = new Date(first.getFullYear(), first.getMonth(), 1);
+                const mEnd = new Date(last.getFullYear(), last.getMonth(), 1);
+                while (mCursor <= mEnd) {
+                    monthKeys.push(`${mCursor.getFullYear()}-${String(mCursor.getMonth() + 1).padStart(2, '0')}`);
+                    mCursor.setMonth(mCursor.getMonth() + 1);
+                }
+
+                let qCursor = new Date(first.getFullYear(), Math.floor(first.getMonth() / 3) * 3, 1);
+                const qEnd = new Date(last.getFullYear(), Math.floor(last.getMonth() / 3) * 3, 1);
+                while (qCursor <= qEnd) {
+                    quarterKeys.push(`${qCursor.getFullYear()}-Q${Math.floor(qCursor.getMonth() / 3) + 1}`);
+                    qCursor.setMonth(qCursor.getMonth() + 3);
+                }
+
+                for (let y = first.getFullYear(); y <= last.getFullYear(); y++) {
+                    yearKeys.push(String(y));
+                }
+            }
+
+            function bucketAverages(keys, keyFn, valueFn, sourceDives) {
+                const buckets = {};
+                keys.forEach(k => buckets[k] = []);
+                sourceDives.forEach(d => {
+                    const k = keyFn(d.date);
+                    if (!buckets.hasOwnProperty(k)) return;
+                    const v = valueFn(d);
+                    if (v !== null && v !== undefined && !isNaN(v)) buckets[k].push(v);
+                });
+                return keys.map(k => avgOf(buckets[k]));
+            }
+
+            const sacByMonthAll = bucketAverages(monthKeys, monthKey, diveSAC, dives);
+            const sacByMonthLast20 = bucketAverages(monthKeys, monthKey, diveSAC, last20Dives);
+            const weightByMonthAll = bucketAverages(monthKeys, monthKey, d => d.weight, dives);
+            const weightByMonthLast20 = bucketAverages(monthKeys, monthKey, d => d.weight, last20Dives);
+            const divesByQuarter = quarterKeys.map(k => dives.filter(d => quarterKey(d.date) === k).length);
+            const divesByYear = yearKeys.map(k => dives.filter(d => yearKey(d.date) === k).length);
+
+            return {
+                totalDives, totalMins, maxDepth, maxBottomTime,
+                avgDepth20, avgDepthAll, avgBottomTime20, avgBottomTimeAll,
+                avgSAC20, avgSACAll, avgWeight20, avgWeightAll,
+                monthLabels: monthKeys.map(monthLabel),
+                sacByMonthAll, sacByMonthLast20, weightByMonthAll, weightByMonthLast20,
+                quarterLabels: quarterKeys.map(quarterLabel), divesByQuarter,
+                yearLabels: yearKeys, divesByYear
+            };
+        }
+
+        function fmtDepth(value) {
+            return (value === null || value === undefined || isNaN(value)) ? "0.0m" : `${value.toFixed(1)}m`;
+        }
+        function fmtMinutes(value) {
+            return (value === null || value === undefined || isNaN(value)) ? "0 min" : `${Math.round(value)} min`;
+        }
+        function fmtWeight(value) {
+            return (value === null || value === undefined || isNaN(value)) ? "0.0 kg" : `${value.toFixed(1)} kg`;
+        }
+        function fmtSAC(value) {
+            return (value === null || value === undefined || isNaN(value)) ? "N/A" : `${value.toFixed(1)} L/min`;
+        }
+
+        function renderProfileAnalytics(analytics) {
+            // Section 1 — lifetime totals
+            document.getElementById('prof-analytic-dives').innerText = analytics.totalDives;
+            document.getElementById('prof-analytic-hours').innerText = `${Math.floor(analytics.totalMins / 60)}h ${analytics.totalMins % 60}m`;
+            document.getElementById('prof-analytic-depth').innerText = fmtDepth(analytics.maxDepth);
+            document.getElementById('prof-analytic-max-bottom-time').innerText = fmtMinutes(analytics.maxBottomTime);
+
+            // Section 2 — average of last 20 dives
+            document.getElementById('prof-analytic-avg-depth-20').innerText = fmtDepth(analytics.avgDepth20);
+            document.getElementById('prof-analytic-avg-bottomtime-20').innerText = fmtMinutes(analytics.avgBottomTime20);
+            document.getElementById('prof-analytic-avg-sac-20').innerText = fmtSAC(analytics.avgSAC20);
+            document.getElementById('prof-analytic-avg-weight-20').innerText = fmtWeight(analytics.avgWeight20);
+
+            // Section 3 — average of all logged dives
+            document.getElementById('prof-analytic-avg-depth-all').innerText = fmtDepth(analytics.avgDepthAll);
+            document.getElementById('prof-analytic-avg-bottomtime-all').innerText = fmtMinutes(analytics.avgBottomTimeAll);
+            document.getElementById('prof-analytic-avg-sac-all').innerText = fmtSAC(analytics.avgSACAll);
+            document.getElementById('prof-analytic-avg-weight-all').innerText = fmtWeight(analytics.avgWeightAll);
+
+            // Section 4 — trend charts
+            lastComputedAnalytics = analytics;
+            renderAnalyticsCharts(analytics);
+            renderDivesChart(analytics);
+        }
+
+        /* ---------------- Section 4 trend charts (Chart.js) ---------------- */
+        // Chart instances are kept around and destroyed/recreated on every
+        // render rather than left to pile up — Chart.js doesn't reuse a
+        // canvas cleanly across repeated `new Chart()` calls otherwise.
+        let profileCharts = { sac: null, weight: null, dives: null };
+
+        // The Total Dives widget has its own Quarter/Year toggle, so it
+        // needs to re-render independently of the rest of the analytics
+        // (which only recompute on data changes). Keep the last computed
+        // analytics around so toggling granularity doesn't need a full
+        // recompute, and remember the user's chosen granularity across
+        // re-renders of the page.
+        let lastComputedAnalytics = null;
+        let divesChartGranularity = 'quarter';
+
+        const CHART_COLOR_LAST20 = '#7dd3fc';    // light blue
+        const CHART_COLOR_ALLTIME = '#f0abfc';   // light magenta
+        const CHART_COLOR_BENCHMARK = '#f87171'; // benchmark reference line
+        const SAC_BENCHMARK_L_MIN = 20;
+
+        function baseChartOptions(yLabel, showLegend) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: showLegend !== false, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 10 } } },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                    y: {
+                        ticks: { color: '#64748b', font: { size: 10 } },
+                        grid: { color: 'rgba(148,163,184,0.1)' },
+                        title: { display: !!yLabel, text: yLabel, color: '#64748b', font: { size: 10 } }
+                    }
+                }
+            };
+        }
+
+        function renderAnalyticsCharts(analytics) {
+            if (typeof Chart === 'undefined') return; // Chart.js CDN failed to load — charts simply won't render
+
+            const labels = analytics.monthLabels;
+
+            // ---- SAC rate by month ----
+            const sacCtx = document.getElementById('chart-sac-monthly');
+            if (sacCtx) {
+                if (profileCharts.sac) profileCharts.sac.destroy();
+                profileCharts.sac = new Chart(sacCtx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: 'Last 20 dives', data: analytics.sacByMonthLast20, borderColor: CHART_COLOR_LAST20, backgroundColor: CHART_COLOR_LAST20, spanGaps: true, tension: 0.3 },
+                            { label: 'All logged dives', data: analytics.sacByMonthAll, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 },
+                            { label: `Benchmark (${SAC_BENCHMARK_L_MIN} L/min)`, data: labels.map(() => SAC_BENCHMARK_L_MIN), borderColor: CHART_COLOR_BENCHMARK, borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5 }
+                        ]
+                    },
+                    options: baseChartOptions('L/min', true)
+                });
+            }
+
+            // ---- Average weight by month ----
+            const weightCtx = document.getElementById('chart-weight-monthly');
+            if (weightCtx) {
+                if (profileCharts.weight) profileCharts.weight.destroy();
+                profileCharts.weight = new Chart(weightCtx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: 'Last 20 dives', data: analytics.weightByMonthLast20, borderColor: CHART_COLOR_LAST20, backgroundColor: CHART_COLOR_LAST20, spanGaps: true, tension: 0.3 },
+                            { label: 'All logged dives', data: analytics.weightByMonthAll, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 }
+                        ]
+                    },
+                    options: baseChartOptions('kg', true)
+                });
+            }
+        }
+
+        /* ---------------- Total Dives widget (Quarter / Year toggle) ---------------- */
+        function setDivesChartGranularity(granularity) {
+            divesChartGranularity = granularity;
+            updateDivesGranularityButtonStyles();
+            if (lastComputedAnalytics) renderDivesChart(lastComputedAnalytics);
+        }
+
+        function updateDivesGranularityButtonStyles() {
+            const activeClass = "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-cyan-500 text-white";
+            const inactiveClass = "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors text-slate-400 hover:text-slate-200";
+            const quarterBtn = document.getElementById('dives-granularity-btn-quarter');
+            const yearBtn = document.getElementById('dives-granularity-btn-year');
+            if (!quarterBtn || !yearBtn) return;
+            quarterBtn.className = divesChartGranularity === 'quarter' ? activeClass : inactiveClass;
+            yearBtn.className = divesChartGranularity === 'year' ? activeClass : inactiveClass;
+        }
+
+        function renderDivesChart(analytics) {
+            if (typeof Chart === 'undefined') return; // Chart.js CDN failed to load — chart simply won't render
+
+            updateDivesGranularityButtonStyles();
+
+            const divesCtx = document.getElementById('chart-dives-total');
+            if (!divesCtx) return;
+
+            const labels = divesChartGranularity === 'year' ? analytics.yearLabels : analytics.quarterLabels;
+            const data = divesChartGranularity === 'year' ? analytics.divesByYear : analytics.divesByQuarter;
+
+            if (profileCharts.dives) profileCharts.dives.destroy();
+            profileCharts.dives = new Chart(divesCtx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{ label: 'Dives', data, backgroundColor: '#22d3ee', borderRadius: 4 }]
+                },
+                options: baseChartOptions('Dives', false)
+            });
+        }
+
         function renderDiverProfileCard() {
             document.getElementById('card-diver-name').innerText = state.diverProfile.name || "Explorer";
 
@@ -3023,10 +3616,6 @@
 
         function openDiverProfileModal() {
             document.getElementById('prof-name').value = state.diverProfile.name || "";
-            document.getElementById('prof-org').value = state.diverProfile.org || "PADI";
-            updateCertLevelOptions(state.diverProfile.level || "Open Water Diver");
-            document.getElementById('prof-cert-no').value = state.diverProfile.certNo || "";
-            document.getElementById('prof-date').value = state.diverProfile.date || "";
 
             const previewCont = document.getElementById('prof-avatar-preview-container');
             const previewImg = document.getElementById('prof-avatar-preview-img');
@@ -3069,10 +3658,6 @@
         function saveDiverProfile(event) {
             event.preventDefault();
             state.diverProfile.name = document.getElementById('prof-name').value;
-            state.diverProfile.org = document.getElementById('prof-org').value;
-            state.diverProfile.level = document.getElementById('prof-level').value;
-            state.diverProfile.certNo = document.getElementById('prof-cert-no').value;
-            state.diverProfile.date = document.getElementById('prof-date').value;
 
             if (tempProfileAvatar !== null) {
                 state.diverProfile.avatar = tempProfileAvatar;
@@ -3080,11 +3665,9 @@
                 window.AbyssDB.enqueueSync('photo-pending', { id: 'avatar', dataUrl: tempProfileAvatar });
             }
 
-            window.AbyssDB.setMeta('diverProfile', state.diverProfile);
-            window.AbyssDB.enqueueSync('profile-updated');
-            if (navigator.onLine) window.AbyssSync.syncNow();
+            persistDiverProfile();
 
-            showToast("Diver credentials successfully saved!", "success");
+            showToast("Diver info successfully saved!", "success");
             closeDiverProfileModal();
             updateUI();
         }
