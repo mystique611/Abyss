@@ -8,7 +8,7 @@
  * otherwise returning visitors keep getting the old cached copy.
  */
 
-const CACHE_VERSION = 'abyss-shell-v9';
+const CACHE_VERSION = 'abyss-shell-v10';
 
 // Keep this list in sync with every static asset the app needs to boot offline.
 const APP_SHELL_FILES = [
@@ -18,6 +18,7 @@ const APP_SHELL_FILES = [
     './js/db.js',
     './js/auth.js',
     './js/sync.js',
+    './js/msal-browser.min.js',
     './icons/icon-192.png',
     './icons/icon-512.png'
 ];

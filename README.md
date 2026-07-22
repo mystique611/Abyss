@@ -13,6 +13,8 @@ service-worker.js    caches the app shell so it boots with zero connectivity
 js/db.js             IndexedDB wrapper — local source of truth for all data
 js/auth.js           Microsoft login (MSAL.js) — OneDrive access
 js/sync.js           pushes/pulls data to the user's OneDrive app folder
+js/msal-browser.min.js  vendored copy of @azure/msal-browser (not loaded from
+                      a CDN — see CHANGELOG.md for why)
 icons/               placeholder app icons (replace with your own artwork)
 ```
 

@@ -2,8 +2,9 @@
 
 ## Sync
 
+- **Fixed: mobile sign-in could crash with "Can't find variable: msal".** The Microsoft auth library was loaded from `alcdn.msauth.net`; on some mobile browsers/networks (ad/tracker blockers, flaky mobile data, DNS filtering) that request could silently fail, leaving `msal` undefined and crashing sign-in with a raw ReferenceError. The library is now vendored locally at `js/msal-browser.min.js`, served from the same origin, and precached by the service worker like the rest of the app shell. `js/auth.js` also now checks for this case explicitly and throws a clear, actionable error instead of a cryptic crash if the library still isn't available for any reason.
 - **Fixed: signing in on a new/reinstalled device could still overwrite real OneDrive data with an empty logbook.** Added a dedicated `syncAfterSignIn()` path (in `js/sync.js`) that runs on every sign-in — whether via the button or the popup-blocked redirect fallback — and on any app startup where this device has never completed a sync before. Instead of comparing timestamps, it always downloads the OneDrive snapshot first: if it already contains dives, that data always wins and is pulled down, no exceptions; only if the OneDrive file is missing entirely or genuinely empty does it fall back to the normal push flow. The regular timestamp-based `syncNow()` (used for every edit on an already-synced device) is unchanged, so deleting all your dives on an established device still syncs correctly.
-- Service worker cache bumped (`abyss-shell-v8` → `abyss-shell-v9`) to ship the above fix to existing installs.
+- Service worker cache bumped twice (`abyss-shell-v8` → `abyss-shell-v9` → `abyss-shell-v10`) to ship the above fixes, including precaching the newly-vendored `js/msal-browser.min.js`, to existing installs.
 
 ## Log a Dive
 

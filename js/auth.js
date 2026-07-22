@@ -34,6 +34,18 @@ let msalInstance = null;
 let activeAccount = null;
 
 function getMsalInstance() {
+    if (typeof msal === 'undefined') {
+        // The MSAL library (js/msal-browser.min.js) didn't load — e.g. the
+        // service worker hasn't cached it yet and the device is offline, or
+        // something blocked the request. Surface a clear, actionable error
+        // instead of letting callers hit a raw "Can't find variable: msal".
+        throw new Error(
+            "Couldn't load the sign-in library (msal-browser.min.js). " +
+            "This usually means no internet connection was available the " +
+            "first time this device opened the app. Connect to the " +
+            "internet and reload, then try signing in again."
+        );
+    }
     if (!msalInstance) {
         msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
     }

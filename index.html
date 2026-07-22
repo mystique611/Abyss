@@ -52,8 +52,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
-    <!-- Microsoft Authentication Library (OneDrive login) -->
-    <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+    <!-- Microsoft Authentication Library (OneDrive login).
+         Vendored locally (js/msal-browser.min.js) instead of loaded from the
+         alcdn.msauth.net CDN: on some mobile browsers/networks that CDN
+         request can silently fail (ad/tracker blockers, flaky mobile data,
+         corporate DNS filtering), which left `msal` undefined and made
+         sign-in crash with "Can't find variable: msal" instead of a useful
+         error. Serving it from the same origin as the rest of the app shell
+         also means the service worker reliably precaches it for offline use. -->
+    <script src="js/msal-browser.min.js"></script>
 
     <!-- Local app modules: offline-first storage + OneDrive sync -->
     <script src="js/db.js"></script>
