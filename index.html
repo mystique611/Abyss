@@ -52,8 +52,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
-    <!-- Chart.js (Diver Detail trend charts: SAC rate, weight, dives by quarter) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.min.js"></script>
+    <!-- Chart.js (Diver Detail trend charts: SAC rate, weight, total dives).
+         Vendored locally as js/chart.umd.min.js, NOT chart.min.js. On cdnjs,
+         "chart.min.js" for v4+ is an ES module (starts with an import
+         statement), which fails silently when loaded as a plain non-module
+         script — the global Chart never gets defined, so every chart
+         quietly never renders. chart.umd.min.js is the UMD build that
+         actually defines window.Chart. Vendoring it also means the service
+         worker precaches it like the rest of the app shell. -->
+    <script src="js/chart.umd.min.js"></script>
 
     <!-- Microsoft Authentication Library (OneDrive login).
          Vendored locally (js/msal-browser.min.js) instead of loaded from the
@@ -2345,9 +2352,15 @@
             // sized 0x0. Re-render them once the section is actually
             // visible so they always come out correctly sized.
             if (tabId === 'profile') {
-                setTimeout(() => {
-                    renderProfileAnalytics(computeDiveAnalytics());
-                }, 100);
+                // Wait for the browser to actually paint the now-visible
+                // section before creating charts — a single requestAnimationFrame
+                // can still land before layout is fully settled on some
+                // browsers, so nest two of them.
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        renderProfileAnalytics(computeDiveAnalytics());
+                    });
+                });
             }
 
             updateUI();
@@ -3494,7 +3507,14 @@
         }
 
         function renderAnalyticsCharts(analytics) {
-            if (typeof Chart === 'undefined') return; // Chart.js CDN failed to load — charts simply won't render
+            if (typeof Chart === 'undefined') { console.warn('Chart.js is not loaded — trend charts cannot render.'); return; }
+            // Never create/recreate a chart while its canvas is hidden
+            // (view-profile has class="hidden" on every tab except Diver
+            // Detail) — a canvas with 0 width/height at creation time can
+            // end up permanently blank even after the section becomes
+            // visible. switchTab() re-renders this once the tab is actually
+            // shown, so skipping here just avoids the wasted/broken attempt.
+            if (state.currentTab !== 'profile') return;
 
             const labels = analytics.monthLabels;
 
@@ -3552,9 +3572,9 @@
         }
 
         function renderDivesChart(analytics) {
-            if (typeof Chart === 'undefined') return; // Chart.js CDN failed to load — chart simply won't render
-
+            if (typeof Chart === 'undefined') { console.warn('Chart.js is not loaded — the Total Dives chart cannot render.'); return; }
             updateDivesGranularityButtonStyles();
+            if (state.currentTab !== 'profile') return; // avoid creating a chart on a hidden (0x0) canvas
 
             const divesCtx = document.getElementById('chart-dives-total');
             if (!divesCtx) return;
