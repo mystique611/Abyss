@@ -1,5 +1,13 @@
 # Changelog
 
+## 260723-v17 — Performance cleanup
+
+- **Removed dead `defaultImage` field** from all 239 `CRITTER_DATABASE` entries — a leftover Unsplash stock-photo fallback that was never actually read anywhere in the code once the "No Photo" placeholder replaced it. Pure bloat; `index.html` shrank from 392K to ~364K.
+- **Stripped leftover `light:` Tailwind classes** (231 occurrences across `class="..."` attributes, `.className` assignments, and `classList.add/remove` calls) now that light mode was removed entirely and the app is dark-mode only. No visual change, less markup for Tailwind's compiler to churn through on every render.
+- **Dashboard map and Diver Detail charts are now reused instead of destroyed and rebuilt.** `initLeafletMap()` creates the Leaflet map + tile layer once and just clears/repopulates markers (calling `invalidateSize()` so it re-measures correctly after being hidden on another tab) instead of calling `map.remove()` + `new L.map()` every time the Dashboard tab is shown. The three Diver Detail charts (SAC, weight, total dives) now call `.update()` with fresh data instead of `.destroy()` + `new Chart()` on every render.
+- **`updateUI()` no longer rebuilds every tab's content on every action.** Previously, saving a dive, switching tabs, or a background OneDrive sync applying new data would unconditionally re-render the full Logbook list, the full ~230-species AquaDex grid, Diver Detail's analytics/milestones/certifications, and the Dashboard stats — regardless of which tab was actually visible. Each of those now only renders when its own tab is the active one, and `switchTab()` already sets the active tab before calling `updateUI()`, so switching tabs (or a background sync landing while a tab is open) still refreshes exactly what's on screen — nothing goes stale.
+- Service worker cache bumped (`abyss-shell-v16` → `abyss-shell-v17`) to ship all of the above.
+
 ## 260723-v16
 
 - **Dashboard**: "Critters" stat renamed to "Marine Life".
