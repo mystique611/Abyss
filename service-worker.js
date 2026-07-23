@@ -8,7 +8,7 @@
  * otherwise returning visitors keep getting the old cached copy.
  */
 
-const CACHE_VERSION = 'abyss-shell-v22';
+const CACHE_VERSION = 'abyss-shell-v23';
 
 // Keep this list in sync with every static asset the app needs to boot offline.
 const APP_SHELL_FILES = [

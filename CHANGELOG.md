@@ -1,5 +1,15 @@
 # Changelog
 
+## 260723-v23
+
+- **PDF export is now configurable.** "Export to PDF" opens an options dialog instead of exporting immediately:
+  - **Certifications to include** — every entry in your certification history, each showing organization, level, and number, as independent checkboxes. None are forced; by default only your most recent certification (by date) is checked. Each one you select gets its own line under your name on the exported page.
+  - **Diver name** is always included and can't be unchecked.
+  - **Fields to include** — every Log a Dive input field is now offered (not just the original 25), grouped by the same sections as the form itself (General, Environmental Profile, Equipment, Depth & Time Profile, Gas Metrics & SAC, Dive Buddy & Journal), plus a "select all" toggle. Only the original 25 fields are checked by default; the rest (air/surface temp, exact location, weather, additional gear, gas O2/N2/He %, dive buddy, buddy cert number, journal notes) are there to add if wanted.
+  - Marine life sightings and photos are still never offered — not tabular data / explicitly out of scope for this export.
+  - Removed the "marine life sightings excluded" note from the exported page's subtitle line.
+- Service worker cache bumped (`abyss-shell-v22` → `abyss-shell-v23`) to ship the above.
+
 ## 260723-v22
 
 - **Critter sighting photos and dive photos no longer get embedded as base64 inside the synced dive_data.json.** Each photo is now uploaded as its own file to OneDrive (`/Apps/AbyssDiveLog/photos/<id>.jpg` — the same path the diver avatar already used), and the dive/critter record just holds a small id reference instead. This keeps the main sync snapshot lightweight regardless of how many photos are attached, and avoids re-uploading every photo on every sync.
