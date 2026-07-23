@@ -1,5 +1,13 @@
 # Changelog
 
+## 260723-v20
+
+- **Real light mode is back.** A new theme toggle (sun/moon button in the nav bar, next to Sync) switches between dark and light, persists the choice, and syncs it across devices via the same OneDrive snapshot the dive data uses.
+- The previous light mode (removed a while back) had a real bug: it paired `dark:` utility classes with a `light:` variant that was never actually registered in the Tailwind config, so it silently did nothing — text stayed at its dark-mode color (often white or light gray) while a handful of custom CSS rules still flipped backgrounds to white, producing unreadable white-on-white/light text. This rebuild uses Tailwind's real convention instead: proper light-appropriate base colors paired with `dark:` overrides, so both themes are independently correct rather than one being a broken mirror of the other.
+- Covers the full app: nav bar, dashboard stat cards and map (CARTO tiles now switch light/dark variant too), Diver Detail credential card and trend charts (chart axis/legend colors now adapt to the theme), Logbook cards and full-detail modal, Log a Dive form and gear icons, AquaDex grid and species detail modal, toasts, and every confirm/sign-in dialog.
+- Fixed several modal titles and card labels that would have gone invisible in light mode specifically because they sat on `.glass-panel` surfaces (which do turn white in light mode) while still being hardcoded to white text — the confirm dialog, sign-out warning, login prompt, Share Profile, and Dive Log Details modal titles, plus AquaDex species cards and the sighting gallery.
+- Service worker cache bumped (`abyss-shell-v19` → `abyss-shell-v20`) to ship all of the above.
+
 ## 260723-v19
 
 - **Fixed a real data-loss risk introduced by the v18 sign-out feature.** Signing out clears the on-screen view by emptying the in-memory dive list (IndexedDB itself was always meant to be untouched) — but logging, editing, deleting, or importing a dive right after sign-out (before signing back in) saved that emptied list straight back to IndexedDB, permanently wiping every other dive on the device. Fixed by re-loading the real data from IndexedDB before any such action if the view was cleared by a sign-out, so nothing is lost no matter what's done while signed out.
