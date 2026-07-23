@@ -1,5 +1,21 @@
 # Changelog
 
+## 260723-v21
+
+- **Naming consistency**: "Logbook Verification Number" and Log a Dive's "License Number"/"Verification Number" are now all just **Certification Number** everywhere. The Logbook/Log a Dive/Full Detail section formerly called "Verification & Journal Entry" is now **Dive Buddy & Dive Journal**. "Exposure Suit / Rig" is now **Exposure / Weight**.
+- **Dive Tags**: optional multi-select tags (Wreck, Night, Drift, Training) in Log a Dive Section 1, shown as icon-free pill buttons like Additional Gear. Filterable from the Logbook (see below) and shown in the Full Log Details view.
+- **Logbook filter button**: filter the dive list by Country, Dive Site, Dive Type, and Dive Tags, independent of the existing text search.
+- **Log a Dive map**: added a place search box and a "use current location" button (browser geolocation) next to the existing click-to-pin map.
+- **Dive Site and Dive Buddy are now autocomplete fields** — still plain text (not a managed list), but typing suggests every value already used elsewhere in the logbook.
+- **Turtles** added to AquaDex and the Log a Dive marine life checklist (7 species, Green through Leatherback).
+- **UDDF import reworked**: importing a UDDF file no longer silently creates saved dive records. It now pre-fills whichever Log a Dive form is currently open (date, site, temps, visibility, depths, bottom time, pressures, notes) from the first dive in the file, leaving anything UDDF has no concept of — Country, Dive Type, Buddy, Tags, gear — for manual entry. The import button moved from the Logbook header to the Log a Dive form itself. If a file's summary stats are missing, they're now computed from its depth/time waypoints, including bottom time (previously only max/avg depth had this fallback).
+- **Depth & Time Profile graph**: Log a Dive Section 4 now plots a live depth-over-time line as you fill in (or import) Max Depth and Bottom Time — a real UDDF sample trace when one was imported, otherwise a synthesized 0 → max → 0 triangle. The same graph appears in the Logbook's expanded card preview and the Full Log Details modal for any saved dive.
+- **Dive Photos**: new Section 7 in Log a Dive for uploading general dive photos (separate from marine life sighting photos). Never shown inline in any Logbook preview or the Full Log Details modal — only via a new "View Dive Photos" button next to "View Full Log Details".
+- **Diver Detail additions**: SAC Rate widgets now show a ± standard deviation alongside the average (last 20 dives and all-time); a new Gas Mixture Breakdown pie chart; a new Dive Buddy Analytics widget showing who you last dived with and who you've dived with most.
+- **PDF export**: added alongside the existing CSV/UDDF export options — a landscape A4, single-table logbook printout (Dive #, Date, Dive Type, Tags, Country, Site, Time In/Out, Bottom Time, Max/Avg Depth, Water Temp, Visibility, Water Type, Body of Water, Waves, Current, Surge, Weight, Exposure Suit, Tank Type/Volume, Gas Type, Start/End Pressure). Marine life sightings are intentionally excluded.
+- Also removed a redundant repeated "L/min"/"Bar/min" sub-label under the SAC preview numbers in Log a Dive Section 5.
+- Service worker cache bumped (`abyss-shell-v20` → `abyss-shell-v21`) to ship all of the above.
+
 ## 260723-v20
 
 - **Real light mode is back.** A new theme toggle (sun/moon button in the nav bar, next to Sync) switches between dark and light, persists the choice, and syncs it across devices via the same OneDrive snapshot the dive data uses.

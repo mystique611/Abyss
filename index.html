@@ -58,6 +58,12 @@
          fine loaded this way — no ES-module issue to work around here. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+    <!-- jsPDF + autoTable (Logbook "Export to PDF" — a real vector PDF table,
+         not a rasterized screenshot, so the 27-column logbook stays legible
+         at print size). Both are plain UMD builds like html2canvas above. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.0.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
+
     <!-- Chart.js (Diver Detail trend charts: SAC rate, weight, total dives).
          Vendored locally as js/chart.umd.min.js, NOT chart.min.js. On cdnjs,
          "chart.min.js" for v4+ is an ES module (starts with an import
@@ -452,11 +458,42 @@
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400 text-sm"></i>
                         <input type="text" id="log-search" oninput="renderLogs()" placeholder="Search dive site, location..." class="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-100 dark:bg-ocean-900/20 border border-slate-300 dark:border-ocean-800/30 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 text-sm">
                     </div>
-                    <label class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center space-x-2 cursor-pointer transition-colors" title="Import dives from a UDDF file">
-                        <i class="fa-solid fa-file-import"></i>
-                        <span class="hidden sm:inline">Import</span>
-                        <input type="file" id="uddf-import-input" accept=".uddf,.xml" onchange="handleUDDFImport(this)" class="hidden">
-                    </label>
+                    <div class="relative">
+                        <button type="button" onclick="toggleLogFilterMenu(event)" id="log-filter-btn" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center space-x-2 transition-colors">
+                            <i class="fa-solid fa-filter"></i>
+                            <span class="hidden sm:inline">Filter</span>
+                        </button>
+                        <div id="log-filter-menu" class="hidden absolute right-0 mt-2 w-72 rounded-xl glass-panel border border-slate-200 dark:border-ocean-800/40 shadow-2xl z-30 p-4 space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Country / Territory</label>
+                                <select id="log-filter-country" onchange="renderLogs()" class="w-full px-3 py-1.5 rounded-lg bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 text-xs"><option value="">All countries</option></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Dive Site</label>
+                                <select id="log-filter-site" onchange="renderLogs()" class="w-full px-3 py-1.5 rounded-lg bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 text-xs"><option value="">All sites</option></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Dive Type</label>
+                                <select id="log-filter-type" onchange="renderLogs()" class="w-full px-3 py-1.5 rounded-lg bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 text-xs">
+                                    <option value="">All types</option>
+                                    <option value="Shore">Shore</option>
+                                    <option value="Boat">Boat</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Dive Tag</label>
+                                <select id="log-filter-tag" onchange="renderLogs()" class="w-full px-3 py-1.5 rounded-lg bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 text-xs">
+                                    <option value="">All tags</option>
+                                    <option value="Wreck">Wreck</option>
+                                    <option value="Night">Night</option>
+                                    <option value="Drift">Drift</option>
+                                    <option value="Training">Training</option>
+                                </select>
+                            </div>
+                            <button type="button" onclick="clearLogFilters()" class="w-full text-center px-3 py-1.5 rounded-lg text-xs font-semibold text-cyan-500 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-ocean-900/20 transition-colors">Clear filters</button>
+                        </div>
+                    </div>
                     <div class="relative">
                         <button type="button" onclick="toggleExportMenu(event)" id="export-menu-btn" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center space-x-2 transition-colors">
                             <i class="fa-solid fa-file-export"></i>
@@ -471,6 +508,10 @@
                             <button type="button" onclick="exportDivesToCSV(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors border-t border-slate-200 dark:border-ocean-900/20">
                                 <i class="fa-solid fa-file-csv text-emerald-400 w-4"></i>
                                 <span>Export to CSV</span>
+                            </button>
+                            <button type="button" onclick="exportDivesToPDF(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors border-t border-slate-200 dark:border-ocean-900/20">
+                                <i class="fa-solid fa-file-pdf text-rose-400 w-4"></i>
+                                <span>Export to PDF</span>
                             </button>
                         </div>
                     </div>
@@ -505,8 +546,15 @@
                         <h2 id="log-form-title" class="text-2xl font-extrabold tracking-tight">Log a dive</h2>
                         <p class="text-sm text-slate-600 dark:text-slate-400">Fields marked with * are required.</p>
                     </div>
-                    <div id="edit-indicator" class="hidden bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-xl text-xs font-mono-custom font-bold">
-                        <i class="fa-solid fa-pen-to-square mr-1"></i> EDIT MODE
+                    <div class="flex items-center gap-3">
+                        <div id="edit-indicator" class="hidden bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-xl text-xs font-mono-custom font-bold">
+                            <i class="fa-solid fa-pen-to-square mr-1"></i> EDIT MODE
+                        </div>
+                        <label class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center space-x-2 cursor-pointer transition-colors" title="Import a dive computer's UDDF export to pre-fill this form">
+                            <i class="fa-solid fa-file-import"></i>
+                            <span class="hidden sm:inline">Import UDDF</span>
+                            <input type="file" id="uddf-import-input" accept=".uddf,.xml" onchange="handleUDDFImportToForm(this)" class="hidden">
+                        </label>
                     </div>
                 </div>
 
@@ -737,7 +785,21 @@
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Dive Site*</label>
-                                <input type="text" id="form-site" required placeholder="e.g. Crystal Bay, Nusa Penida" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                                <input type="text" id="form-site" list="dive-site-suggestions" required placeholder="e.g. Crystal Bay, Nusa Penida" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                                <datalist id="dive-site-suggestions"></datalist>
+                            </div>
+                            <div class="md:col-span-4">
+                                <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-2">Dive Tags <span class="text-slate-600 dark:text-slate-500">(optional)</span></label>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" id="dive-tag-btn-Wreck" onclick="toggleDiveTag('Wreck')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Wreck</button>
+                                    <button type="button" id="dive-tag-btn-Night" onclick="toggleDiveTag('Night')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Night</button>
+                                    <button type="button" id="dive-tag-btn-Drift" onclick="toggleDiveTag('Drift')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Drift</button>
+                                    <button type="button" id="dive-tag-btn-Training" onclick="toggleDiveTag('Training')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Training</button>
+                                </div>
+                                <input type="checkbox" id="form-tag-Wreck" class="hidden">
+                                <input type="checkbox" id="form-tag-Night" class="hidden">
+                                <input type="checkbox" id="form-tag-Drift" class="hidden">
+                                <input type="checkbox" id="form-tag-Training" class="hidden">
                             </div>
                             <div class="md:col-span-4">
                                 <div class="flex items-center justify-between mb-1">
@@ -745,6 +807,12 @@
                                     <button type="button" onclick="clearLocationPin()" class="text-[10px] font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">Clear Pin</button>
                                 </div>
                                 <p class="text-[10px] text-slate-600 dark:text-slate-500 mb-2">Tap or click the map to drop a pin at the exact dive site. Left blank, the Dashboard map shows an approximate location for the selected country instead.</p>
+                                <div class="flex gap-2 mb-2">
+                                    <input type="text" id="form-location-search" placeholder="Search for a place..." onkeydown="if(event.key==='Enter'){event.preventDefault(); searchLocationOnMap();}" class="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                                    <button type="button" onclick="searchLocationOnMap()" title="Search" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all"><i class="fa-solid fa-magnifying-glass"></i></button>
+                                    <button type="button" onclick="useCurrentLocationOnMap()" title="Use current location" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all"><i class="fa-solid fa-location-crosshairs"></i></button>
+                                </div>
+                                <p class="text-[10px] text-slate-600 dark:text-slate-500 mb-2 hidden" id="form-location-search-status"></p>
                                 <div id="form-location-map" class="w-full h-56 rounded-xl border border-slate-300 dark:border-ocean-800/50 overflow-hidden"></div>
                                 <p class="text-[10px] font-mono-custom text-cyan-400 mt-1" id="form-location-readout">No pin placed</p>
                                 <input type="hidden" id="form-latitude">
@@ -946,24 +1014,29 @@
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                             <div>
                                 <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Time In</label>
-                                <input type="time" id="form-time-in" oninput="handleTimeInOutChange(); updateRealtimeSAC();" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom">
+                                <input type="time" id="form-time-in" oninput="handleTimeInOutChange(); updateRealtimeSAC(); updateDepthProfileGraph();" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom">
                             </div>
                             <div>
                                 <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Time Out</label>
-                                <input type="time" id="form-time-out" oninput="handleTimeInOutChange(); updateRealtimeSAC();" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom">
+                                <input type="time" id="form-time-out" oninput="handleTimeInOutChange(); updateRealtimeSAC(); updateDepthProfileGraph();" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom">
                             </div>
                             <div>
                                 <label class="block text-xs font-mono-custom uppercase mb-1"><span class="text-slate-600 dark:text-slate-400">Bottom Time (min)</span> <span style="color:#DFAD26">*</span></label>
-                                <input type="number" id="form-bottom-time" min="1" oninput="handleBottomTimeChange(); updateRealtimeSAC();" placeholder="45" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom">
+                                <input type="number" id="form-bottom-time" min="1" oninput="handleBottomTimeChange(); updateRealtimeSAC(); updateDepthProfileGraph();" placeholder="45" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom">
                             </div>
                             <div>
                                 <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Max Depth (m)</label>
-                                <input type="number" step="0.1" id="form-max-depth" placeholder="18" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom">
+                                <input type="number" step="0.1" id="form-max-depth" oninput="updateDepthProfileGraph()" placeholder="18" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom">
                             </div>
                             <div class="col-span-2 md:col-span-1">
                                 <label class="block text-xs font-mono-custom uppercase mb-1"><span class="text-slate-600 dark:text-slate-400">Avg Depth (m)</span> <span style="color:#DFAD26">*</span></label>
                                 <input type="number" step="0.1" id="form-avg-depth" oninput="updateRealtimeSAC()" placeholder="12" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-cyan-500/30 focus:outline-none focus:border-cyan-400 text-sm font-mono-custom font-bold">
                             </div>
+                        </div>
+                        <div class="pt-2">
+                            <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Depth &amp; Time Profile</span>
+                            <p id="form-depth-profile-placeholder" class="text-xs text-slate-600 dark:text-slate-500 italic py-6 text-center border border-dashed border-slate-300 dark:border-ocean-800/40 rounded-xl">Enter Max Depth &amp; Bottom Time (or import a UDDF file) to see the dive profile plotted here.</p>
+                            <div class="h-48"><canvas id="form-depth-profile-chart" class="hidden"></canvas></div>
                         </div>
                     </div>
 
@@ -1009,14 +1082,12 @@
                                         <span class="block text-[9px] text-slate-600 dark:text-slate-500 uppercase font-semibold">Liters/min</span>
                                         <div class="flex items-baseline justify-end space-x-0.5">
                                             <span id="form-sac-rate-calc" class="text-2xl font-extrabold text-cyan-400">--</span>
-                                            <span class="text-[10px] text-slate-600 dark:text-slate-400">L/min</span>
                                         </div>
                                     </div>
                                     <div class="text-right border-l border-slate-300 dark:border-ocean-800/30 pl-6">
                                         <span class="block text-[9px] text-slate-600 dark:text-slate-500 uppercase font-semibold">Bar/min</span>
                                         <div class="flex items-baseline justify-end space-x-0.5">
                                             <span id="form-sac-rate-calc-bar" class="text-2xl font-extrabold text-emerald-400">--</span>
-                                            <span class="text-[10px] text-slate-600 dark:text-slate-400">bar/min</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1043,19 +1114,37 @@
                         </div>
                     </div>
 
-                    <!-- SECTION 7: Verifications & Notes -->
+                    <!-- SECTION 7: Dive Photos -->
                     <div class="glass-panel p-6 rounded-3xl space-y-4">
                         <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-slate-200 dark:border-ocean-900/20 pb-2">
                             <span class="font-mono-custom text-sm">07.</span>
-                            <h3 class="text-sm tracking-widest uppercase">Verification & Journal Entry</h3>
+                            <h3 class="text-sm tracking-widest uppercase">Dive Photos</h3>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 font-medium">Add photos from this dive. They're only viewable via the "View Dive Photos" button in the Logbook — never shown inline in previews.</p>
+                        <label class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold cursor-pointer transition-colors">
+                            <i class="fa-solid fa-camera"></i>
+                            <span>Add Photos</span>
+                            <input type="file" accept="image/*" multiple onchange="handleDivePhotoUpload(this)" class="hidden">
+                        </label>
+                        <div id="form-dive-photos-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                            <p class="text-xs text-slate-600 dark:text-slate-500 italic col-span-full">No photos added yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 8: Dive Buddy & Journal -->
+                    <div class="glass-panel p-6 rounded-3xl space-y-4">
+                        <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-slate-200 dark:border-ocean-900/20 pb-2">
+                            <span class="font-mono-custom text-sm">08.</span>
+                            <h3 class="text-sm tracking-widest uppercase">Dive Buddy & Dive Journal</h3>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Dive Buddy / Guide Name</label>
-                                <input type="text" id="form-buddy" placeholder="e.g., Sarah Jenkins" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                                <input type="text" id="form-buddy" list="buddy-name-suggestions" placeholder="e.g., Sarah Jenkins" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                                <datalist id="buddy-name-suggestions"></datalist>
                             </div>
                             <div>
-                                <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Verification Number (License No.)</label>
+                                <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Number</label>
                                 <input type="text" id="form-buddy-no" placeholder="e.g. 0101AB123C" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                             </div>
                         </div>
@@ -1103,6 +1192,7 @@
                 <button onclick="filterCritters('Echinoderms')" id="cf-echino" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Echinoderms</button>
                 <button onclick="filterCritters('Corals & Anemones')" id="cf-coral" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Corals & Anemones</button>
                 <button onclick="filterCritters('Eel')" id="cf-eel" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Eel</button>
+                <button onclick="filterCritters('Turtles')" id="cf-turtles" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Turtles</button>
                 <button onclick="filterCritters('Others')" id="cf-others" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Others</button>
             </div>
 
@@ -1232,6 +1322,7 @@
                         <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
                             <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Average SAC Rate</span>
                             <span id="prof-analytic-avg-sac-20" class="text-2xl font-extrabold font-mono-custom text-blue-400">N/A</span>
+                            <span id="prof-analytic-sac-stddev-20" class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 mt-0.5"></span>
                         </div>
                         <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
                             <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Avg Weight</span>
@@ -1257,6 +1348,7 @@
                         <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
                             <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Average SAC Rate</span>
                             <span id="prof-analytic-avg-sac-all" class="text-2xl font-extrabold font-mono-custom text-blue-400">N/A</span>
+                            <span id="prof-analytic-sac-stddev-all" class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 mt-0.5"></span>
                         </div>
                         <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
                             <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Avg Weight</span>
@@ -1307,6 +1399,36 @@
                 </div>
                 <div class="relative h-64">
                     <canvas id="chart-dives-total"></canvas>
+                </div>
+            </div>
+
+            <!-- Gas Mixture Breakdown -->
+            <div class="glass-panel p-6 rounded-3xl space-y-4">
+                <div>
+                    <h3 class="text-lg font-bold">Gas Mixture Breakdown</h3>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">Mix of gas types across all logged dives</p>
+                </div>
+                <div class="relative h-64">
+                    <canvas id="chart-gas-mix"></canvas>
+                </div>
+            </div>
+
+            <!-- Dive Buddy Analytics -->
+            <div class="glass-panel p-6 rounded-3xl space-y-4">
+                <div>
+                    <h3 class="text-lg font-bold">Dive Buddy Analytics</h3>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">Who you've been diving with</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
+                        <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Last Dived With</span>
+                        <span id="prof-buddy-last" class="text-xl font-extrabold font-mono-custom text-cyan-500 dark:text-cyan-400">Solo</span>
+                    </div>
+                    <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
+                        <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Most Dived With</span>
+                        <span id="prof-buddy-most" class="text-xl font-extrabold font-mono-custom text-cyan-500 dark:text-cyan-400">--</span>
+                        <span id="prof-buddy-most-count" class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 mt-0.5"></span>
+                    </div>
                 </div>
             </div>
 
@@ -1573,6 +1695,27 @@
         </div>
     </div>
 
+    <!-- ==================== MODAL: DIVE PHOTOS GALLERY (READ-ONLY) ==================== -->
+    <div id="dive-photos-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
+            <button onclick="closeDivePhotosModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="border-b border-slate-200 dark:border-ocean-900/30 pb-4 flex-shrink-0 pr-8">
+                <h3 id="dive-photos-title" class="text-xl font-extrabold text-slate-900 dark:text-white">Dive Photos</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Photos uploaded for this dive</p>
+            </div>
+            <div id="dive-photos-grid" class="overflow-y-auto my-4 grid grid-cols-2 sm:grid-cols-3 gap-3 flex-1">
+                <!-- JS populates thumbnails here -->
+            </div>
+            <div class="border-t border-slate-200 dark:border-ocean-900/30 pt-4 flex justify-end flex-shrink-0">
+                <button onclick="closeDivePhotosModal()" class="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== MODAL: FIRST-VISIT LOGIN PROMPT (OPTIONAL/DISMISSIBLE) ==================== -->
     <div id="login-prompt-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm hidden">
         <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-5 shadow-2xl relative">
@@ -1669,6 +1812,7 @@
             "Echinoderms": `<svg class="w-10 h-10 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" /></svg>`,
             "Corals & Anemones": `<svg class="w-10 h-10 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg>`,
             "Eel": `<svg class="w-10 h-10 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9c1.5-2 2.5-2 3.5 0s1.5 4.5 3.5 3 1-5 3.5-4.5 2.5 3 4.5 2c1.5-.7 2.5-1.5 3-3"/><circle cx="3.4" cy="8.2" r="0.9" fill="currentColor" stroke="none"/></svg>`,
+            "Turtles": `<svg class="w-10 h-10 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="13" rx="7" ry="6"/><path d="M12 7v12M7 10c1.5 1 3 1.5 5 1.5s3.5-.5 5-1.5M7 16c1.5-1 3-1.5 5-1.5s3.5.5 5 1.5"/><path d="M5 12c-1.5-.5-2.5-2-2.5-2M19 12c1.5-.5 2.5-2 2.5-2M8 19s-.5 1.5-2 2M16 19s.5 1.5 2 2M12 19v2.5"/></svg>`,
             "Others": `<svg class="w-10 h-10 text-slate-600 dark:text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c4-5 10-6 15-3 2 1.2 3 2 3 3s-1 1.8-3 3c-5 3-11 2-15-3z"/><path d="M17 9l4-3v12l-4-3"/><circle cx="7" cy="11" r="0.9" fill="currentColor" stroke="none"/></svg>`
         };
 
@@ -1952,6 +2096,15 @@
             "banded_snake_eel": { id: "banded_snake_eel", name: "Banded Snake Eel", scientific: "Myrichthys colubrinus", rarity: "Common", tag: "Eel", typicalRegion: "Sandy Reef Flats", description: "Bold black-and-white banding mimics the venomous banded sea snake." },
             "marbled_snake_eel": { id: "marbled_snake_eel", name: "Marbled Snake Eel", scientific: "Callechelys marmorata", rarity: "Epic", tag: "Eel", typicalRegion: "Sandy Reef Slopes", description: "Mottled marble-like pattern helps it blend into sand and rubble." },
             "longfin_pike_conger": { id: "longfin_pike_conger", name: "Longfin Pike Conger", scientific: "Muraenesox cinereus", rarity: "Common", tag: "Eel", typicalRegion: "Muddy Estuarine Slopes", description: "Slender, pike-jawed conger with sharp teeth, hunting at dusk over soft bottoms." },
+
+            // ==================== TURTLES (all 7 living sea turtle species) ====================
+            "green_turtle": { id: "green_turtle", name: "Green Turtle", scientific: "Chelonia mydas", rarity: "Common", tag: "Turtles", typicalRegion: "Seagrass Meadows & Reefs", description: "Named for the greenish fat beneath its shell; grazes on seagrass and algae." },
+            "hawksbill_turtle": { id: "hawksbill_turtle", name: "Hawksbill Turtle", scientific: "Eretmochelys imbricata", rarity: "Epic", tag: "Turtles", typicalRegion: "Coral Reefs", description: "Narrow, hooked beak lets it pick sponges from reef crevices most other species avoid." },
+            "loggerhead_turtle": { id: "loggerhead_turtle", name: "Loggerhead Turtle", scientific: "Caretta caretta", rarity: "Epic", tag: "Turtles", typicalRegion: "Open Ocean & Coastal Bays", description: "Powerful jaws built to crush hard-shelled prey like crabs and whelks." },
+            "olive_ridley_turtle": { id: "olive_ridley_turtle", name: "Olive Ridley Turtle", scientific: "Lepidochelys olivacea", rarity: "Epic", tag: "Turtles", typicalRegion: "Tropical Open Water", description: "The smallest and most abundant sea turtle, named for its olive-green carapace." },
+            "kemps_ridley_turtle": { id: "kemps_ridley_turtle", name: "Kemp's Ridley Turtle", scientific: "Lepidochelys kempii", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Gulf of Mexico & NW Atlantic", description: "The rarest and most endangered sea turtle, almost entirely restricted to the Gulf of Mexico." },
+            "flatback_turtle": { id: "flatback_turtle", name: "Flatback Turtle", scientific: "Natator depressus", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Northern Australian Coast", description: "Found only on Australia's continental shelf, with a distinctively flattened, upturned-edge shell." },
+            "leatherback_turtle": { id: "leatherback_turtle", name: "Leatherback Turtle", scientific: "Dermochelys coriacea", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Open Pelagic Waters", description: "The largest sea turtle, with a flexible, ridged leathery shell instead of a hard carapace." },
 
             // ==================== OTHERS (custom / uncatalogued sightings) ====================
             "others": { id: "others", name: "Others", scientific: "Custom Sighting", rarity: "Common", tag: "Others", typicalRegion: "Anywhere", description: "Use this entry to log a marine life sighting that isn't in the catalog — enter the species name you observed for each sighting." }
@@ -2252,6 +2405,12 @@
             isDark: true,
             editingLogId: null,
             userHasOverwrittenDiveNo: false,
+            // Depth/time waypoints (in minutes) sourced from a UDDF import for
+            // whichever dive is currently open in the Log a Dive form, or
+            // carried over from a saved dive's own depthProfile when editing.
+            // null means "no real sample data" — the live graph falls back to
+            // a synthesized triangle from Max Depth + Bottom Time instead.
+            importedDepthProfile: null,
             // True from the moment sign-out clears the on-screen view until
             // the next mutation re-hydrates state.dives from IndexedDB. See
             // ensureDivesLoaded() — without this, logging/editing/deleting a
@@ -2281,6 +2440,7 @@
         const DEFAULT_DIVER_PROFILE = JSON.parse(JSON.stringify(state.diverProfile));
 
         let tempCritterPhotos = {};
+        let tempDivePhotos = []; // Section 07 (Dive Photos) — base64 data URLs for the open Log a Dive form
         let map = null;
         let markersGroup = null;
         let mapTileLayer = null;
@@ -2289,6 +2449,9 @@
         let locationPickerTileLayer = null;
         let logDetailMap = null;
         let logDetailTileLayer = null;
+        let formDepthProfileChart = null;
+        let logDetailDepthProfileChart = null;
+        const logCardDepthCharts = {}; // keyed by dive id — Logbook "expanded preview" mini charts
 
         // CARTO basemap tiles — labels render in English/Latin script
         // globally, unlike raw OpenStreetMap tiles which show each place's
@@ -2428,8 +2591,20 @@
                 const analytics = computeDiveAnalytics();
                 renderAnalyticsCharts(analytics);
                 renderDivesChart(analytics);
+                renderGasMixChart(analytics);
             }
             if (state.currentTab === 'dashboard') initLeafletMap();
+            if (state.currentTab === 'add-log') updateDepthProfileGraph();
+            if (state.currentTab === 'logs') {
+                Object.keys(logCardDepthCharts).forEach(id => initLogCardDepthChart(id));
+                if (currentLogDetailId) {
+                    const openDive = state.dives.find(d => d.id === currentLogDetailId);
+                    if (openDive) {
+                        if (logDetailDepthProfileChart) { logDetailDepthProfileChart.destroy(); logDetailDepthProfileChart = null; }
+                        logDetailDepthProfileChart = renderSavedDiveDepthProfile('log-detail-depth-profile-chart', openDive);
+                    }
+                }
+            }
         }
 
         function updateThemeToggleIcon() {
@@ -2469,6 +2644,55 @@
                 closeExportMenu();
             }
         });
+
+        /* ---------------- Logbook filter menu ---------------- */
+
+        function toggleLogFilterMenu(event) {
+            if (event) event.stopPropagation();
+            refreshLogFilterOptions();
+            document.getElementById('log-filter-menu').classList.toggle('hidden');
+        }
+
+        function closeLogFilterMenu() {
+            document.getElementById('log-filter-menu').classList.add('hidden');
+        }
+
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('log-filter-menu');
+            const btn = document.getElementById('log-filter-btn');
+            if (!menu || menu.classList.contains('hidden')) return;
+            if (!menu.contains(event.target) && event.target !== btn && !btn.contains(event.target)) {
+                closeLogFilterMenu();
+            }
+        });
+
+        // Populates the Country/Dive Site filter dropdowns with every
+        // distinct value currently in the logbook — Dive Type/Tag options
+        // are a fixed, known set so they're hardcoded in the markup instead.
+        function refreshLogFilterOptions() {
+            const countrySelect = document.getElementById('log-filter-country');
+            const siteSelect = document.getElementById('log-filter-site');
+            if (countrySelect) {
+                const current = countrySelect.value;
+                const countries = Array.from(new Set(state.dives.map(d => d.country).filter(Boolean))).sort();
+                countrySelect.innerHTML = '<option value="">All countries</option>' + countries.map(c => `<option value="${c}">${c}</option>`).join('');
+                countrySelect.value = current;
+            }
+            if (siteSelect) {
+                const current = siteSelect.value;
+                const sites = Array.from(new Set(state.dives.map(d => d.site).filter(Boolean))).sort();
+                siteSelect.innerHTML = '<option value="">All sites</option>' + sites.map(s => `<option value="${s}">${s}</option>`).join('');
+                siteSelect.value = current;
+            }
+        }
+
+        function clearLogFilters() {
+            ['log-filter-country', 'log-filter-site', 'log-filter-type', 'log-filter-tag'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            renderLogs();
+        }
 
         // Turns a free-text name into a safe filename fragment: spaces become
         // underscores, anything that isn't alphanumeric/underscore/hyphen is
@@ -2678,12 +2902,12 @@
             // One row per dive, one column per field captured in the Log a
             // Dive form — dive number ascending (chronological logbook order).
             const headers = [
-                "Dive Number", "Date", "Dive Type", "Country", "Dive Site", "Time In", "Time Out",
+                "Dive Number", "Date", "Dive Type", "Dive Tags", "Country", "Dive Site", "Time In", "Time Out",
                 "Bottom Time (min)", "Max Depth (m)", "Avg Depth (m)", "Air Temp (C)", "Surface Temp (C)",
                 "Water Temp (C)", "Visibility (m)", "Weather", "Water Type", "Body of Water", "Waves",
                 "Current", "Surge", "Weight (kg)", "Exposure Suit", "Tank Type", "Tank Volume (L)",
                 "Gas", "Gas O2 (%)", "Gas N2 (%)", "Gas He (%)", "Start Pressure", "End Pressure",
-                "Pressure Unit", "Additional Gear", "Dive Buddy/Guide", "Verification Number",
+                "Pressure Unit", "Additional Gear", "Dive Buddy/Guide", "Certification Number",
                 "Marine Life Sightings", "Notes"
             ];
 
@@ -2696,7 +2920,7 @@
                 }).join('; ');
 
                 return [
-                    dive.diveNo, dive.date, dive.diveType, dive.country, dive.site, dive.timeIn, dive.timeOut,
+                    dive.diveNo, dive.date, dive.diveType, (dive.tags || []).join('; '), dive.country, dive.site, dive.timeIn, dive.timeOut,
                     dive.bottomTime, dive.maxDepth, dive.avgDepth, dive.airTemp, dive.surfaceTemp,
                     dive.waterTemp, dive.visibility, dive.weather, dive.waterType, dive.bodyOfWater, dive.waves,
                     dive.current, dive.surge, dive.weight, dive.suit, dive.tankType, dive.tankVol,
@@ -2712,6 +2936,88 @@
 
             const filename = `abyss-divelog-${sanitizeFilenamePart(state.diverProfile.name)}.csv`;
             downloadTextFile(filename, csvContent, 'text/csv;charset=utf-8;');
+            showToast(`Exported ${sortedDives.length} dive${sortedDives.length !== 1 ? 's' : ''} to ${filename}`, "success");
+        }
+
+        /* ---------------- PDF export ---------------- */
+        // A compact, printable logbook table — landscape A4, one row per
+        // dive. Deliberately a narrower column set than the CSV export
+        // (excludes gas mixture %, additional gear, buddy, notes, and marine
+        // life sightings) so it stays legible as an actual printed page
+        // rather than a data dump.
+        function exportDivesToPDF() {
+            if (!state.dives || state.dives.length === 0) {
+                showToast("No dive logs to export yet", "info");
+                return;
+            }
+            if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+                showToast("PDF export library didn't load — check your connection and try again.", "error");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+            const headers = [
+                "Dive #", "Date", "Dive Type", "Dive Tags", "Country", "Dive Site", "Time In", "Time Out",
+                "Bottom Time (min)", "Max Depth (m)", "Avg Depth (m)", "Water Temp (C)", "Visibility (m)",
+                "Water Type", "Body of Water", "Waves", "Current", "Surge", "Weight (kg)", "Exposure Suit",
+                "Tank Type", "Tank Vol (L)", "Gas Type", "Start Pressure", "End Pressure"
+            ];
+
+            const sortedDives = [...state.dives].sort((a, b) => (a.diveNo || 0) - (b.diveNo || 0));
+            const fmt = (v, suffix = '') => (v === null || v === undefined || v === '') ? '--' : `${v}${suffix}`;
+            const fmtPressure = (v, unit) => (v === null || v === undefined || v === '') ? '--' : `${v} ${unit || ''}`.trim();
+
+            const rows = sortedDives.map(dive => [
+                dive.diveNo ?? '--',
+                dive.date ? formatDateDMY(dive.date) : '--',
+                dive.diveType || '--',
+                (dive.tags && dive.tags.length) ? dive.tags.join(', ') : '--',
+                dive.country || '--',
+                dive.site || '--',
+                dive.timeIn || '--',
+                dive.timeOut || '--',
+                fmt(dive.bottomTime),
+                fmt(dive.maxDepth),
+                fmt(dive.avgDepth),
+                fmt(dive.waterTemp),
+                fmt(dive.visibility),
+                dive.waterType || '--',
+                dive.bodyOfWater || '--',
+                dive.waves || '--',
+                dive.current || '--',
+                dive.surge || '--',
+                fmt(dive.weight),
+                dive.suit || '--',
+                dive.tankType || '--',
+                fmt(dive.tankVol),
+                dive.gas || '--',
+                fmtPressure(dive.gasStart, dive.gasUnit),
+                fmtPressure(dive.gasEnd, dive.gasUnit)
+            ]);
+
+            doc.setFontSize(13);
+            doc.text(`Abyss Dive Log — ${state.diverProfile.name || 'Diver'}`, 8, 9);
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text(`Exported ${formatDateDMY(new Date().toISOString().split('T')[0])} · ${sortedDives.length} dive${sortedDives.length !== 1 ? 's' : ''} · marine life sightings excluded`, 8, 14);
+            doc.setTextColor(0);
+
+            doc.autoTable({
+                head: [headers],
+                body: rows,
+                startY: 18,
+                theme: 'grid',
+                styles: { fontSize: 6.5, cellPadding: 1.1, overflow: 'linebreak', valign: 'middle', lineColor: [200, 200, 200] },
+                headStyles: { fillColor: [8, 60, 90], textColor: 255, fontStyle: 'bold', fontSize: 6.5 },
+                alternateRowStyles: { fillColor: [245, 249, 252] },
+                margin: { left: 5, right: 5, bottom: 8 },
+                tableWidth: 'auto'
+            });
+
+            const filename = `abyss-divelog-${sanitizeFilenamePart(state.diverProfile.name)}.pdf`;
+            doc.save(filename);
             showToast(`Exported ${sortedDives.length} dive${sortedDives.length !== 1 ? 's' : ''} to ${filename}`, "success");
         }
 
@@ -2844,14 +3150,14 @@
             return Math.round((parseFloat(k) - 273.15) * 10) / 10;
         }
 
-        function handleUDDFImport(input) {
+        function handleUDDFImportToForm(input) {
             const file = input.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
-                    await importUDDFContent(e.target.result);
+                    await importUDDFIntoForm(e.target.result);
                 } catch (err) {
                     console.error('UDDF import failed:', err);
                     showToast("Couldn't read that UDDF file — check it's a valid UDDF/XML export.", "error");
@@ -2865,8 +3171,77 @@
             reader.readAsText(file);
         }
 
-        async function importUDDFContent(xmlText) {
-            await ensureDivesLoaded();
+        // Parses one <dive> node into a plain data object. Shared building
+        // block — used to pre-fill the Log a Dive form on import, and reused
+        // (via dive.depthProfile) whenever a saved dive's own sample data
+        // needs to be read back for the Depth & Time Profile graph.
+        // Returns null for anything the UDDF standard has no concept of —
+        // callers should leave the corresponding field untouched in that case.
+        function parseUddfDiveNode(diveEl, siteNames) {
+            const text = (parent, tag) => {
+                if (!parent) return null;
+                const el = parent.getElementsByTagName(tag)[0];
+                const val = el ? el.textContent.trim() : '';
+                return val || null;
+            };
+            const num = (parent, tag) => {
+                const val = text(parent, tag);
+                return (val !== null && !isNaN(val)) ? parseFloat(val) : null;
+            };
+
+            const before = diveEl.getElementsByTagName('informationbeforedive')[0] || null;
+            const after = diveEl.getElementsByTagName('informationafterdive')[0] || null;
+
+            const datetimeStr = text(before, 'datetime');
+            let date = null, timeIn = null;
+            if (datetimeStr) {
+                const parts = datetimeStr.split('T');
+                date = parts[0] || null;
+                timeIn = parts[1] ? parts[1].slice(0, 5) : null;
+            }
+
+            let siteName = null;
+            const siteRefEl = before ? before.getElementsByTagName('site')[0] : null;
+            if (siteRefEl) {
+                const ref = siteRefEl.getAttribute('ref');
+                if (ref && siteNames[ref]) siteName = siteNames[ref];
+            }
+
+            let maxDepth = num(after, 'greatestdepth');
+            let avgDepth = num(after, 'averagedepth');
+            let durationSec = num(after, 'diveduration');
+            const visibility = num(after, 'visibility');
+            const waterTempK = num(after, 'lowesttemperature');
+            const airTempK = num(before, 'airtemperature');
+            const tankBeginBar = num(after, 'tankpressurebegin');
+            const tankEndBar = num(after, 'tankpressureend');
+            const notesText = text(after, 'notes');
+
+            // Sample waypoints double as (a) a fallback source for whichever
+            // summary stats weren't provided, and (b) the raw series plotted
+            // on the Depth & Time Profile graph.
+            const waypointEls = Array.from(diveEl.getElementsByTagName('waypoint'));
+            const depthProfile = waypointEls
+                .map(w => ({ t: num(w, 'divetime'), d: num(w, 'depth') }))
+                .filter(p => p.t !== null && p.d !== null)
+                .map(p => ({ t: Math.round((p.t / 60) * 100) / 100, d: p.d })); // seconds -> minutes
+
+            if (depthProfile.length > 0) {
+                const depths = depthProfile.map(p => p.d);
+                if (maxDepth === null) maxDepth = Math.max(...depths);
+                if (avgDepth === null) avgDepth = Math.round((depths.reduce((a, b) => a + b, 0) / depths.length) * 10) / 10;
+                if (durationSec === null) durationSec = depthProfile[depthProfile.length - 1].t * 60;
+            }
+
+            return { date, timeIn, siteName, maxDepth, avgDepth, durationSec, visibility, waterTempK, airTempK, tankBeginBar, tankEndBar, notesText, depthProfile };
+        }
+
+        // Pre-fills the currently-open Log a Dive form from the FIRST dive in
+        // a UDDF file. This intentionally does not create/save any dive
+        // records itself — the diver reviews and completes the rest of the
+        // fields (Country, Dive Type, Buddy, Tags, gear, etc.) before
+        // committing, same as a manually-started entry.
+        async function importUDDFIntoForm(xmlText) {
             const parser = new DOMParser();
             const xml = parser.parseFromString(xmlText, 'application/xml');
 
@@ -2881,8 +3256,6 @@
                 return;
             }
 
-            // Resolve <site ref="..."/> references against any <divesite><site>
-            // definitions the file includes.
             const siteNames = {};
             Array.from(xml.getElementsByTagName('site')).forEach(siteEl => {
                 const id = siteEl.getAttribute('id');
@@ -2890,118 +3263,36 @@
                 if (id && nameEl) siteNames[id] = nameEl.textContent.trim();
             });
 
-            const text = (parent, tag) => {
-                if (!parent) return null;
-                const el = parent.getElementsByTagName(tag)[0];
-                const val = el ? el.textContent.trim() : '';
-                return val || null;
-            };
-            const num = (parent, tag) => {
-                const val = text(parent, tag);
-                return (val !== null && !isNaN(val)) ? parseFloat(val) : null;
+            const parsed = parseUddfDiveNode(diveNodes[0], siteNames);
+
+            const setVal = (id, val) => {
+                if (val === null || val === undefined || isNaN(val) && typeof val === 'number') return;
+                const el = document.getElementById(id);
+                if (el) el.value = val;
             };
 
-            let nextDiveNo = state.dives.reduce((max, d) => Math.max(max, d.diveNo || 0), 0) + 1;
-            let importedCount = 0;
-
-            diveNodes.forEach(diveEl => {
-                try {
-                    const before = diveEl.getElementsByTagName('informationbeforedive')[0] || null;
-                    const after = diveEl.getElementsByTagName('informationafterdive')[0] || null;
-
-                    const datetimeStr = text(before, 'datetime');
-                    let date = null, timeIn = null;
-                    if (datetimeStr) {
-                        const parts = datetimeStr.split('T');
-                        date = parts[0] || null;
-                        timeIn = parts[1] ? parts[1].slice(0, 5) : null;
-                    }
-
-                    let siteName = null;
-                    const siteRefEl = before ? before.getElementsByTagName('site')[0] : null;
-                    if (siteRefEl) {
-                        const ref = siteRefEl.getAttribute('ref');
-                        if (ref && siteNames[ref]) siteName = siteNames[ref];
-                    }
-
-                    let maxDepth = num(after, 'greatestdepth');
-                    let avgDepth = num(after, 'averagedepth');
-                    const durationSec = num(after, 'diveduration');
-                    const visibility = num(after, 'visibility');
-                    const waterTempK = num(after, 'lowesttemperature');
-                    const airTempK = num(before, 'airtemperature');
-                    const tankBeginBar = num(after, 'tankpressurebegin');
-                    const tankEndBar = num(after, 'tankpressureend');
-                    const notesText = text(after, 'notes');
-
-                    // Fall back to computing depth stats from sample waypoints
-                    // if the summary fields weren't provided.
-                    const waypoints = Array.from(diveEl.getElementsByTagName('waypoint'));
-                    if (waypoints.length > 0) {
-                        const depths = waypoints.map(w => num(w, 'depth')).filter(d => d !== null);
-                        if (maxDepth === null && depths.length) maxDepth = Math.max(...depths);
-                        if (avgDepth === null && depths.length) avgDepth = Math.round((depths.reduce((a, b) => a + b, 0) / depths.length) * 10) / 10;
-                    }
-
-                    if (!date && maxDepth === null && durationSec === null) {
-                        return; // nothing usable in this entry — skip it
-                    }
-
-                    const newDive = {
-                        id: 'log-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-                        diveNo: nextDiveNo++,
-                        date: date || new Date().toISOString().split('T')[0],
-                        diveType: null,
-                        country: null,
-                        site: siteName || 'Imported dive',
-                        airTemp: kelvinToCelsius(airTempK),
-                        surfaceTemp: null,
-                        waterTemp: kelvinToCelsius(waterTempK),
-                        visibility: visibility,
-                        weather: null,
-                        waterType: null,
-                        bodyOfWater: null,
-                        waves: null,
-                        current: null,
-                        surge: null,
-                        weight: null,
-                        suit: null,
-                        tankType: null,
-                        tankVol: 12.0,
-                        gas: null,
-                        gasO2: null,
-                        gasN2: null,
-                        gasHe: null,
-                        additionalGear: [],
-                        timeIn: timeIn,
-                        timeOut: null,
-                        bottomTime: durationSec !== null ? Math.round(durationSec / 60) : null,
-                        maxDepth: maxDepth,
-                        avgDepth: avgDepth,
-                        gasStart: tankBeginBar,
-                        gasEnd: tankEndBar,
-                        gasUnit: 'BAR',
-                        buddy: null,
-                        buddyNo: null,
-                        notes: notesText ? `Imported from UDDF. ${notesText}` : 'Imported from UDDF.',
-                        critters: []
-                    };
-
-                    state.dives.unshift(newDive);
-                    importedCount++;
-                } catch (err) {
-                    console.warn('Skipped one dive entry during UDDF import:', err);
-                }
-            });
-
-            if (importedCount > 0) {
-                state.dives.sort((a, b) => b.diveNo - a.diveNo);
-                saveState();
-                updateUI();
-                showToast(`Imported ${importedCount} dive${importedCount !== 1 ? 's' : ''} from UDDF. Country, Dive Type, and Buddy aren't part of the UDDF standard — review and fill those in manually.`, "success");
-            } else {
-                showToast("Couldn't find any usable dive data in that file.", "info");
+            if (parsed.date) setVal('form-date', parsed.date);
+            if (parsed.timeIn) setVal('form-time-in', parsed.timeIn);
+            if (parsed.siteName) setVal('form-site', parsed.siteName);
+            if (parsed.airTempK !== null) setVal('form-air-temp', kelvinToCelsius(parsed.airTempK));
+            if (parsed.waterTempK !== null) setVal('form-water-temp', kelvinToCelsius(parsed.waterTempK));
+            if (parsed.visibility !== null) setVal('form-visibility', parsed.visibility);
+            if (parsed.maxDepth !== null) setVal('form-max-depth', parsed.maxDepth);
+            if (parsed.avgDepth !== null) setVal('form-avg-depth', parsed.avgDepth);
+            if (parsed.durationSec !== null) setVal('form-bottom-time', Math.round(parsed.durationSec / 60));
+            if (parsed.tankBeginBar !== null) setVal('form-gas-start', parsed.tankBeginBar);
+            if (parsed.tankEndBar !== null) setVal('form-gas-end', parsed.tankEndBar);
+            if (parsed.notesText) {
+                const notesEl = document.getElementById('form-notes');
+                if (notesEl) notesEl.value = notesEl.value ? `${notesEl.value}\n${parsed.notesText}` : parsed.notesText;
             }
+            if (parsed.timeIn) handleBottomTimeChange(); // keep Time Out in sync if only Time In + duration came from the file
+
+            state.importedDepthProfile = parsed.depthProfile.length > 1 ? parsed.depthProfile : null;
+            updateDepthProfileGraph();
+            updateRealtimeSAC();
+
+            showToast("Form pre-filled from UDDF. Country, Dive Type, Buddy, and Dive Tags aren't part of the UDDF standard — please fill those in.", "success");
         }
 
         /* ---------------- OneDrive sign-in + sync status UI ---------------- */
@@ -3193,11 +3484,17 @@
             document.getElementById('edit-indicator').classList.add('hidden');
 
             tempCritterPhotos = {};
+            tempDivePhotos = [];
+            renderDivePhotosGrid();
             setupFormsAndListeners();
             updateGasMixturePreview();
             refreshAllGearIconStyles();
+            refreshAllDiveTagStyles();
+            refreshSiteAndBuddySuggestions();
+            resetDepthProfileState();
             switchTab('add-log');
             rollNextDiveNo();
+            setTimeout(updateDepthProfileGraph, 100);
         }
 
         function rollNextDiveNo() {
@@ -3390,6 +3687,74 @@
                 : 'No pin placed';
         }
 
+        function setLocationSearchStatus(message) {
+            const status = document.getElementById('form-location-search-status');
+            if (!status) return;
+            if (!message) {
+                status.classList.add('hidden');
+                status.innerText = '';
+            } else {
+                status.classList.remove('hidden');
+                status.innerText = message;
+            }
+        }
+
+        // Free-text place search using OpenStreetMap's Nominatim geocoder (no
+        // API key needed). Recenters the map and drops a pin at the top
+        // result — doesn't touch the country/site fields, just the map.
+        async function searchLocationOnMap() {
+            const input = document.getElementById('form-location-search');
+            const query = input ? input.value.trim() : '';
+            if (!query || !locationPickerMap) return;
+
+            setLocationSearchStatus('Searching…');
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`);
+                if (!res.ok) throw new Error(`Search failed: ${res.status}`);
+                const results = await res.json();
+                if (!results || results.length === 0) {
+                    setLocationSearchStatus(`No results found for "${query}".`);
+                    return;
+                }
+                const { lat, lon } = results[0];
+                const latNum = parseFloat(lat);
+                const lonNum = parseFloat(lon);
+                locationPickerMap.setView([latNum, lonNum], 13);
+                placeLocationPin(latNum, lonNum, false);
+                setLocationSearchStatus(null);
+            } catch (err) {
+                console.warn('Map place search failed:', err);
+                setLocationSearchStatus("Couldn't search right now — check your connection and try again.");
+            }
+        }
+
+        // Uses the browser's Geolocation API to drop a pin at the diver's
+        // current position — most useful right after surfacing, when
+        // "current location" still means the dive site. Falls back
+        // gracefully (existing manual pin/search still work) if permission
+        // is denied or geolocation isn't available.
+        function useCurrentLocationOnMap() {
+            if (!locationPickerMap) return;
+            if (!navigator.geolocation) {
+                setLocationSearchStatus("This browser doesn't support location access — search or pin manually instead.");
+                return;
+            }
+            setLocationSearchStatus('Getting your current location…');
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    locationPickerMap.setView([latitude, longitude], 14);
+                    placeLocationPin(latitude, longitude, false);
+                    setLocationSearchStatus(null);
+                },
+                (err) => {
+                    console.warn('Geolocation failed:', err);
+                    setLocationSearchStatus("Couldn't get your location — check location permissions and try again.");
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
         /* ---------------- Additional Gear icon toggles ---------------- */
         // The Hood/Gloves/Boots icon buttons are purely a visual layer over
         // three hidden checkboxes (form-gear-hood/gloves/boots) — every
@@ -3414,6 +3779,176 @@
 
         function refreshAllGearIconStyles() {
             ['hood', 'gloves', 'boots'].forEach(updateGearIconStyle);
+        }
+
+        // Dive Tags — same hidden-checkbox-plus-styled-button pattern as the
+        // gear icons above, just without an icon (plain text pill).
+        const DIVE_TAGS = ['Wreck', 'Night', 'Drift', 'Training'];
+        const DIVE_TAG_ACTIVE_CLASS = "dive-tag-btn px-4 py-2 rounded-xl border border-cyan-400 bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-400/30 transition-all text-xs font-semibold";
+        const DIVE_TAG_INACTIVE_CLASS = "dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold";
+
+        function toggleDiveTag(tag) {
+            const checkbox = document.getElementById(`form-tag-${tag}`);
+            if (!checkbox) return;
+            checkbox.checked = !checkbox.checked;
+            updateDiveTagStyle(tag);
+        }
+
+        function updateDiveTagStyle(tag) {
+            const btn = document.getElementById(`dive-tag-btn-${tag}`);
+            const checkbox = document.getElementById(`form-tag-${tag}`);
+            if (!btn || !checkbox) return;
+            btn.className = checkbox.checked ? DIVE_TAG_ACTIVE_CLASS : DIVE_TAG_INACTIVE_CLASS;
+        }
+
+        function refreshAllDiveTagStyles() {
+            DIVE_TAGS.forEach(updateDiveTagStyle);
+        }
+
+        // Dive Site / Dive Buddy stay plain free-text fields (not a managed
+        // entity list) — this just repopulates their <datalist> with every
+        // distinct value already used across the logbook, so typing offers
+        // autocomplete suggestions without restricting new entries.
+        function refreshSiteAndBuddySuggestions() {
+            const siteList = document.getElementById('dive-site-suggestions');
+            const buddyList = document.getElementById('buddy-name-suggestions');
+            if (siteList) {
+                const sites = Array.from(new Set(state.dives.map(d => d.site).filter(Boolean))).sort();
+                siteList.innerHTML = sites.map(s => `<option value="${s.replace(/"/g, '&quot;')}"></option>`).join('');
+            }
+            if (buddyList) {
+                const buddies = Array.from(new Set(state.dives.map(d => d.buddy).filter(Boolean))).sort();
+                buddyList.innerHTML = buddies.map(b => `<option value="${b.replace(/"/g, '&quot;')}"></option>`).join('');
+            }
+        }
+
+        /* ---------------- Depth & Time Profile graph ---------------- */
+        // Three render targets share the same data model and chart config:
+        // the live Log a Dive form, the Logbook "expanded preview" (opened
+        // via the <details> disclosure on each card), and the read-only Full
+        // Log Details modal. Real UDDF sample data (dive.depthProfile) is
+        // preferred wherever it exists; otherwise a simple 0 -> max -> 0
+        // triangle is synthesized from Max Depth + Bottom Time so there's
+        // always something to look at.
+
+        function synthDepthProfile(maxDepth, bottomTimeMin) {
+            if (maxDepth === null || maxDepth === undefined || isNaN(maxDepth)) return null;
+            if (bottomTimeMin === null || bottomTimeMin === undefined || isNaN(bottomTimeMin) || bottomTimeMin <= 0) return null;
+            return [{ t: 0, d: 0 }, { t: bottomTimeMin / 2, d: maxDepth }, { t: bottomTimeMin, d: 0 }];
+        }
+
+        // Whatever should currently be plotted for the open Log a Dive form:
+        // a real imported profile takes priority; otherwise synthesize live
+        // from whatever's currently typed into Max Depth / Bottom Time.
+        function currentFormDepthProfile() {
+            if (state.importedDepthProfile && state.importedDepthProfile.length > 1) return state.importedDepthProfile;
+            const maxDepthEl = document.getElementById('form-max-depth');
+            const bottomTimeEl = document.getElementById('form-bottom-time');
+            const maxDepth = maxDepthEl && maxDepthEl.value !== '' ? parseFloat(maxDepthEl.value) : null;
+            const bottomTime = bottomTimeEl && bottomTimeEl.value !== '' ? parseFloat(bottomTimeEl.value) : null;
+            return synthDepthProfile(maxDepth, bottomTime);
+        }
+
+        function buildDepthProfileChartConfig(profile, isDark) {
+            const tickColor = isDark ? '#94a3b8' : '#475569';
+            const gridColor = isDark ? 'rgba(148,163,184,0.12)' : 'rgba(71,85,105,0.12)';
+            return {
+                type: 'line',
+                data: {
+                    labels: profile.map(p => p.t),
+                    datasets: [{
+                        data: profile.map(p => p.d),
+                        borderColor: '#22d3ee',
+                        backgroundColor: 'rgba(34,211,238,0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: 'Time (min)', color: tickColor, font: { size: 10 } },
+                            ticks: { color: tickColor, font: { size: 9 } },
+                            grid: { color: gridColor }
+                        },
+                        y: {
+                            reverse: true,
+                            beginAtZero: true,
+                            title: { display: true, text: 'Depth (m)', color: tickColor, font: { size: 10 } },
+                            ticks: { color: tickColor, font: { size: 9 } },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { title: (items) => `${items[0].label} min`, label: (item) => `${item.parsed.y} m` } }
+                    }
+                }
+            };
+        }
+
+        // Live graph inside the Log a Dive form itself — recomputed on every
+        // relevant keystroke (see updateRealtimeSAC()'s sibling oninput calls)
+        // and on theme toggle.
+        function updateDepthProfileGraph() {
+            const canvas = document.getElementById('form-depth-profile-chart');
+            const placeholder = document.getElementById('form-depth-profile-placeholder');
+            if (!canvas) return;
+            const profile = currentFormDepthProfile();
+            if (!profile || profile.length < 2) {
+                if (formDepthProfileChart) { formDepthProfileChart.destroy(); formDepthProfileChart = null; }
+                canvas.classList.add('hidden');
+                if (placeholder) placeholder.classList.remove('hidden');
+                return;
+            }
+            canvas.classList.remove('hidden');
+            if (placeholder) placeholder.classList.add('hidden');
+            const cfg = buildDepthProfileChartConfig(profile, state.isDark);
+            if (formDepthProfileChart) {
+                formDepthProfileChart.data = cfg.data;
+                formDepthProfileChart.options = cfg.options;
+                formDepthProfileChart.update();
+            } else if (typeof Chart !== 'undefined') {
+                formDepthProfileChart = new Chart(canvas, cfg);
+            }
+        }
+
+        function resetDepthProfileState() {
+            state.importedDepthProfile = null;
+            if (formDepthProfileChart) { formDepthProfileChart.destroy(); formDepthProfileChart = null; }
+            const canvas = document.getElementById('form-depth-profile-chart');
+            const placeholder = document.getElementById('form-depth-profile-placeholder');
+            if (canvas) canvas.classList.add('hidden');
+            if (placeholder) placeholder.classList.remove('hidden');
+        }
+
+        // Read-only render for a saved dive — used by both the Logbook card's
+        // "expanded preview" (lazy-initialized when its <details> is opened)
+        // and the Full Log Details modal.
+        function renderSavedDiveDepthProfile(canvasId, dive) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return null;
+            const profile = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : synthDepthProfile(dive.maxDepth, dive.bottomTime);
+            if (!profile) {
+                canvas.classList.add('hidden');
+                return null;
+            }
+            canvas.classList.remove('hidden');
+            const cfg = buildDepthProfileChartConfig(profile, state.isDark);
+            return (typeof Chart !== 'undefined') ? new Chart(canvas, cfg) : null;
+        }
+
+        function initLogCardDepthChart(diveId) {
+            const dive = state.dives.find(d => d.id === diveId);
+            if (!dive) return;
+            if (logCardDepthCharts[diveId]) { logCardDepthCharts[diveId].destroy(); delete logCardDepthCharts[diveId]; }
+            const chart = renderSavedDiveDepthProfile(`depth-profile-chart-${diveId}`, dive);
+            if (chart) logCardDepthCharts[diveId] = chart;
         }
 
         // Converts a native <input type="date"> ISO value ("YYYY-MM-DD") into the
@@ -3713,11 +4248,54 @@
             if (container) container.classList.add('hidden');
         }
 
+        // Section 07 (Dive Photos) — general dive photos, distinct from the
+        // per-species critter sighting photos above. Multiple files at once;
+        // each gets read to a base64 data URL and appended to the gallery.
+        function handleDivePhotoUpload(input) {
+            const files = Array.from(input.files || []);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    tempDivePhotos.push(e.target.result);
+                    renderDivePhotosGrid();
+                };
+                reader.readAsDataURL(file);
+            });
+            input.value = '';
+        }
+
+        function removeDivePhoto(index) {
+            tempDivePhotos.splice(index, 1);
+            renderDivePhotosGrid();
+        }
+
+        function renderDivePhotosGrid() {
+            const grid = document.getElementById('form-dive-photos-grid');
+            if (!grid) return;
+            if (tempDivePhotos.length === 0) {
+                grid.innerHTML = '<p class="text-xs text-slate-600 dark:text-slate-500 italic col-span-full">No photos added yet.</p>';
+                return;
+            }
+            grid.innerHTML = tempDivePhotos.map((src, i) => `
+                <div class="relative group">
+                    <img src="${src}" class="w-full h-24 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40">
+                    <button type="button" onclick="removeDivePhoto(${i})" class="absolute top-1 right-1 h-6 w-6 rounded-full bg-rose-500/90 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
         function cancelLogEntry() {
             state.editingLogId = null;
             state.userHasOverwrittenDiveNo = false;
             document.getElementById('padi-log-form').reset();
             refreshAllGearIconStyles();
+            refreshAllDiveTagStyles();
+            refreshSiteAndBuddySuggestions();
+            resetDepthProfileState();
+            tempDivePhotos = [];
+            renderDivePhotosGrid();
             switchTab('dashboard');
         }
 
@@ -3726,7 +4304,8 @@
             if (!dive) return;
 
             state.editingLogId = logId;
-            state.userHasOverwrittenDiveNo = true; 
+            state.userHasOverwrittenDiveNo = true;
+            state.importedDepthProfile = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : null;
 
             switchTab('add-log');
 
@@ -3771,7 +4350,12 @@
             document.getElementById('form-gear-hood').checked = !!(dive.additionalGear && dive.additionalGear.includes('Hood'));
             document.getElementById('form-gear-gloves').checked = !!(dive.additionalGear && dive.additionalGear.includes('Gloves'));
             document.getElementById('form-gear-boots').checked = !!(dive.additionalGear && dive.additionalGear.includes('Boots'));
+            DIVE_TAGS.forEach(tag => {
+                document.getElementById(`form-tag-${tag}`).checked = !!(dive.tags && dive.tags.includes(tag));
+            });
             refreshAllGearIconStyles();
+            refreshAllDiveTagStyles();
+            refreshSiteAndBuddySuggestions();
             document.getElementById('form-time-in').value = dive.timeIn || '';
             document.getElementById('form-time-out').value = dive.timeOut || '';
             document.getElementById('form-bottom-time').value = dive.bottomTime !== null ? dive.bottomTime : '';
@@ -3785,7 +4369,9 @@
             document.getElementById('form-notes').value = dive.notes || '';
 
             tempCritterPhotos = {};
-            setupFormsAndListeners(); 
+            tempDivePhotos = dive.photos ? [...dive.photos] : [];
+            renderDivePhotosGrid();
+            setupFormsAndListeners();
 
             if (dive.critters && dive.critters.length > 0) {
                 dive.critters.forEach(sighted => {
@@ -3811,6 +4397,7 @@
                 });
             }
             updateRealtimeSAC();
+            setTimeout(updateDepthProfileGraph, 100);
             showToast(`Loaded Dive Log #${dive.diveNo} into workspace`, "info");
         }
 
@@ -3868,6 +4455,9 @@
             if (document.getElementById('form-gear-gloves').checked) additionalGear.push('Gloves');
             if (document.getElementById('form-gear-boots').checked) additionalGear.push('Boots');
 
+            const diveTags = DIVE_TAGS.filter(tag => document.getElementById(`form-tag-${tag}`)?.checked);
+            const divePhotos = [...tempDivePhotos];
+
             const timeIn = document.getElementById('form-time-in').value || null;
             const timeOut = document.getElementById('form-time-out').value || null;
 
@@ -3913,9 +4503,11 @@
                         ...state.dives[index],
                         diveNo, date, diveType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
                         waterType, bodyOfWater, waves, current, surge,
-                        weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear,
+                        weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear, tags: diveTags,
                         timeIn, timeOut, bottomTime, maxDepth, avgDepth,
-                        gasStart, gasEnd, gasUnit, buddy, buddyNo, notes, critters: crittersList
+                        gasStart, gasEnd, gasUnit, buddy, buddyNo, notes, critters: crittersList,
+                        depthProfile: state.importedDepthProfile || null,
+                        photos: divePhotos
                     };
                     showToast(`Log Update Saved: Dive #${diveNo} successfully updated!`, "success");
                 }
@@ -3924,9 +4516,11 @@
                     id: 'log-' + Date.now(),
                     diveNo, date, diveType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
                     waterType, bodyOfWater, waves, current, surge,
-                    weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear,
+                    weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear, tags: diveTags,
                     timeIn, timeOut, bottomTime, maxDepth, avgDepth,
-                    gasStart, gasEnd, gasUnit, buddy, buddyNo, notes, critters: crittersList
+                    gasStart, gasEnd, gasUnit, buddy, buddyNo, notes, critters: crittersList,
+                    depthProfile: state.importedDepthProfile || null,
+                    photos: divePhotos
                 };
                 state.dives.unshift(newLog);
                 showToast(`Commit Succeeded: Dive #${diveNo} locked into logs!`, "success");
@@ -3938,11 +4532,16 @@
             // Sort sequentially descending
             state.dives.sort((a,b) => b.diveNo - a.diveNo);
             saveState();
-            
+
             document.getElementById('padi-log-form').reset();
             tempCritterPhotos = {};
+            tempDivePhotos = [];
+            renderDivePhotosGrid();
             setupFormsAndListeners();
             refreshAllGearIconStyles();
+            refreshAllDiveTagStyles();
+            refreshSiteAndBuddySuggestions();
+            resetDepthProfileState();
 
             switchTab('dashboard');
         }
@@ -4337,6 +4936,12 @@
 
             const avgOf = (arr) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
             const collect = (list, fn) => list.map(fn).filter(v => v !== null && v !== undefined && !isNaN(v));
+            const stdDevOf = (arr) => {
+                if (arr.length < 2) return null;
+                const mean = avgOf(arr);
+                const variance = arr.reduce((sum, v) => sum + (v - mean) ** 2, 0) / arr.length;
+                return Math.sqrt(variance);
+            };
 
             // ---- Section 1: lifetime totals ----
             const totalDives = dives.length;
@@ -4351,8 +4956,32 @@
             const avgBottomTimeAll = avgOf(collect(dives, d => d.bottomTime));
             const avgSAC20 = avgOf(collect(last20Dives, diveSAC));
             const avgSACAll = avgOf(collect(dives, diveSAC));
+            const sacStdDev20 = stdDevOf(collect(last20Dives, diveSAC));
+            const sacStdDevAll = stdDevOf(collect(dives, diveSAC));
             const avgWeight20 = avgOf(collect(last20Dives, d => d.weight));
             const avgWeightAll = avgOf(collect(dives, d => d.weight));
+
+            // ---- Gas mixture breakdown (all logged dives) ----
+            const gasMixCounts = {};
+            dives.forEach(d => {
+                const g = d.gas || 'Unspecified';
+                gasMixCounts[g] = (gasMixCounts[g] || 0) + 1;
+            });
+            const gasMixLabels = Object.keys(gasMixCounts);
+            const gasMixData = gasMixLabels.map(k => gasMixCounts[k]);
+
+            // ---- Buddy analytics ----
+            // "Most dived with" excludes solo dives (no buddy logged).
+            const buddyCounts = {};
+            dives.forEach(d => {
+                if (d.buddy) buddyCounts[d.buddy] = (buddyCounts[d.buddy] || 0) + 1;
+            });
+            let mostDivedBuddy = null, mostDivedBuddyCount = 0;
+            Object.keys(buddyCounts).forEach(name => {
+                if (buddyCounts[name] > mostDivedBuddyCount) { mostDivedBuddy = name; mostDivedBuddyCount = buddyCounts[name]; }
+            });
+            const lastDiveWithBuddy = chronologicalDesc.find(d => d.buddy);
+            const lastBuddyName = lastDiveWithBuddy ? lastDiveWithBuddy.buddy : null;
 
             // ---- Section 4: monthly / quarterly trend buckets ----
             function monthKey(dateStr) {
@@ -4429,11 +5058,13 @@
             return {
                 totalDives, totalMins, maxDepth, maxBottomTime,
                 avgDepth20, avgDepthAll, avgBottomTime20, avgBottomTimeAll,
-                avgSAC20, avgSACAll, avgWeight20, avgWeightAll,
+                avgSAC20, avgSACAll, sacStdDev20, sacStdDevAll, avgWeight20, avgWeightAll,
                 monthLabels: monthKeys.map(monthLabel),
                 sacByMonthAll, weightByMonthAll,
                 quarterLabels: quarterKeys.map(quarterLabel), divesByQuarter,
-                yearLabels: yearKeys, divesByYear
+                yearLabels: yearKeys, divesByYear,
+                gasMixLabels, gasMixData,
+                mostDivedBuddy, mostDivedBuddyCount, lastBuddyName
             };
         }
 
@@ -4450,6 +5081,10 @@
             return (value === null || value === undefined || isNaN(value)) ? "N/A" : `${value.toFixed(1)} L/min`;
         }
 
+        function fmtSACStdDev(value) {
+            return (value === null || value === undefined || isNaN(value)) ? '' : `± ${value.toFixed(1)} L/min`;
+        }
+
         function renderProfileAnalytics(analytics) {
             // Section 1 — lifetime totals
             document.getElementById('prof-analytic-dives').innerText = analytics.totalDives;
@@ -4461,25 +5096,35 @@
             document.getElementById('prof-analytic-avg-depth-20').innerText = fmtDepth(analytics.avgDepth20);
             document.getElementById('prof-analytic-avg-bottomtime-20').innerText = fmtMinutes(analytics.avgBottomTime20);
             document.getElementById('prof-analytic-avg-sac-20').innerText = fmtSAC(analytics.avgSAC20);
+            document.getElementById('prof-analytic-sac-stddev-20').innerText = fmtSACStdDev(analytics.sacStdDev20);
             document.getElementById('prof-analytic-avg-weight-20').innerText = fmtWeight(analytics.avgWeight20);
 
             // Section 3 — average of all logged dives
             document.getElementById('prof-analytic-avg-depth-all').innerText = fmtDepth(analytics.avgDepthAll);
             document.getElementById('prof-analytic-avg-bottomtime-all').innerText = fmtMinutes(analytics.avgBottomTimeAll);
             document.getElementById('prof-analytic-avg-sac-all').innerText = fmtSAC(analytics.avgSACAll);
+            document.getElementById('prof-analytic-sac-stddev-all').innerText = fmtSACStdDev(analytics.sacStdDevAll);
             document.getElementById('prof-analytic-avg-weight-all').innerText = fmtWeight(analytics.avgWeightAll);
 
             // Section 4 — trend charts
             lastComputedAnalytics = analytics;
             renderAnalyticsCharts(analytics);
             renderDivesChart(analytics);
+            renderGasMixChart(analytics);
+
+            // Dive Buddy Analytics widget
+            document.getElementById('prof-buddy-last').innerText = analytics.lastBuddyName || 'Solo';
+            document.getElementById('prof-buddy-most').innerText = analytics.mostDivedBuddy || '--';
+            document.getElementById('prof-buddy-most-count').innerText = analytics.mostDivedBuddy
+                ? `${analytics.mostDivedBuddyCount} dive${analytics.mostDivedBuddyCount !== 1 ? 's' : ''} together`
+                : '';
         }
 
         /* ---------------- Section 4 trend charts (Chart.js) ---------------- */
         // Chart instances are kept around and destroyed/recreated on every
         // render rather than left to pile up — Chart.js doesn't reuse a
         // canvas cleanly across repeated `new Chart()` calls otherwise.
-        let profileCharts = { sac: null, weight: null, dives: null };
+        let profileCharts = { sac: null, weight: null, dives: null, gasMix: null };
 
         // The Total Dives widget has its own Quarter/Year toggle, so it
         // needs to re-render independently of the rest of the analytics
@@ -4627,6 +5272,45 @@
                         datasets: [{ label: 'Dives', data, borderColor: '#22d3ee', backgroundColor: '#22d3ee', spanGaps: true, tension: 0.3 }]
                     },
                     options: baseChartOptions('Dives', false)
+                });
+            }
+        }
+
+        const GAS_MIX_COLORS = ['#22d3ee', '#34d399', '#e879f9', '#fbbf24', '#fb7185', '#a3e635', '#818cf8', '#94a3b8'];
+
+        function renderGasMixChart(analytics) {
+            if (typeof Chart === 'undefined') return;
+            if (state.currentTab !== 'profile') return;
+
+            const ctx = document.getElementById('chart-gas-mix');
+            if (!ctx) return;
+
+            const labels = analytics.gasMixLabels;
+            const data = analytics.gasMixData;
+            const colors = labels.map((_, i) => GAS_MIX_COLORS[i % GAS_MIX_COLORS.length]);
+            const legendColor = state.isDark ? '#94a3b8' : '#475569';
+
+            if (profileCharts.gasMix) {
+                profileCharts.gasMix.data.labels = labels;
+                profileCharts.gasMix.data.datasets[0].data = data;
+                profileCharts.gasMix.data.datasets[0].backgroundColor = colors;
+                profileCharts.gasMix.options.plugins.legend.labels.color = legendColor;
+                profileCharts.gasMix.update();
+            } else {
+                profileCharts.gasMix = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels,
+                        datasets: [{ data, backgroundColor: colors, borderWidth: 0 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'right', labels: { color: legendColor, boxWidth: 12, font: { size: 10 } } },
+                            tooltip: { enabled: true }
+                        }
+                    }
                 });
             }
         }
@@ -4793,12 +5477,22 @@
             if (!container) return;
             
             const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+            const filterCountry = document.getElementById('log-filter-country')?.value || '';
+            const filterSite = document.getElementById('log-filter-site')?.value || '';
+            const filterType = document.getElementById('log-filter-type')?.value || '';
+            const filterTag = document.getElementById('log-filter-tag')?.value || '';
 
             const filteredDives = state.dives.filter(dive => {
-                return dive.site.toLowerCase().includes(query) ||
+                const matchesSearch = dive.site.toLowerCase().includes(query) ||
                        dive.country.toLowerCase().includes(query) ||
                        dive.notes.toLowerCase().includes(query) ||
                        (dive.buddy && dive.buddy.toLowerCase().includes(query));
+                if (!matchesSearch) return false;
+                if (filterCountry && dive.country !== filterCountry) return false;
+                if (filterSite && dive.site !== filterSite) return false;
+                if (filterType && dive.diveType !== filterType) return false;
+                if (filterTag && !(dive.tags && dive.tags.includes(filterTag))) return false;
+                return true;
             });
 
             if (filteredDives.length === 0) {
@@ -4809,6 +5503,10 @@
                 container.classList.remove('hidden');
                 emptyState.classList.add('hidden');
             }
+
+            // Clear out mini depth-profile chart instances tied to the cards
+            // being replaced below — their canvases are about to be removed.
+            Object.keys(logCardDepthCharts).forEach(id => { logCardDepthCharts[id].destroy(); delete logCardDepthCharts[id]; });
 
             container.innerHTML = '';
             filteredDives.forEach(dive => {
@@ -4916,13 +5614,17 @@
                         </div>
                     </div>
 
-                    <details class="group">
+                    <details class="group" ontoggle="if(this.open) initLogCardDepthChart('${dive.id}')">
                         <summary class="list-none flex items-center justify-between cursor-pointer select-none text-xs text-cyan-400 hover:text-cyan-300 font-semibold focus:outline-none">
                             <span>DETAILS & SPECIES ENCOUNTERED</span>
                             <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
                         </summary>
-                        
+
                         <div class="mt-4 space-y-4 pt-3 border-t border-slate-300 dark:border-ocean-850/40">
+                            <div class="space-y-1.5">
+                                <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase">Depth &amp; Time Profile</span>
+                                <div class="h-32"><canvas id="depth-profile-chart-${dive.id}"></canvas></div>
+                            </div>
                             <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                                 <div class="flex justify-between py-1 border-b border-slate-200 dark:border-ocean-900/10">
                                     <span class="text-slate-600 dark:text-slate-400">Time Profile:</span>
@@ -4937,7 +5639,7 @@
                                     <span class="font-mono-custom font-semibold text-slate-900 dark:text-white">${dive.gasStart || '--'} → ${dive.gasEnd || '--'} ${dive.gasUnit}</span>
                                 </div>
                                 <div class="flex justify-between py-1 border-b border-slate-200 dark:border-ocean-900/10">
-                                    <span class="text-slate-600 dark:text-slate-400">Exposure Suit / Rig:</span>
+                                    <span class="text-slate-600 dark:text-slate-400">Exposure / Weight:</span>
                                     <span class="font-mono-custom font-semibold text-slate-900 dark:text-white">${dive.suit || 'N/A'} (${dive.weight !== null ? dive.weight + 'kg' : '--'})</span>
                                 </div>
                                 <div class="flex justify-between py-1 border-b border-slate-200 dark:border-ocean-900/10 col-span-2">
@@ -4960,7 +5662,12 @@
                                 </div>
                             </div>
 
-                            <div class="flex justify-end pt-1">
+                            <div class="flex justify-end pt-1 space-x-2">
+                                ${(dive.photos && dive.photos.length) ? `
+                                <button onclick="openDivePhotosModal('${dive.id}')" class="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center space-x-2 transition-colors">
+                                    <i class="fa-solid fa-images"></i>
+                                    <span>View Dive Photos</span>
+                                </button>` : ''}
                                 <button onclick="openLogDetailModal('${dive.id}')" class="px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold flex items-center space-x-2 transition-colors">
                                     <i class="fa-solid fa-file-lines"></i>
                                     <span>View Full Log Details</span>
@@ -5031,15 +5738,17 @@
                 }).join('') + `</div>`;
             }
 
-            // Sections mirror the Log a Dive form's own 7-section structure
+            // Sections mirror the Log a Dive form's own numbered structure
             // (General, Environmental Profile, Equipment, Depth & Time
             // Profile, Gas Metrics & SAC, Marine Life Sightings,
-            // Verification & Journal Entry) field-for-field.
+            // Dive Buddy & Dive Journal) field-for-field. Section 07 (Dive
+            // Photos) is intentionally skipped here — see "View Dive Photos".
             const sectionsHtml = [
                 buildLogDetailSection('01', 'General', [
                     ['Dive Number', dive.diveNo ?? '--'],
                     ['Date', dive.date ? formatDateDMY(dive.date) : '--'],
                     ['Dive Type', dive.diveType || '--'],
+                    ['Dive Tags', (dive.tags && dive.tags.length) ? dive.tags.join(', ') : '--'],
                     ['Country / Territory', dive.country || '--'],
                     ['Dive Site', dive.site || '--'],
                 ], locationHtml),
@@ -5057,7 +5766,7 @@
                 ]),
                 buildLogDetailSection('03', 'Equipment', [
                     ['Exposure Suit', dive.suit || '--'],
-                    ['Weight / Rig', fmt(dive.weight, ' kg')],
+                    ['Weight', fmt(dive.weight, ' kg')],
                     ['Additional Gear', (dive.additionalGear && dive.additionalGear.length) ? dive.additionalGear.join(', ') : 'None'],
                     ['Tank Type', dive.tankType || '--'],
                     ['Tank Volume', dive.tankVol ? `${dive.tankVol} L` : '--'],
@@ -5068,7 +5777,7 @@
                     ['Bottom Time', fmt(dive.bottomTime, ' min')],
                     ['Max Depth', fmt(dive.maxDepth, 'm')],
                     ['Avg Depth', fmt(dive.avgDepth, 'm')],
-                ]),
+                ], `<div class="mt-3 h-40"><canvas id="log-detail-depth-profile-chart"></canvas></div>`),
                 buildLogDetailSection('05', 'Gas Metrics &amp; SAC', [
                     ['Gas', dive.gas || '--'],
                     ['Gas Mix (O2 / N2 / He)', `${dive.gasO2 ?? '--'}% / ${dive.gasN2 ?? '--'}% / ${dive.gasHe ?? '--'}%`],
@@ -5082,9 +5791,9 @@
                     </div>
                     ${crittersHtml}
                 </div>`,
-                buildLogDetailSection('07', 'Verification &amp; Journal Entry', [
+                buildLogDetailSection('07', 'Dive Buddy &amp; Dive Journal', [
                     ['Dive Buddy / Guide', dive.buddy || 'Solo'],
-                    ['Verification Number', dive.buddyNo || '--'],
+                    ['Certification Number', dive.buddyNo || '--'],
                 ], `<div class="mt-3">
                         <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Journal Notes</span>
                         <p class="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-ocean-950/30 p-3 rounded-xl border border-slate-200 dark:border-ocean-850/20 italic">"${dive.notes || 'No log details added.'}"</p>
@@ -5102,6 +5811,10 @@
                 // The modal was just made visible above, so wait a tick.
                 setTimeout(() => initLogDetailMap(dive.latitude, dive.longitude), 100);
             }
+
+            // Same visibility requirement applies to Chart.js.
+            if (logDetailDepthProfileChart) { logDetailDepthProfileChart.destroy(); logDetailDepthProfileChart = null; }
+            setTimeout(() => { logDetailDepthProfileChart = renderSavedDiveDepthProfile('log-detail-depth-profile-chart', dive); }, 100);
         }
 
         // Small read-only preview map for the "full dive log details" modal
@@ -5148,6 +5861,33 @@
                 logDetailMap = null;
                 logDetailTileLayer = null;
             }
+            if (logDetailDepthProfileChart) {
+                logDetailDepthProfileChart.destroy();
+                logDetailDepthProfileChart = null;
+            }
+        }
+
+        // Read-only gallery of whatever was uploaded under Section 07 (Dive
+        // Photos) of the Log a Dive form for this dive. Deliberately kept
+        // separate from the Full Log Details modal — photos are never shown
+        // inline in any preview/detail view, only here behind this explicit button.
+        function openDivePhotosModal(diveId) {
+            const dive = state.dives.find(d => d.id === diveId);
+            if (!dive || !dive.photos || dive.photos.length === 0) return;
+
+            document.getElementById('dive-photos-title').innerText = `${dive.site} — Dive #${dive.diveNo} Photos`;
+            const grid = document.getElementById('dive-photos-grid');
+            grid.innerHTML = dive.photos.map(src => `
+                <a href="${src}" target="_blank" rel="noopener">
+                    <img src="${src}" class="w-full h-32 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40 hover:opacity-80 transition-opacity">
+                </a>
+            `).join('');
+
+            document.getElementById('dive-photos-modal').classList.remove('hidden');
+        }
+
+        function closeDivePhotosModal() {
+            document.getElementById('dive-photos-modal').classList.add('hidden');
         }
 
         // Only entry point into actually editing this log — hands off to the
@@ -5212,6 +5952,7 @@
             else if (category === "Echinoderms") activeId = "cf-echino";
             else if (category === "Corals & Anemones") activeId = "cf-coral";
             else if (category === "Eel") activeId = "cf-eel";
+            else if (category === "Turtles") activeId = "cf-turtles";
             else if (category === "Others") activeId = "cf-others";
 
             const activeBtn = document.getElementById(activeId);
