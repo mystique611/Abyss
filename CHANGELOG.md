@@ -1,5 +1,13 @@
 # Changelog
 
+## 260723-v19
+
+- **Fixed a real data-loss risk introduced by the v18 sign-out feature.** Signing out clears the on-screen view by emptying the in-memory dive list (IndexedDB itself was always meant to be untouched) — but logging, editing, deleting, or importing a dive right after sign-out (before signing back in) saved that emptied list straight back to IndexedDB, permanently wiping every other dive on the device. Fixed by re-loading the real data from IndexedDB before any such action if the view was cleared by a sign-out, so nothing is lost no matter what's done while signed out.
+- **Fixed the OneDrive sync overwrite bug**: signing back in after logging a dive while offline or signed out could silently discard that dive, because the post-sign-in sync always let remote data win outright whenever it had any dives at all, without checking whether local had its own newer changes to protect. Now that unconditional shortcut only applies when local is genuinely empty (a fresh device with nothing to lose); otherwise it falls through to the existing timestamp-based comparison, which correctly keeps whichever side — local or remote — was actually edited more recently.
+- **Average Weight by month chart simplified**: now shows a single line — the simple average of that month's per-dive weight across the entire logbook — matching the SAC chart's earlier simplification. The "Last 20 dives" line and its legend have been removed.
+- **All Diver Detail trend charts are now line charts**, including the previously bar-style Total Dives (Quarter/Year) chart, for visual consistency across Section 4.
+- Service worker cache bumped (`abyss-shell-v18` → `abyss-shell-v19`) to ship all of the above.
+
 ## 260723-v18
 
 - **Diver Detail "Trends Over Time"**: removed the color-dot legend under the header; replaced with the subtitle "Diver's analytic trend over time". (The weight trend chart's own Chart.js legend still shows "Last 20 dives"/"All logged dives" per line.)

@@ -2247,8 +2247,14 @@
             critterFilter: 'all',
             currentTab: 'dashboard',
             isDark: true,
-            editingLogId: null, 
-            userHasOverwrittenDiveNo: false, 
+            editingLogId: null,
+            userHasOverwrittenDiveNo: false,
+            // True from the moment sign-out clears the on-screen view until
+            // the next mutation re-hydrates state.dives from IndexedDB. See
+            // ensureDivesLoaded() — without this, logging/editing/deleting a
+            // dive right after sign-out would call saveState() with a
+            // truncated in-memory array and wipe the real data in IndexedDB.
+            dataClearedForSignOut: false,
             diverProfile: {
                 name: "Explorer",
                 org: "PADI",
@@ -2782,9 +2788,9 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
-                    importUDDFContent(e.target.result);
+                    await importUDDFContent(e.target.result);
                 } catch (err) {
                     console.error('UDDF import failed:', err);
                     showToast("Couldn't read that UDDF file — check it's a valid UDDF/XML export.", "error");
@@ -2798,7 +2804,8 @@
             reader.readAsText(file);
         }
 
-        function importUDDFContent(xmlText) {
+        async function importUDDFContent(xmlText) {
+            await ensureDivesLoaded();
             const parser = new DOMParser();
             const xml = parser.parseFromString(xmlText, 'application/xml');
 
@@ -3024,7 +3031,22 @@
             state.dives = [];
             state.diverProfile = JSON.parse(JSON.stringify(DEFAULT_DIVER_PROFILE));
             state.editingLogId = null;
+            state.dataClearedForSignOut = true;
             updateUI();
+        }
+
+        // Call this at the top of any action that mutates state.dives and
+        // then calls saveState() (which does a full replaceAllDives). Since
+        // clearDisplayedDataOnSignOut() empties state.dives for display only
+        // (IndexedDB itself is untouched), any such action taken before the
+        // next sign-in must first re-hydrate state.dives from the real data —
+        // otherwise saveState() would persist the truncated in-memory array
+        // and permanently delete every other dive from IndexedDB.
+        async function ensureDivesLoaded() {
+            if (state.dataClearedForSignOut) {
+                state.dives = await window.AbyssDB.getAllDives();
+                state.dataClearedForSignOut = false;
+            }
         }
 
         function switchTab(tabId) {
@@ -3099,10 +3121,11 @@
             window.scrollTo(0, 0);
         }
 
-        function prepareNewDiveLogTab() {
+        async function prepareNewDiveLogTab() {
             state.editingLogId = null;
             state.userHasOverwrittenDiveNo = false;
-            
+            await ensureDivesLoaded();
+
             document.getElementById('padi-log-form').reset();
             document.getElementById('log-form-title').innerText = "Log a dive";
             document.getElementById('submit-btn-text').innerText = "Commit Log to Abyss";
@@ -3733,8 +3756,9 @@
             showToast(`Loaded Dive Log #${dive.diveNo} into workspace`, "info");
         }
 
-        function handleFormSubmit(event) {
+        async function handleFormSubmit(event) {
             event.preventDefault();
+            await ensureDivesLoaded();
 
             const diveNo = parseInt(document.getElementById('form-dive-no').value);
             const date = document.getElementById('form-date').value;
@@ -4335,12 +4359,12 @@
                 return keys.map(k => avgOf(buckets[k]));
             }
 
-            // SAC-by-month trend uses one series only: the simple average of
-            // that month's per-dive SAC values across the entire logbook
-            // (no last-20 split, no benchmark line — those were removed).
+            // Both SAC-by-month and weight-by-month trends use one series
+            // only: the simple average of that month's per-dive values
+            // across the entire logbook (no last-20 split, no benchmark
+            // line — those were removed).
             const sacByMonthAll = bucketAverages(monthKeys, monthKey, diveSAC, dives);
             const weightByMonthAll = bucketAverages(monthKeys, monthKey, d => d.weight, dives);
-            const weightByMonthLast20 = bucketAverages(monthKeys, monthKey, d => d.weight, last20Dives);
             const divesByQuarter = quarterKeys.map(k => dives.filter(d => quarterKey(d.date) === k).length);
             const divesByYear = yearKeys.map(k => dives.filter(d => yearKey(d.date) === k).length);
 
@@ -4349,7 +4373,7 @@
                 avgDepth20, avgDepthAll, avgBottomTime20, avgBottomTimeAll,
                 avgSAC20, avgSACAll, avgWeight20, avgWeightAll,
                 monthLabels: monthKeys.map(monthLabel),
-                sacByMonthAll, weightByMonthAll, weightByMonthLast20,
+                sacByMonthAll, weightByMonthAll,
                 quarterLabels: quarterKeys.map(quarterLabel), divesByQuarter,
                 yearLabels: yearKeys, divesByYear
             };
@@ -4408,7 +4432,6 @@
         let lastComputedAnalytics = null;
         let divesChartGranularity = 'quarter';
 
-        const CHART_COLOR_LAST20 = '#7dd3fc';    // light blue
         const CHART_COLOR_ALLTIME = '#f0abfc';   // light magenta
 
         function baseChartOptions(yLabel, showLegend) {
@@ -4472,12 +4495,14 @@
             }
 
             // ---- Average weight by month ----
+            // Single series: simple average of that month's per-dive weight
+            // values across the entire logbook (last-20 split and legend
+            // removed per user request, matching the SAC chart above).
             const weightCtx = document.getElementById('chart-weight-monthly');
             if (weightCtx) {
                 if (profileCharts.weight) {
                     profileCharts.weight.data.labels = labels;
-                    profileCharts.weight.data.datasets[0].data = analytics.weightByMonthLast20;
-                    profileCharts.weight.data.datasets[1].data = analytics.weightByMonthAll;
+                    profileCharts.weight.data.datasets[0].data = analytics.weightByMonthAll;
                     profileCharts.weight.update();
                 } else {
                     profileCharts.weight = new Chart(weightCtx, {
@@ -4485,11 +4510,10 @@
                         data: {
                             labels,
                             datasets: [
-                                { label: 'Last 20 dives', data: analytics.weightByMonthLast20, borderColor: CHART_COLOR_LAST20, backgroundColor: CHART_COLOR_LAST20, spanGaps: true, tension: 0.3 },
-                                { label: 'All logged dives', data: analytics.weightByMonthAll, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 }
+                                { label: 'Average Weight', data: analytics.weightByMonthAll, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 }
                             ]
                         },
-                        options: baseChartOptions('kg', true)
+                        options: baseChartOptions('kg', false)
                     });
                 }
             }
@@ -4531,10 +4555,10 @@
                 profileCharts.dives.update();
             } else {
                 profileCharts.dives = new Chart(divesCtx, {
-                    type: 'bar',
+                    type: 'line',
                     data: {
                         labels,
-                        datasets: [{ label: 'Dives', data, backgroundColor: '#22d3ee', borderRadius: 4 }]
+                        datasets: [{ label: 'Dives', data, borderColor: '#22d3ee', backgroundColor: '#22d3ee', spanGaps: true, tension: 0.3 }]
                     },
                     options: baseChartOptions('Dives', false)
                 });
@@ -5073,7 +5097,8 @@
                 "Delete Dive Record?",
                 "Are you sure you want to permanently delete this sub-surface dive log? This cannot be undone.",
                 "Delete",
-                () => {
+                async () => {
+                    await ensureDivesLoaded();
                     state.dives = state.dives.filter(d => d.id !== logId);
                     saveState();
                     showToast("Log entry successfully expunged", "info");

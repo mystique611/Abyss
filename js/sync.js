@@ -179,11 +179,16 @@ async function syncNow() {
 // timestamp to look newer than it should, plain last-write-wins in syncNow()
 // would push that emptiness over real remote data.
 //
-// syncAfterSignIn() sidesteps timestamps entirely for that one moment: it
-// always downloads the remote snapshot FIRST, and only ever allows a push of
-// local data if the remote snapshot doesn't exist yet (true first-ever sync)
-// or is itself genuinely empty. If remote already has real dives, remote
-// always wins here — no comparison, no exceptions.
+// syncAfterSignIn() sidesteps timestamps entirely for that one moment, but
+// ONLY when local is genuinely empty: it downloads the remote snapshot FIRST,
+// and pulls it unconditionally if local has zero dives and remote has real
+// data (the classic "fresh device signing in" case, where there's nothing
+// local to lose). If local already has dives of its own — e.g. a dive was
+// logged while offline or signed out, before this sign-in — that data must
+// be protected too, so this falls through to syncNow()'s existing
+// timestamp-based comparison instead of blindly letting remote win. That
+// comparison already correctly picks whichever side has the newer edit,
+// since db.js only advances the local timestamp on genuine local changes.
 async function syncAfterSignIn() {
     if (syncInProgress) return;
     if (!navigator.onLine) { emitStatus('offline'); return; }
@@ -196,10 +201,15 @@ async function syncAfterSignIn() {
         const token = await window.AbyssAuth.getGraphAccessToken();
         if (!token) { emitStatus('signed-out'); return; }
 
+        const localDives = await window.AbyssDB.getAllDives();
+        const localHasDives = (localDives || []).length > 0;
+
         const remoteSnapshot = await downloadSnapshot(token);
         const remoteHasDives = remoteSnapshot && (remoteSnapshot.dives || []).length > 0;
 
-        if (remoteHasDives) {
+        // Unconditional remote-wins shortcut — safe ONLY because local has
+        // nothing of its own to protect here.
+        if (remoteHasDives && !localHasDives) {
             syncInProgress = true;
             await window.AbyssDB.replaceAllDives(remoteSnapshot.dives || []);
             await window.AbyssDB.setMeta('diverProfile', remoteSnapshot.diverProfile);
@@ -220,9 +230,11 @@ async function syncAfterSignIn() {
     }
 
     if (!pulledRemote) {
-        // Remote is missing entirely (true first-ever sync, no device has
-        // ever pushed anything) or exists but has zero dives — safe to fall
-        // through to the normal compare-and-push flow.
+        // Remote is missing/empty, OR local already has real dives to
+        // protect (e.g. logged while offline/signed-out) — either way, fall
+        // through to the normal timestamp-based compare-and-push flow, which
+        // correctly picks whichever side actually has the newer data instead
+        // of letting remote win by default.
         await syncNow();
     }
 }
