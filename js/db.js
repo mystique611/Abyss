@@ -7,13 +7,31 @@
  *
  * Object stores:
  *   - meta        key/value store for small settings (theme, diverProfile, lastSyncedAt)
- *   - dives       one record per logged dive, keyed by `id`
- *   - sightings   critter sightings (may include a photo as a base64 dataURL), keyed by `id`
+ *   - dives       one record per logged dive, keyed by `id`. Critter/dive
+ *                 photos live OUT of this store (see `photos` below) —
+ *                 dive/critter records only hold a `photoId` reference, so
+ *                 the dive_data.json snapshot synced to OneDrive stays a
+ *                 small text file no matter how many photos get attached.
+ *   - photos      local cache of actual photo bytes, keyed by `id` (a
+ *                 generated `photo-<ts>-<rand>` string). Record shape:
+ *                 { id, dataUrl, updatedAt }. This is a CACHE, not the
+ *                 source of truth for photos across devices — the source of
+ *                 truth is the individual file at
+ *                 /Apps/AbyssDiveLog/photos/<id>.jpg on OneDrive (see
+ *                 sync.js uploadPhoto/downloadPhoto). A photo referenced by
+ *                 a dive but missing from this store gets lazily
+ *                 downloaded and re-cached here the first time it's
+ *                 displayed (see index.html's getPhotoDataUrl()).
+ *   - sightings   UNUSED — an earlier design considered storing critter
+ *                 sightings independently of dives; nothing in index.html
+ *                 reads or writes this store. Left in place only so an
+ *                 existing user's DB_VERSION 1 database doesn't need a
+ *                 disruptive migration; harmless dead weight.
  *   - syncQueue   pending changes waiting to be pushed to OneDrive, auto-incrementing key
  */
 
 const DB_NAME = 'abyss_dive_log_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let _dbPromise = null;
 
@@ -37,6 +55,10 @@ function openDB() {
             }
             if (!db.objectStoreNames.contains('syncQueue')) {
                 db.createObjectStore('syncQueue', { keyPath: 'queueId', autoIncrement: true });
+            }
+            // Added in DB_VERSION 2 — see "photos" in the store list above.
+            if (!db.objectStoreNames.contains('photos')) {
+                db.createObjectStore('photos', { keyPath: 'id' });
             }
         };
 
@@ -122,6 +144,26 @@ async function replaceAllDives(divesArray) {
     }
 }
 
+/* ---------------- photos (local cache, keyed by generated photo id) ---------------- */
+
+async function getPhoto(id) {
+    if (!id) return null;
+    const store = await tx('photos');
+    return new Promise((resolve, reject) => {
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result ? req.result.dataUrl : null);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function putPhoto(id, dataUrl) {
+    return dbPut('photos', { id, dataUrl, updatedAt: Date.now() });
+}
+
+async function deletePhoto(id) {
+    return dbDelete('photos', id);
+}
+
 /* ---------------- sync queue ---------------- */
 // Every meaningful write calls enqueueSync() with a small description of what
 // changed. sync.js drains this queue (in order) whenever it gets a chance to
@@ -167,6 +209,14 @@ async function clearSyncQueue() {
     return dbClear('syncQueue');
 }
 
+// Removes just one entry (by its auto-incrementing queueId), instead of
+// wiping the whole queue. Used by syncNow() so a photo upload that fails
+// mid-sync (bad connection, etc.) stays queued for the next attempt instead
+// of being discarded along with the entries that actually succeeded.
+async function deleteSyncQueueEntry(queueId) {
+    return dbDelete('syncQueue', queueId);
+}
+
 /* Exposed as a single global so index.html can call window.AbyssDB.* without
    needing ES module imports (keeps this drop-in simple for GitHub Pages). */
 window.AbyssDB = {
@@ -175,9 +225,13 @@ window.AbyssDB = {
     getAllDives,
     putDive,
     replaceAllDives,
+    getPhoto,
+    putPhoto,
+    deletePhoto,
     enqueueSync,
     getSyncQueue,
     clearSyncQueue,
+    deleteSyncQueueEntry,
     getLocalDataVersion,
     setLocalDataVersion,
     dbGetAll,

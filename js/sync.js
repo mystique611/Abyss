@@ -76,6 +76,27 @@ async function uploadPhoto(token, photoId, dataUrl) {
     return res.json();
 }
 
+// Fetches one photo back down from OneDrive as a data URL, for whenever a
+// dive/critter/avatar photo is referenced locally (by id) but hasn't been
+// cached in this browser's IndexedDB yet — e.g. a photo added on another
+// device, or a fresh install pulling down an existing snapshot. Returns
+// null (not a thrown error) on a 404, since "this device just doesn't have
+// it yet and neither does OneDrive" is a normal, recoverable case for
+// callers to fall back on (show a placeholder) rather than treat as fatal.
+async function downloadPhoto(token, photoId) {
+    const res = await graphFetch(`:/photos/${photoId}.jpg:/content`, token);
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Photo download failed: ${res.status}`);
+
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+    });
+}
+
 /* ---------------- Merge logic ---------------- */
 
 function mergeSnapshots(local, remote) {
@@ -152,16 +173,29 @@ async function syncNow() {
             await uploadSnapshot(token, winner);
         }
 
-        // Flush any queued photo uploads (queue entries of type 'photo-pending')
+        // Process each queued item individually, deleting only the ones that
+        // actually finish successfully — NOT a blanket clearSyncQueue() after
+        // the loop. That used to silently discard a failed photo upload's
+        // queue entry right along with everything else, so despite the old
+        // comment here claiming failed uploads "retry next sync", they
+        // actually never did: the entry that would have triggered the retry
+        // was already gone. Non-photo entries (dives-updated/profile-updated/
+        // theme-updated) are pure "dirty flags" whose job is already done by
+        // the snapshot upload/download above, so those are removed
+        // unconditionally regardless of the photo results.
         for (const item of queue) {
             if (item.action === 'photo-pending' && item.payload && item.payload.id && item.payload.dataUrl) {
-                await uploadPhoto(token, item.payload.id, item.payload.dataUrl).catch(() => {
-                    // Leave failed photo uploads in place; they'll retry next sync
-                });
+                try {
+                    await uploadPhoto(token, item.payload.id, item.payload.dataUrl);
+                    await window.AbyssDB.deleteSyncQueueEntry(item.queueId);
+                } catch (err) {
+                    console.warn(`Photo upload failed for ${item.payload.id} — left queued to retry next sync:`, err);
+                }
+            } else {
+                await window.AbyssDB.deleteSyncQueueEntry(item.queueId);
             }
         }
 
-        await window.AbyssDB.clearSyncQueue();
         await window.AbyssDB.setMeta('lastSyncedAt', Date.now());
         emitStatus('synced');
     } catch (err) {
@@ -279,9 +313,31 @@ async function initAutoSync() {
     }
 }
 
+// Public wrapper around downloadPhoto() that handles the token acquisition
+// (and the offline/signed-out cases) itself, so index.html never has to
+// reach into window.AbyssAuth directly — same separation of concerns as
+// syncNow()/syncAfterSignIn() already keep for the main snapshot sync.
+// Returns null (never throws) on any failure — the caller (photo display
+// code) always has a sensible fallback (placeholder) for "couldn't fetch".
+async function fetchPhotoFromOneDrive(photoId) {
+    if (!photoId) return null;
+    if (!navigator.onLine) return null;
+    if (!window.AbyssAuth || !window.AbyssAuth.isSignedIn()) return null;
+
+    try {
+        const token = await window.AbyssAuth.getGraphAccessToken();
+        if (!token) return null;
+        return await downloadPhoto(token, photoId);
+    } catch (err) {
+        console.warn(`Couldn't fetch photo ${photoId} from OneDrive:`, err);
+        return null;
+    }
+}
+
 window.AbyssSync = {
     syncNow,
     syncAfterSignIn,
     initAutoSync,
-    onSyncStatusChange
+    onSyncStatusChange,
+    fetchPhotoFromOneDrive
 };

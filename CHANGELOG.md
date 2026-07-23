@@ -1,5 +1,14 @@
 # Changelog
 
+## 260723-v22
+
+- **Critter sighting photos and dive photos no longer get embedded as base64 inside the synced dive_data.json.** Each photo is now uploaded as its own file to OneDrive (`/Apps/AbyssDiveLog/photos/<id>.jpg` — the same path the diver avatar already used), and the dive/critter record just holds a small id reference instead. This keeps the main sync snapshot lightweight regardless of how many photos are attached, and avoids re-uploading every photo on every sync.
+  - New local IndexedDB `photos` store acts as a cache of actual image bytes; a fresh in-memory cache backs that for the current page load. Displaying a photo not yet cached locally (e.g. one added on another device) transparently fetches it from OneDrive and caches it going forward.
+  - **Existing photos are migrated automatically** the first time the app loads after this update — any critter/dive photo still in the old embedded-base64 shape gets moved into the new photo store and re-referenced by id, then synced normally. No action needed, and nothing is lost.
+  - Known limitation: removing a photo (clearing it before saving, or deleting/editing the dive it belonged to) doesn't delete the corresponding file from OneDrive or the local cache — it's simply left as an orphan. Low-stakes for a personal single-user log, but worth knowing if you're watching your OneDrive app-folder storage.
+- **Fixed a real (pre-existing) sync bug found while building the above**: a failed photo upload (bad connection mid-sync, etc.) was being silently discarded instead of retried — `syncNow()` cleared the *entire* pending-upload queue after each sync attempt regardless of whether individual photo uploads actually succeeded, so a failed one never got a real second chance despite a comment claiming otherwise. This only ever risked the diver avatar before (a single photo, easy to notice and just re-save). Now each queued item is only removed once it's confirmed to have actually gone through; anything that fails stays queued for the next sync.
+- Service worker cache bumped (`abyss-shell-v21` → `abyss-shell-v22`) to ship all of the above, including updated `js/db.js` and `js/sync.js`.
+
 ## 260723-v21
 
 - **Naming consistency**: "Logbook Verification Number" and Log a Dive's "License Number"/"Verification Number" are now all just **Certification Number** everywhere. The Logbook/Log a Dive/Full Detail section formerly called "Verification & Journal Entry" is now **Dive Buddy & Dive Journal**. "Exposure Suit / Rig" is now **Exposure / Weight**.

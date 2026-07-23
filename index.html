@@ -105,9 +105,13 @@
                 async getAllDives() { return Object.values(_memStore.dives); },
                 async putDive(dive) { dive.updatedAt = Date.now(); _memStore.dives[dive.id] = dive; },
                 async replaceAllDives(list) { _memStore.dives = {}; list.forEach(d => _memStore.dives[d.id] = d); },
+                async getPhoto() { return null; },
+                async putPhoto() { },
+                async deletePhoto() { },
                 async enqueueSync() { /* no-op in preview mode */ },
                 async getSyncQueue() { return []; },
                 async clearSyncQueue() { },
+                async deleteSyncQueueEntry() { },
                 async getLocalDataVersion() { return 0; },
                 async setLocalDataVersion() { },
                 async dbGetAll() { return []; },
@@ -2439,8 +2443,86 @@
         // this object that could drift out of sync with the one above.
         const DEFAULT_DIVER_PROFILE = JSON.parse(JSON.stringify(state.diverProfile));
 
-        let tempCritterPhotos = {};
-        let tempDivePhotos = []; // Section 07 (Dive Photos) — base64 data URLs for the open Log a Dive form
+        /* ==================== PHOTO STORAGE ====================
+           Critter sighting photos and dive photos are never embedded as raw
+           base64 inside a dive object anymore — that would bloat the single
+           dive_data.json snapshot synced to OneDrive with every photo added.
+           Instead a dive/critter record only holds a small `photoId` string
+           (or, for dive photos, an array of them). The actual image bytes
+           live in:
+             1. IndexedDB's `photos` store — a local cache, keyed by id.
+             2. /Apps/AbyssDiveLog/photos/<id>.jpg on OneDrive — the copy
+                that makes a photo available on OTHER devices too.
+           `photoCache` below is just an in-memory (this page-load only)
+           speed layer on top of #1, so redisplaying the same photo twice
+           in one session never re-hits IndexedDB. */
+        const photoCache = {};
+
+        function generatePhotoId() {
+            return 'photo-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+        }
+
+        // Call this the moment a NEW photo is captured (critter sighting or
+        // dive photo file input). Generates an id, caches the bytes locally
+        // (memory + IndexedDB) so previews work instantly and offline, and
+        // queues the upload to OneDrive for the next sync — mirroring
+        // exactly how the diver avatar photo already gets queued elsewhere.
+        async function storeNewPhoto(dataUrl) {
+            const id = generatePhotoId();
+            photoCache[id] = dataUrl;
+            await window.AbyssDB.putPhoto(id, dataUrl);
+            await window.AbyssDB.enqueueSync('photo-pending', { id, dataUrl });
+            return id;
+        }
+
+        // Resolves a photoId to its actual data URL, checking (in order) the
+        // in-memory cache, the local IndexedDB cache, and finally OneDrive
+        // itself (only reached if this device has never seen this photo
+        // before — e.g. it was added on another device). Returns null if
+        // the photo genuinely can't be found anywhere right now (offline,
+        // signed out, or truly missing) — callers should show a
+        // placeholder/broken-image state in that case, not treat it as fatal.
+        async function getPhotoDataUrl(photoId) {
+            if (!photoId) return null;
+            if (photoCache[photoId]) return photoCache[photoId];
+
+            const cached = await window.AbyssDB.getPhoto(photoId);
+            if (cached) {
+                photoCache[photoId] = cached;
+                return cached;
+            }
+
+            const remote = await window.AbyssSync.fetchPhotoFromOneDrive(photoId);
+            if (remote) {
+                photoCache[photoId] = remote;
+                await window.AbyssDB.putPhoto(photoId, remote);
+                return remote;
+            }
+
+            return null;
+        }
+
+        // Finds every <img data-photo-id="..."> under containerEl and fills
+        // in its src asynchronously. Lets render functions build markup
+        // synchronously with a placeholder id attribute, then hydrate the
+        // actual image data in afterward once it's resolved — needed
+        // because getPhotoDataUrl() may have to reach out to OneDrive.
+        async function hydratePhotoImages(containerEl) {
+            if (!containerEl) return;
+            const imgs = Array.from(containerEl.querySelectorAll('img[data-photo-id]'));
+            await Promise.all(imgs.map(async (img) => {
+                const id = img.getAttribute('data-photo-id');
+                const dataUrl = await getPhotoDataUrl(id);
+                if (dataUrl) {
+                    img.src = dataUrl;
+                } else {
+                    img.dispatchEvent(new Event('error'));
+                }
+            }));
+        }
+
+        let tempCritterPhotos = {}; // critterId -> { id, dataUrl } — id is what gets saved onto the dive record
+        let tempDivePhotos = []; // Section 07 (Dive Photos) — array of { id, dataUrl } for the open Log a Dive form
         let map = null;
         let markersGroup = null;
         let mapTileLayer = null;
@@ -2476,6 +2558,7 @@
         // Initialize State on Launch
         window.addEventListener('DOMContentLoaded', async () => {
             await loadState();
+            await migrateLegacyPhotosToStore();
             updateThemeToggleIcon();
             setupFormsAndListeners();
             switchTab('dashboard'); // Triggers Leaflet initialization automatically
@@ -2564,6 +2647,54 @@
             // feature existed).
             const savedTheme = await window.AbyssDB.getMeta('theme', 'dark');
             applyTheme(savedTheme === 'light' ? false : true);
+        }
+
+        // One-time (per dive) upgrade path from the old design, where critter
+        // sighting photos and dive photos were embedded directly as raw
+        // "data:" base64 strings inside the dive object — which meant every
+        // photo added bloated the single dive_data.json snapshot synced to
+        // OneDrive. Anything still in that shape gets moved into the local
+        // photo cache (+ queued for its own OneDrive upload under
+        // /Apps/AbyssDiveLog/photos/<id>.jpg), and the dive object is
+        // rewritten to hold just the id reference instead. Safe to call on
+        // every load — once a dive's photos are migrated they no longer
+        // look like "data:" strings, so this becomes a cheap no-op scan.
+        async function migrateLegacyPhotosToStore() {
+            let migrated = false;
+
+            for (const dive of state.dives) {
+                if (dive.critters && dive.critters.length) {
+                    for (const critter of dive.critters) {
+                        if (critter.photo && typeof critter.photo === 'string' && critter.photo.startsWith('data:')) {
+                            critter.photoId = await storeNewPhoto(critter.photo);
+                            delete critter.photo;
+                            migrated = true;
+                        }
+                    }
+                }
+
+                if (dive.photos && dive.photos.length) {
+                    const newPhotos = [];
+                    let changedHere = false;
+                    for (const p of dive.photos) {
+                        if (typeof p === 'string' && p.startsWith('data:')) {
+                            newPhotos.push(await storeNewPhoto(p));
+                            changedHere = true;
+                        } else {
+                            newPhotos.push(p);
+                        }
+                    }
+                    if (changedHere) {
+                        dive.photos = newPhotos;
+                        migrated = true;
+                    }
+                }
+            }
+
+            if (migrated) {
+                console.info('Abyss: migrated legacy embedded photo data to the local photo cache + OneDrive uploads.');
+                await saveState();
+            }
         }
 
         // Applies (and persists) the given theme. Toggles both the standard
@@ -4227,20 +4358,32 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 const base64 = e.target.result;
-                tempCritterPhotos[critterId] = base64;
 
+                // Show the preview immediately from the local file read —
+                // don't make the diver wait on IndexedDB/OneDrive for that.
                 const container = document.getElementById(`crit-preview-container-${critterId}`);
                 const img = document.getElementById(`crit-preview-img-${critterId}`);
                 img.src = base64;
                 container.classList.remove('hidden');
+
+                // storeNewPhoto() caches it locally + queues the OneDrive
+                // upload; only its returned id gets saved on the dive
+                // record (see handleFormSubmit), keeping dive_data.json small.
+                const id = await storeNewPhoto(base64);
+                tempCritterPhotos[critterId] = { id, dataUrl: base64 };
                 showToast(`Photo registered for ${CRITTER_DATABASE[critterId].name}`, "info");
             };
             reader.readAsDataURL(file);
         }
 
         function clearCritterImage(critterId) {
+            // Note: if storeNewPhoto() already ran for this slot, its local
+            // cache entry and queued OneDrive upload are simply left as an
+            // orphan — harmless (a few unreferenced KB), and consistent with
+            // how the app doesn't do any other photo garbage collection
+            // (e.g. deleting a dive doesn't clean up its photos either).
             delete tempCritterPhotos[critterId];
             const fileInput = document.getElementById(`crit-file-${critterId}`);
             if (fileInput) fileInput.value = "";
@@ -4255,8 +4398,12 @@
             const files = Array.from(input.files || []);
             files.forEach(file => {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    tempDivePhotos.push(e.target.result);
+                reader.onload = async (e) => {
+                    const base64 = e.target.result;
+                    // storeNewPhoto() caches locally + queues the OneDrive
+                    // upload; only its id gets saved on the dive record.
+                    const id = await storeNewPhoto(base64);
+                    tempDivePhotos.push({ id, dataUrl: base64 });
                     renderDivePhotosGrid();
                 };
                 reader.readAsDataURL(file);
@@ -4265,6 +4412,8 @@
         }
 
         function removeDivePhoto(index) {
+            // Same orphan note as clearCritterImage() — the local cache
+            // entry/queued upload for a removed photo is simply left behind.
             tempDivePhotos.splice(index, 1);
             renderDivePhotosGrid();
         }
@@ -4276,14 +4425,19 @@
                 grid.innerHTML = '<p class="text-xs text-slate-600 dark:text-slate-500 italic col-span-full">No photos added yet.</p>';
                 return;
             }
-            grid.innerHTML = tempDivePhotos.map((src, i) => `
+            // Freshly-added photos already have their data URL in hand (from
+            // the FileReader above); photos carried over from an existing
+            // dive being edited only have an id until hydratePhotoImages()
+            // resolves them below.
+            grid.innerHTML = tempDivePhotos.map((photo, i) => `
                 <div class="relative group">
-                    <img src="${src}" class="w-full h-24 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40">
+                    <img ${photo.dataUrl ? `src="${photo.dataUrl}"` : `data-photo-id="${photo.id}"`} class="w-full h-24 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40" onerror="this.closest('.group').style.display='none'">
                     <button type="button" onclick="removeDivePhoto(${i})" class="absolute top-1 right-1 h-6 w-6 rounded-full bg-rose-500/90 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
             `).join('');
+            hydratePhotoImages(grid);
         }
 
         function cancelLogEntry() {
@@ -4369,7 +4523,7 @@
             document.getElementById('form-notes').value = dive.notes || '';
 
             tempCritterPhotos = {};
-            tempDivePhotos = dive.photos ? [...dive.photos] : [];
+            tempDivePhotos = (dive.photos || []).map(id => ({ id, dataUrl: null }));
             renderDivePhotosGrid();
             setupFormsAndListeners();
 
@@ -4386,15 +4540,24 @@
                         const customNameInput = document.getElementById(`crit-custom-name-${sighted.id}`);
                         if (customNameInput) customNameInput.value = sighted.customName || '';
 
-                        if (sighted.photo) {
-                            tempCritterPhotos[sighted.id] = sighted.photo;
+                        if (sighted.photoId) {
+                            // Keep this dive's existing photo attached unless the
+                            // diver explicitly replaces/removes it — carry its id
+                            // forward so a plain re-save doesn't drop the photo.
+                            tempCritterPhotos[sighted.id] = { id: sighted.photoId, dataUrl: null };
                             const previewCont = document.getElementById(`crit-preview-container-${sighted.id}`);
                             const previewImg = document.getElementById(`crit-preview-img-${sighted.id}`);
-                            previewImg.src = sighted.photo;
+                            previewImg.removeAttribute('src');
+                            previewImg.setAttribute('data-photo-id', sighted.photoId);
+                            previewImg.onerror = () => { previewImg.onerror = null; previewCont.classList.add('hidden'); };
                             previewCont.classList.remove('hidden');
                         }
                     }
                 });
+                // Resolve every preview image's data-photo-id -> actual src
+                // now that they're all in the DOM (local cache first, then
+                // OneDrive if this device has never seen the photo before).
+                hydratePhotoImages(document.getElementById('padi-log-form'));
             }
             updateRealtimeSAC();
             setTimeout(updateDepthProfileGraph, 100);
@@ -4456,7 +4619,7 @@
             if (document.getElementById('form-gear-boots').checked) additionalGear.push('Boots');
 
             const diveTags = DIVE_TAGS.filter(tag => document.getElementById(`form-tag-${tag}`)?.checked);
-            const divePhotos = [...tempDivePhotos];
+            const divePhotos = tempDivePhotos.map(p => p.id);
 
             const timeIn = document.getElementById('form-time-in').value || null;
             const timeOut = document.getElementById('form-time-out').value || null;
@@ -4491,7 +4654,7 @@
                         customName: (critterId === 'others' && customNameInput) ? (customNameInput.value.trim() || 'Unidentified species') : null,
                         depth: parseFloat(document.getElementById(`crit-depth-${critterId}`).value) || maxDepth,
                         note: document.getElementById(`crit-notes-${critterId}`).value || "Spotted",
-                        photo: tempCritterPhotos[critterId] || null
+                        photoId: tempCritterPhotos[critterId]?.id || null
                     });
                 }
             });
@@ -5515,7 +5678,7 @@
                     dive.critters.forEach(c => {
                         const template = CRITTER_DATABASE[c.id];
                         if (template) {
-                            const hasPhotoIndicator = c.photo 
+                            const hasPhotoIndicator = c.photoId
                                 ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[8px] font-mono-custom flex items-center gap-1"><i class="fa-solid fa-image"></i> Photo</span>`
                                 : '';
                             crittersCardList += `
@@ -5871,19 +6034,30 @@
         // Photos) of the Log a Dive form for this dive. Deliberately kept
         // separate from the Full Log Details modal — photos are never shown
         // inline in any preview/detail view, only here behind this explicit button.
-        function openDivePhotosModal(diveId) {
+        async function openDivePhotosModal(diveId) {
             const dive = state.dives.find(d => d.id === diveId);
             if (!dive || !dive.photos || dive.photos.length === 0) return;
 
             document.getElementById('dive-photos-title').innerText = `${dive.site} — Dive #${dive.diveNo} Photos`;
             const grid = document.getElementById('dive-photos-grid');
-            grid.innerHTML = dive.photos.map(src => `
-                <a href="${src}" target="_blank" rel="noopener">
-                    <img src="${src}" class="w-full h-32 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40 hover:opacity-80 transition-opacity">
-                </a>
-            `).join('');
-
+            grid.innerHTML = `<p class="col-span-full text-xs text-slate-600 dark:text-slate-500 italic text-center py-6"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading photos&hellip;</p>`;
             document.getElementById('dive-photos-modal').classList.remove('hidden');
+
+            // Each id needs its data URL (local cache, or a OneDrive fetch if
+            // this device has never seen it) before it's usable as both the
+            // thumbnail src and the "open full size" link target.
+            const resolved = await Promise.all(dive.photos.map(async id => ({ id, dataUrl: await getPhotoDataUrl(id) })));
+
+            const available = resolved.filter(p => p.dataUrl);
+            const missingCount = resolved.length - available.length;
+
+            grid.innerHTML = available.map(p => `
+                <a href="${p.dataUrl}" target="_blank" rel="noopener">
+                    <img src="${p.dataUrl}" class="w-full h-32 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40 hover:opacity-80 transition-opacity">
+                </a>
+            `).join('') + (missingCount > 0
+                ? `<p class="col-span-full text-xs text-slate-600 dark:text-slate-500 italic text-center py-2">${missingCount} photo${missingCount !== 1 ? 's' : ''} couldn't be loaded right now — try again once you're online and signed in.</p>`
+                : '');
         }
 
         function closeDivePhotosModal() {
@@ -5987,7 +6161,7 @@
                             country: dive.country,
                             depth: match.depth,
                             note: match.note,
-                            photo: match.photo,
+                            photoId: match.photoId,
                             customName: match.customName || null
                         });
                     }
@@ -6002,7 +6176,7 @@
             };
         }
 
-        function openCritterDetailModal(critterId) {
+        async function openCritterDetailModal(critterId) {
             const species = CRITTER_DATABASE[critterId];
             if (!species) return;
 
@@ -6036,8 +6210,12 @@
                 `;
             } else {
                 info.sightings.forEach(sight => {
-                    const imageBlock = sight.photo
-                        ? `<img class="w-full h-full object-cover" src="${sight.photo}" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-slate-500 text-xs font-mono-custom uppercase tracking-wider\\'>No Photo</div>'">
+                    // data-photo-id is a placeholder — hydratePhotoImages()
+                    // below resolves it to a real src (local cache or a
+                    // OneDrive fetch) once every card is in the DOM. Its
+                    // onerror mirrors the "couldn't resolve" fallback.
+                    const imageBlock = sight.photoId
+                        ? `<img class="w-full h-full object-cover" data-photo-id="${sight.photoId}" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-slate-500 text-xs font-mono-custom uppercase tracking-wider\\'>No Photo</div>'">
                            <div class="absolute top-2 right-2">
                                <span class="bg-emerald-500 text-white px-2 py-0.5 rounded text-[8px] font-mono-custom font-bold uppercase tracking-wider">Your Photo</span>
                            </div>`
@@ -6076,6 +6254,7 @@
                     `;
                     galleryContainer.appendChild(card);
                 });
+                hydratePhotoImages(galleryContainer);
             }
 
             document.getElementById('critter-detail-modal').classList.remove('hidden');
