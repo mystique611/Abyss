@@ -33,6 +33,21 @@ const GRAPH_SCOPES = ['Files.ReadWrite', 'offline_access', 'User.Read'];
 let msalInstance = null;
 let activeAccount = null;
 
+/** True when running as an installed/home-screen PWA (standalone display
+ *  mode) rather than a normal browser tab. Popups are unreliable there —
+ *  iOS in particular can throw MSAL's "block_nested_popups" error the
+ *  moment loginPopup() tries to open the Microsoft sign-in window from
+ *  inside a standalone webview, since iOS's window-management model for
+ *  installed PWAs doesn't support real child popup windows the way a
+ *  normal Safari/Chrome tab does. Detecting this up front and going
+ *  straight to a full-page redirect sidesteps the failure entirely instead
+ *  of relying on a catch-and-retry after the popup attempt has already
+ *  failed. */
+function isRunningAsInstalledPWA() {
+    return (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) ||
+        window.navigator.standalone === true; // iOS Safari-specific flag
+}
+
 function getMsalInstance() {
     if (typeof msal === 'undefined') {
         // The MSAL library (js/msal-browser.min.js) didn't load — e.g. the
@@ -94,6 +109,16 @@ async function signIn() {
     }
 
     const instance = getMsalInstance();
+
+    // Installed/standalone PWA (e.g. added to the home screen on iOS): skip
+    // the popup attempt entirely and go straight to a full-page redirect.
+    // See isRunningAsInstalledPWA() above for why — attempting loginPopup()
+    // here is what produces the "block_nested_popups" failure.
+    if (isRunningAsInstalledPWA()) {
+        await instance.loginRedirect({ scopes: GRAPH_SCOPES });
+        return null; // page will reload after redirect; initAuth() picks it up
+    }
+
     try {
         const result = await instance.loginPopup({ scopes: GRAPH_SCOPES });
         activeAccount = result.account;
@@ -101,7 +126,8 @@ async function signIn() {
     } catch (popupError) {
         // Don't retry via redirect if the user simply closed/cancelled the
         // popup themselves — only fall back when the popup couldn't open at
-        // all (blocked by the browser), which is a different failure mode.
+        // all (blocked by the browser, or MSAL refused to nest it), which is
+        // a different failure mode.
         const isUserCancelled = popupError && (
             popupError.errorCode === 'user_cancelled' ||
             popupError.errorCode === 'popup_window_error' && /closed/i.test(popupError.errorMessage || '')
@@ -123,9 +149,14 @@ async function signIn() {
 async function signOut() {
     const instance = getMsalInstance();
     if (activeAccount) {
-        await instance.logoutPopup({ account: activeAccount }).catch(() => {
-            // Popup logout can fail silently on some browsers — clear local state anyway
-        });
+        if (isRunningAsInstalledPWA()) {
+            // Same popup restriction as sign-in applies here — redirect instead.
+            await instance.logoutRedirect({ account: activeAccount }).catch(() => {});
+        } else {
+            await instance.logoutPopup({ account: activeAccount }).catch(() => {
+                // Popup logout can fail silently on some browsers — clear local state anyway
+            });
+        }
     }
     activeAccount = null;
 }
@@ -145,8 +176,17 @@ async function getGraphAccessToken() {
         return result.accessToken;
     } catch (silentError) {
         // Silent refresh failed (e.g. token expired + no session) — try an
-        // interactive popup as a last resort, but never block a UI action on this.
+        // interactive fallback, but never block a UI action on this.
         try {
+            if (isRunningAsInstalledPWA()) {
+                // acquireTokenPopup() hits the same standalone-PWA popup
+                // restriction as loginPopup(). Redirect instead; the page
+                // will reload and initAuth()/acquireTokenSilent() will pick
+                // the refreshed token up from there. Nothing meaningful to
+                // return synchronously in this branch.
+                await instance.acquireTokenRedirect({ scopes: GRAPH_SCOPES, account: activeAccount });
+                return null;
+            }
             const result = await instance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
             return result.accessToken;
         } catch (interactiveError) {

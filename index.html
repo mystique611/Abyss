@@ -52,6 +52,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
+    <!-- html2canvas (renders the shareable Diver Profile card to a PNG).
+         Unlike Chart.js's cdnjs build, html2canvas's published bundle is a
+         plain UMD script (defines window.html2canvas directly), so it works
+         fine loaded this way — no ES-module issue to work around here. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <!-- Chart.js (Diver Detail trend charts: SAC rate, weight, total dives).
          Vendored locally as js/chart.umd.min.js, NOT chart.min.js. On cdnjs,
          "chart.min.js" for v4+ is an ES module (starts with an import
@@ -329,7 +335,7 @@
 
                         <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-300">
                             <div class="flex justify-between items-start">
-                                <span class="text-xs font-mono-custom text-slate-400 uppercase tracking-wider">Critters</span>
+                                <span class="text-xs font-mono-custom text-slate-400 uppercase tracking-wider">Marine Life</span>
                                 <div class="p-2 bg-amber-500/10 rounded-xl text-amber-400"><i class="fa-solid fa-fish-fins"></i></div>
                             </div>
                             <div class="mt-4">
@@ -726,6 +732,17 @@
                                 <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Dive Site*</label>
                                 <input type="text" id="form-site" required placeholder="e.g. Crystal Bay, Nusa Penida" class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 light:bg-slate-100 border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 focus:outline-none focus:border-cyan-400 text-sm">
                             </div>
+                            <div class="md:col-span-4">
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-xs font-mono-custom text-slate-400 uppercase">Pin Exact Dive Location <span class="text-slate-500">(optional)</span></label>
+                                    <button type="button" onclick="clearLocationPin()" class="text-[10px] font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">Clear Pin</button>
+                                </div>
+                                <p class="text-[10px] text-slate-500 mb-2">Tap or click the map to drop a pin at the exact dive site. Left blank, the Dashboard map shows an approximate location for the selected country instead.</p>
+                                <div id="form-location-map" class="w-full h-56 rounded-xl border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 overflow-hidden"></div>
+                                <p class="text-[10px] font-mono-custom text-cyan-400 mt-1" id="form-location-readout">No pin placed</p>
+                                <input type="hidden" id="form-latitude">
+                                <input type="hidden" id="form-longitude">
+                            </div>
                         </div>
                     </div>
 
@@ -1091,10 +1108,16 @@
                     <h2 class="text-2xl font-extrabold tracking-tight">Diver Credentials & Progression</h2>
                     <p class="text-sm text-slate-400">Diver's Credential, sub-surface profile analytics, and milestones</p>
                 </div>
-                <button onclick="openDiverProfileModal()" class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-xs font-bold rounded-xl flex items-center space-x-2 shadow-md">
-                    <i class="fa-solid fa-user-pen"></i>
-                    <span>Edit Diver Info</span>
-                </button>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    <button onclick="openShareProfileModal()" class="px-5 py-2.5 rounded-xl border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 hover:bg-ocean-900/20 dark:hover:bg-ocean-900/20 light:hover:bg-slate-200 text-slate-300 dark:text-slate-300 light:text-slate-700 text-xs font-bold flex items-center space-x-2" title="Share your profile & analytics as an image">
+                        <i class="fa-solid fa-share-nodes"></i>
+                        <span>Share Profile</span>
+                    </button>
+                    <button onclick="openDiverProfileModal()" class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-xs font-bold rounded-xl flex items-center space-x-2 shadow-md">
+                        <i class="fa-solid fa-user-pen"></i>
+                        <span>Edit Diver Info</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Profile Summary: License card + Certification History, side by side -->
@@ -1481,6 +1504,40 @@
             </div>
         </div>
     </div>
+
+    <!-- ==================== MODAL: SHARE DIVER PROFILE AS IMAGE ==================== -->
+    <div id="share-profile-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-300 space-y-4">
+            <button onclick="closeShareProfileModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div>
+                <h3 class="text-lg font-extrabold text-white">Share Diver Profile</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Your credential card and analytics, as one shareable image</p>
+            </div>
+
+            <div id="share-preview-container" class="rounded-2xl overflow-hidden border border-ocean-800/50 dark:border-ocean-800/50 light:border-slate-300 flex items-center justify-center bg-ocean-950/50 min-h-[220px]">
+                <p class="text-xs text-slate-400 p-6 text-center" id="share-preview-loading">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Rendering your profile card&hellip;
+                </p>
+                <img id="share-preview-img" class="w-full hidden" src="" alt="Diver profile share preview">
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="shareProfileCardNow()" id="share-profile-share-btn" disabled class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center space-x-2 shadow-md">
+                    <i class="fa-solid fa-share-nodes"></i><span>Share</span>
+                </button>
+                <button onclick="downloadProfileCardNow()" id="share-profile-download-btn" disabled class="flex-1 px-4 py-2.5 rounded-xl bg-ocean-900/40 hover:bg-ocean-900/60 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center space-x-2 border border-ocean-800/50">
+                    <i class="fa-solid fa-download"></i><span>Download</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Off-screen render target for the share card — html2canvas needs the
+         element actually laid out in the document (not display:none), so
+         it's pushed off-screen with position:fixed instead of hidden. -->
+    <div id="share-card-render-host" style="position:fixed; left:-9999px; top:0; z-index:-1;"></div>
 
     <!-- ==================== MODAL: FULL DIVE LOG DETAILS (READ-ONLY, EDIT LOCKED) ==================== -->
     <div id="log-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
@@ -2171,6 +2228,8 @@
         let tempCritterPhotos = {};
         let map = null;
         let markersGroup = null;
+        let locationPickerMap = null;
+        let locationPickerMarker = null;
 
 
         // Initialize State on Launch
@@ -2321,6 +2380,177 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        /* ---------------- Share Diver Profile as an image ---------------- */
+        // Renders a standalone card (not the live page DOM) off-screen with
+        // html2canvas, then lets the user share it via the OS share sheet
+        // (navigator.share, with the PNG as a file) or just download it.
+        // Top half: certificate-style card (avatar, name, org, level only).
+        // Bottom half: the same glass-panel widget style used elsewhere,
+        // showing lifetime totals + last-20-dive averages.
+        let shareCardBlob = null;
+        let shareCardObjectUrl = null;
+
+        function buildShareCardMarkup() {
+            const profile = state.diverProfile || {};
+            const name = profile.name || 'Explorer';
+            const org = profile.org || 'PADI';
+            const level = profile.level || 'Open Water Diver';
+            const avatar = profile.avatar || null;
+
+            const analytics = computeDiveAnalytics();
+            const countriesVisited = new Set((state.dives || []).map(d => d.country).filter(Boolean)).size;
+
+            const avatarHtml = avatar
+                ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;" />`
+                : `<i class="fa-solid fa-user-astronaut" style="font-size:28px;color:#67e8f9;"></i>`;
+
+            const totalMins = analytics.totalMins || 0;
+            const totalTimeStr = `${Math.floor(totalMins / 60)}h ${String(totalMins % 60).padStart(2, '0')}m`;
+
+            const statTile = (label, value, iconClass, colorClass) => `
+                <div class="glass-panel" style="border-radius:16px;padding:14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <span style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;font-family:'JetBrains Mono',monospace;">${label}</span>
+                        <i class="${iconClass}" style="font-size:11px;color:${colorClass};"></i>
+                    </div>
+                    <div style="font-size:20px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace;margin-top:8px;">${value}</div>
+                </div>`;
+
+            return `
+                <div id="share-card-inner" style="width:720px;background:#03141f;font-family:'Inter',sans-serif;">
+                    <!-- Top half: certificate card -->
+                    <div style="background:linear-gradient(135deg, #093054 0%, #061e38 50%, #031b2e 100%);padding:36px;position:relative;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;">
+                            <div style="height:32px;width:32px;border-radius:10px;background:linear-gradient(135deg,#06b6d4,#2563eb);display:flex;align-items:center;justify-content:center;">
+                                <i class="fa-solid fa-water" style="font-size:14px;color:#fff;"></i>
+                            </div>
+                            <span style="font-weight:800;font-size:16px;color:#fff;letter-spacing:0.02em;">ABYSS</span>
+                            <span style="font-size:10px;color:#22d3ee;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;">Diver Profile</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:20px;">
+                            <div style="height:84px;width:84px;border-radius:50%;border:3px solid #22d3ee;background:#1e293b;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                                ${avatarHtml}
+                            </div>
+                            <div>
+                                <h2 style="font-size:28px;font-weight:800;color:#fff;margin:0;">${name}</h2>
+                                <div style="display:flex;gap:8px;margin-top:10px;">
+                                    <span style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;background:rgba(255,255,255,0.1);color:#67e8f9;border:1px solid rgba(34,211,238,0.4);font-family:'JetBrains Mono',monospace;">${org}</span>
+                                    <span style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;background:#06b6d4;color:#fff;font-family:'JetBrains Mono',monospace;">${level}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom half: analytics widgets -->
+                    <div style="padding:28px 32px 32px;">
+                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">Sub-surface Analytics</div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                            ${statTile('Total Dives', analytics.totalDives || 0, 'fa-solid fa-list-check', '#60a5fa')}
+                            ${statTile('Total Bottom Time', totalTimeStr, 'fa-solid fa-clock', '#34d399')}
+                            ${statTile('Max Depth', `${(analytics.maxDepth || 0).toFixed(1)} m`, 'fa-solid fa-arrow-down-long', '#f472b6')}
+                            ${statTile('Countries Visited', countriesVisited, 'fa-solid fa-earth-americas', '#22d3ee')}
+                            ${statTile('Avg Depth (Last 20)', analytics.avgDepth20 !== null ? `${analytics.avgDepth20.toFixed(1)} m` : 'N/A', 'fa-solid fa-gauge', '#a78bfa')}
+                            ${statTile('Avg SAC (Last 20)', analytics.avgSAC20 !== null ? `${analytics.avgSAC20.toFixed(1)} L/min` : 'N/A', 'fa-solid fa-lungs', '#fbbf24')}
+                        </div>
+                        <div style="margin-top:20px;text-align:center;font-size:10px;color:#475569;font-family:'JetBrains Mono',monospace;">Generated by Abyss &mdash; Personal Dive Log</div>
+                    </div>
+                </div>`;
+        }
+
+        function openShareProfileModal() {
+            document.getElementById('share-profile-modal').classList.remove('hidden');
+            document.getElementById('share-preview-loading').classList.remove('hidden');
+            document.getElementById('share-preview-img').classList.add('hidden');
+            document.getElementById('share-profile-share-btn').disabled = true;
+            document.getElementById('share-profile-download-btn').disabled = true;
+            renderShareProfileCard();
+        }
+
+        function closeShareProfileModal() {
+            document.getElementById('share-profile-modal').classList.add('hidden');
+            document.getElementById('share-card-render-host').innerHTML = '';
+            if (shareCardObjectUrl) {
+                URL.revokeObjectURL(shareCardObjectUrl);
+                shareCardObjectUrl = null;
+            }
+            shareCardBlob = null;
+        }
+
+        async function renderShareProfileCard() {
+            if (typeof html2canvas === 'undefined') {
+                showToast("Couldn't load the image renderer (html2canvas). Check your connection and try again.", "error");
+                closeShareProfileModal();
+                return;
+            }
+
+            const host = document.getElementById('share-card-render-host');
+            host.innerHTML = buildShareCardMarkup();
+            const cardEl = document.getElementById('share-card-inner');
+
+            try {
+                // Give the browser one frame to lay out/paint the freshly
+                // inserted off-screen card (icons/fonts) before capturing it.
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+                const canvas = await html2canvas(cardEl, { backgroundColor: '#03141f', scale: 2, useCORS: true });
+                canvas.toBlob(blob => {
+                    if (!blob) {
+                        showToast("Couldn't render the profile card image. Please try again.", "error");
+                        return;
+                    }
+                    shareCardBlob = blob;
+                    if (shareCardObjectUrl) URL.revokeObjectURL(shareCardObjectUrl);
+                    shareCardObjectUrl = URL.createObjectURL(blob);
+
+                    const img = document.getElementById('share-preview-img');
+                    img.src = shareCardObjectUrl;
+                    img.classList.remove('hidden');
+                    document.getElementById('share-preview-loading').classList.add('hidden');
+                    document.getElementById('share-profile-share-btn').disabled = false;
+                    document.getElementById('share-profile-download-btn').disabled = false;
+                }, 'image/png');
+            } catch (err) {
+                console.error('Failed to render share card:', err);
+                showToast("Couldn't render the profile card image. Please try again.", "error");
+                closeShareProfileModal();
+            }
+        }
+
+        function shareCardFilename() {
+            return `abyss-diver-profile-${sanitizeFilenamePart(state.diverProfile.name)}.png`;
+        }
+
+        async function shareProfileCardNow() {
+            if (!shareCardBlob) return;
+            const filename = shareCardFilename();
+
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const file = new File([shareCardBlob], filename, { type: 'image/png' });
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({ files: [file], title: 'My Abyss Diver Profile' });
+                        return;
+                    }
+                } catch (err) {
+                    // User cancelled the share sheet, or the platform rejected it — fall
+                    // through to a plain download rather than leaving the user stuck.
+                    if (err && err.name === 'AbortError') return;
+                    console.warn('navigator.share failed, falling back to download:', err);
+                }
+            }
+            downloadProfileCardNow();
+        }
+
+        function downloadProfileCardNow() {
+            if (!shareCardObjectUrl) return;
+            const a = document.createElement('a');
+            a.href = shareCardObjectUrl;
+            a.download = shareCardFilename();
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
         /* ---------------- CSV export ---------------- */
@@ -2750,6 +2980,17 @@
                 }, 100);
             }
 
+            // Same requirement applies to the Log a Dive location-picker map —
+            // recreate it once its container is actually visible. By the time
+            // this fires, startEditDiveLog() (if editing) has already
+            // populated form-latitude/form-longitude synchronously, so an
+            // existing pin is picked up correctly.
+            if (tabId === 'add-log') {
+                setTimeout(() => {
+                    initLocationPickerMap();
+                }, 100);
+            }
+
             // Chart.js sizes its canvases off the container's rendered
             // dimensions — since view-profile is hidden (display:none) on
             // first load, charts created while it's hidden can end up
@@ -2823,12 +3064,17 @@
             L.tileLayer(tileUrl, { attribution, maxZoom: 19, subdomains: 'abcd' }).addTo(map);
             markersGroup = L.layerGroup().addTo(map);
 
-            // Populate slow pulsing markers on locations corresponding to countries logged
+            // Populate slow pulsing markers for every logged dive. Dives with
+            // an exact pinned location (see the Log a Dive location picker)
+            // use those real coordinates; everything else falls back to a
+            // jittered marker near the selected country's capital, as before.
             state.dives.forEach(dive => {
-                const coords = COUNTRY_COORDS[dive.country];
+                const hasExactPin = typeof dive.latitude === 'number' && typeof dive.longitude === 'number'
+                    && !isNaN(dive.latitude) && !isNaN(dive.longitude);
+                const coords = hasExactPin ? [dive.latitude, dive.longitude] : COUNTRY_COORDS[dive.country];
                 if (coords) {
-                    const jitterLat = coords[0] + (Math.random() - 0.5) * 0.6;
-                    const jitterLng = coords[1] + (Math.random() - 0.5) * 0.6;
+                    const jitterLat = hasExactPin ? coords[0] : coords[0] + (Math.random() - 0.5) * 0.6;
+                    const jitterLng = hasExactPin ? coords[1] : coords[1] + (Math.random() - 0.5) * 0.6;
 
                     // Leaflet divIcon overlayed with cyan animation pulses
                     const customMarkerIcon = L.divIcon({
@@ -2851,6 +3097,98 @@
                         .addTo(markersGroup);
                 }
             });
+        }
+
+        /* ---------------- Log a Dive: exact-location map picker ---------------- */
+        // Lets the user drop a precise pin for a dive site instead of only
+        // relying on the country-level approximate marker the Dashboard map
+        // falls back to. Coordinates are stored on the dive record as
+        // `latitude`/`longitude` and take priority over COUNTRY_COORDS
+        // whenever both are present (see initLeafletMap() above).
+        function initLocationPickerMap() {
+            const container = document.getElementById('form-location-map');
+            if (!container) return;
+
+            if (locationPickerMap !== null) {
+                locationPickerMap.remove();
+                locationPickerMap = null;
+                locationPickerMarker = null;
+            }
+
+            const tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+            const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+            const existingLat = parseFloat(document.getElementById('form-latitude').value);
+            const existingLng = parseFloat(document.getElementById('form-longitude').value);
+            const hasExistingPin = !isNaN(existingLat) && !isNaN(existingLng);
+
+            // Center on the existing pin if editing a dive that already has
+            // one, otherwise on the selected country (if any), otherwise a
+            // generic wide Indo-Pacific view matching the Dashboard map's default.
+            let center = [5, 120];
+            let zoom = 2;
+            if (hasExistingPin) {
+                center = [existingLat, existingLng];
+                zoom = 12;
+            } else {
+                const countryVal = document.getElementById('form-country').value;
+                const countryCoords = COUNTRY_COORDS[countryVal];
+                if (countryCoords) { center = countryCoords; zoom = 5; }
+            }
+
+            locationPickerMap = L.map('form-location-map', {
+                center, zoom, minZoom: 1, maxZoom: 18,
+                scrollWheelZoom: true, attributionControl: false, zoomControl: true
+            });
+            L.tileLayer(tileUrl, { attribution, maxZoom: 19, subdomains: 'abcd' }).addTo(locationPickerMap);
+
+            if (hasExistingPin) {
+                placeLocationPin(existingLat, existingLng, false);
+            }
+
+            locationPickerMap.on('click', (e) => {
+                placeLocationPin(e.latlng.lat, e.latlng.lng, true);
+            });
+        }
+
+        function placeLocationPin(lat, lng, fromUserClick) {
+            if (!locationPickerMap) return;
+
+            if (locationPickerMarker) {
+                locationPickerMap.removeLayer(locationPickerMarker);
+            }
+
+            const pinIcon = L.divIcon({
+                className: 'leaflet-custom-pulse',
+                html: `<div class="h-4 w-4 rounded-full bg-cyan-400/90 border-2 border-white map-pulsing-marker cursor-pointer"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+            locationPickerMarker = L.marker([lat, lng], { icon: pinIcon }).addTo(locationPickerMap);
+
+            document.getElementById('form-latitude').value = lat;
+            document.getElementById('form-longitude').value = lng;
+            updateLocationReadout(lat, lng);
+
+            if (fromUserClick) locationPickerMap.panTo([lat, lng]);
+        }
+
+        function clearLocationPin() {
+            if (locationPickerMarker && locationPickerMap) {
+                locationPickerMap.removeLayer(locationPickerMarker);
+            }
+            locationPickerMarker = null;
+            document.getElementById('form-latitude').value = '';
+            document.getElementById('form-longitude').value = '';
+            updateLocationReadout(null, null);
+        }
+
+        function updateLocationReadout(lat, lng) {
+            const readout = document.getElementById('form-location-readout');
+            if (!readout) return;
+            readout.innerText = (lat !== null && lng !== null)
+                ? `Pinned: ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+                : 'No pin placed';
         }
 
         // Converts a native <input type="date"> ISO value ("YYYY-MM-DD") into the
@@ -3175,6 +3513,12 @@
             document.getElementById('form-dive-type').value = dive.diveType || '';
             document.getElementById('form-country').value = dive.country || '';
             document.getElementById('form-site').value = dive.site || '';
+            document.getElementById('form-latitude').value = (dive.latitude !== undefined && dive.latitude !== null) ? dive.latitude : '';
+            document.getElementById('form-longitude').value = (dive.longitude !== undefined && dive.longitude !== null) ? dive.longitude : '';
+            updateLocationReadout(
+                (dive.latitude !== undefined && dive.latitude !== null) ? dive.latitude : null,
+                (dive.longitude !== undefined && dive.longitude !== null) ? dive.longitude : null
+            );
             document.getElementById('form-air-temp').value = dive.airTemp !== null ? dive.airTemp : '';
             document.getElementById('form-surface-temp').value = dive.surfaceTemp !== undefined && dive.surfaceTemp !== null ? dive.surfaceTemp : '';
             document.getElementById('form-water-temp').value = dive.waterTemp !== null ? dive.waterTemp : '';
@@ -3251,6 +3595,11 @@
             const diveType = document.getElementById('form-dive-type').value || null;
             const country = document.getElementById('form-country').value;
             const site = document.getElementById('form-site').value;
+
+            const rawLat = document.getElementById('form-latitude').value;
+            const rawLng = document.getElementById('form-longitude').value;
+            const latitude = rawLat !== "" ? parseFloat(rawLat) : null;
+            const longitude = rawLng !== "" ? parseFloat(rawLng) : null;
 
             const rawAir = document.getElementById('form-air-temp').value;
             const airTemp = rawAir !== "" ? parseFloat(rawAir) : null;
@@ -3334,7 +3683,7 @@
                 if (index !== -1) {
                     state.dives[index] = {
                         ...state.dives[index],
-                        diveNo, date, diveType, country, site, airTemp, surfaceTemp, waterTemp, visibility, weather,
+                        diveNo, date, diveType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
                         waterType, bodyOfWater, waves, current, surge,
                         weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear,
                         timeIn, timeOut, bottomTime, maxDepth, avgDepth,
@@ -3345,7 +3694,7 @@
             } else {
                 const newLog = {
                     id: 'log-' + Date.now(),
-                    diveNo, date, diveType, country, site, airTemp, surfaceTemp, waterTemp, visibility, weather,
+                    diveNo, date, diveType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
                     waterType, bodyOfWater, waves, current, surge,
                     weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear,
                     timeIn, timeOut, bottomTime, maxDepth, avgDepth,
@@ -3814,8 +4163,10 @@
                 return keys.map(k => avgOf(buckets[k]));
             }
 
+            // SAC-by-month trend uses one series only: the simple average of
+            // that month's per-dive SAC values across the entire logbook
+            // (no last-20 split, no benchmark line — those were removed).
             const sacByMonthAll = bucketAverages(monthKeys, monthKey, diveSAC, dives);
-            const sacByMonthLast20 = bucketAverages(monthKeys, monthKey, diveSAC, last20Dives);
             const weightByMonthAll = bucketAverages(monthKeys, monthKey, d => d.weight, dives);
             const weightByMonthLast20 = bucketAverages(monthKeys, monthKey, d => d.weight, last20Dives);
             const divesByQuarter = quarterKeys.map(k => dives.filter(d => quarterKey(d.date) === k).length);
@@ -3826,7 +4177,7 @@
                 avgDepth20, avgDepthAll, avgBottomTime20, avgBottomTimeAll,
                 avgSAC20, avgSACAll, avgWeight20, avgWeightAll,
                 monthLabels: monthKeys.map(monthLabel),
-                sacByMonthAll, sacByMonthLast20, weightByMonthAll, weightByMonthLast20,
+                sacByMonthAll, weightByMonthAll, weightByMonthLast20,
                 quarterLabels: quarterKeys.map(quarterLabel), divesByQuarter,
                 yearLabels: yearKeys, divesByYear
             };
@@ -3887,8 +4238,6 @@
 
         const CHART_COLOR_LAST20 = '#7dd3fc';    // light blue
         const CHART_COLOR_ALLTIME = '#f0abfc';   // light magenta
-        const CHART_COLOR_BENCHMARK = '#f87171'; // benchmark reference line
-        const SAC_BENCHMARK_L_MIN = 20;
 
         function baseChartOptions(yLabel, showLegend) {
             return {
@@ -3923,6 +4272,9 @@
             const labels = analytics.monthLabels;
 
             // ---- SAC rate by month ----
+            // Single series: simple average of that month's per-dive SAC
+            // values across the entire logbook. (No last-20 split, no
+            // benchmark reference line — removed per user request.)
             const sacCtx = document.getElementById('chart-sac-monthly');
             if (sacCtx) {
                 if (profileCharts.sac) profileCharts.sac.destroy();
@@ -3931,12 +4283,10 @@
                     data: {
                         labels,
                         datasets: [
-                            { label: 'Last 20 dives', data: analytics.sacByMonthLast20, borderColor: CHART_COLOR_LAST20, backgroundColor: CHART_COLOR_LAST20, spanGaps: true, tension: 0.3 },
-                            { label: 'All logged dives', data: analytics.sacByMonthAll, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 },
-                            { label: `Benchmark (${SAC_BENCHMARK_L_MIN} L/min)`, data: labels.map(() => SAC_BENCHMARK_L_MIN), borderColor: CHART_COLOR_BENCHMARK, borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5 }
+                            { label: 'Average SAC Rate', data: analytics.sacByMonthAll, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 }
                         ]
                     },
-                    options: baseChartOptions('L/min', true)
+                    options: baseChartOptions('L/min', false)
                 });
             }
 
@@ -4184,7 +4534,7 @@
                         const template = CRITTER_DATABASE[c.id];
                         if (template) {
                             const hasPhotoIndicator = c.photo 
-                                ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[8px] font-mono-custom flex items-center gap-1"><i class="fa-solid fa-image"></i> Photo Locked</span>`
+                                ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[8px] font-mono-custom flex items-center gap-1"><i class="fa-solid fa-image"></i> Photo</span>`
                                 : '';
                             crittersCardList += `
                                 <div class="p-3 rounded-xl bg-ocean-950/50 dark:bg-ocean-950/50 light:bg-slate-200 border border-ocean-800/30 dark:border-ocean-800/30 light:border-slate-300 flex items-center space-x-3">
