@@ -1,5 +1,14 @@
 # Changelog
 
+## 260723-v18
+
+- **Diver Detail "Trends Over Time"**: removed the color-dot legend under the header; replaced with the subtitle "Diver's analytic trend over time". (The weight trend chart's own Chart.js legend still shows "Last 20 dives"/"All logged dives" per line.)
+- **Full dive log preview (Logbook "View Full Details") is now sectioned** the same way as the Log a Dive form — General, Environmental Profile, Equipment, Depth & Time Profile, Gas Metrics & SAC, Marine Life Sightings, Verification & Journal Entry — instead of one flat two-column list. The General section now also shows a small map preview of the dive's exact pinned location when one was set, or a note that none was pinned.
+- **Log a Dive location picker auto-zooms to fit the selected country.** Choosing a country now recenters/zooms the map to roughly frame that country (a new `COUNTRY_ZOOM` lookup with size-tier approximations, since no real bounding-box dataset is available) instead of always using one fixed zoom regardless of whether the country is Russia or Singapore. Any pin already placed is untouched — only the map view moves.
+- **Additional Gear (Hood/Gloves/Boots) is now selectable icon buttons** instead of checkboxes, in Log a Dive Section 3. The underlying checkboxes still exist (hidden) so all existing save/load logic is unchanged — the icons are a pure visual layer over them.
+- **Added a Sign Out button** (next to the sync button, shown only while signed in). Signing out asks for confirmation, then signs out of OneDrive and clears what's currently shown on screen — the local dive log itself is untouched in this device's storage and reappears on reload or the next sign-in. The "Log in to save your information" prompt now only appears right after an explicit sign-out, not automatically on every page load — so it can no longer pop up just because the device is offline or has never signed in.
+- Service worker cache bumped (`abyss-shell-v17` → `abyss-shell-v18`) to ship all of the above.
+
 ## 260723-v17 — Performance cleanup
 
 - **Removed dead `defaultImage` field** from all 239 `CRITTER_DATABASE` entries — a leftover Unsplash stock-photo fallback that was never actually read anywhere in the code once the "No Photo" placeholder replaced it. Pure bloat; `index.html` shrank from 392K to ~364K.

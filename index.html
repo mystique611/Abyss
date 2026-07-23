@@ -285,6 +285,10 @@
                     <i id="sync-status-icon" class="fa-solid fa-cloud-arrow-up text-base"></i>
                     <span id="sync-status-text" class="hidden sm:inline">Sign in</span>
                 </button>
+                <button id="sign-out-btn" onclick="requestSignOut()" class="hidden flex items-center space-x-2 px-3 py-2.5 rounded-xl bg-ocean-900/20 dark:bg-ocean-900/20 border border-ocean-800/30 dark:border-ocean-800/30 text-slate-300 hover:text-rose-400 transition-colors text-xs font-medium" title="Sign out of OneDrive">
+                    <i class="fa-solid fa-right-from-bracket text-base"></i>
+                    <span class="hidden sm:inline">Sign out</span>
+                </button>
             </div>
         </div>
     </nav>
@@ -531,7 +535,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-1">Country / Territory*</label>
-                                <select id="form-country" required class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 border border-ocean-800/50 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                                <select id="form-country" required onchange="handleCountryChangeForLocationMap()" class="w-full px-4 py-2 rounded-xl bg-ocean-950 dark:bg-ocean-950 border border-ocean-800/50 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                                     <option value="" disabled selected>Select diving destination</option>
                                     <option value="Afghanistan">Afghanistan</option>
                                     <option value="Albania">Albania</option>
@@ -909,20 +913,24 @@
                         <!-- Additional Gear -->
                         <div>
                             <label class="block text-xs font-mono-custom text-slate-400 uppercase mb-2">Additional Gear</label>
-                            <div class="flex flex-wrap gap-4">
-                                <label class="flex items-center space-x-2 cursor-pointer">
-                                    <input type="checkbox" id="form-gear-hood" class="rounded border-ocean-800 text-cyan-500 focus:ring-cyan-400 focus:ring-opacity-50 h-4 w-4">
-                                    <span class="text-sm">Hood</span>
-                                </label>
-                                <label class="flex items-center space-x-2 cursor-pointer">
-                                    <input type="checkbox" id="form-gear-gloves" class="rounded border-ocean-800 text-cyan-500 focus:ring-cyan-400 focus:ring-opacity-50 h-4 w-4">
-                                    <span class="text-sm">Gloves</span>
-                                </label>
-                                <label class="flex items-center space-x-2 cursor-pointer">
-                                    <input type="checkbox" id="form-gear-boots" class="rounded border-ocean-800 text-cyan-500 focus:ring-cyan-400 focus:ring-opacity-50 h-4 w-4">
-                                    <span class="text-sm">Boots</span>
-                                </label>
+                            <div class="flex flex-wrap gap-3">
+                                <button type="button" id="gear-icon-hood" onclick="toggleGearIcon('hood')" title="Hood" class="gear-icon-btn flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-ocean-800/50 dark:border-ocean-800/50 text-slate-400 hover:border-cyan-500/40 transition-all">
+                                    <i class="fa-solid fa-mask text-lg"></i>
+                                    <span class="text-[9px] mt-1 font-semibold">Hood</span>
+                                </button>
+                                <button type="button" id="gear-icon-gloves" onclick="toggleGearIcon('gloves')" title="Gloves" class="gear-icon-btn flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-ocean-800/50 dark:border-ocean-800/50 text-slate-400 hover:border-cyan-500/40 transition-all">
+                                    <i class="fa-solid fa-mitten text-lg"></i>
+                                    <span class="text-[9px] mt-1 font-semibold">Gloves</span>
+                                </button>
+                                <button type="button" id="gear-icon-boots" onclick="toggleGearIcon('boots')" title="Boots" class="gear-icon-btn flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-ocean-800/50 dark:border-ocean-800/50 text-slate-400 hover:border-cyan-500/40 transition-all">
+                                    <i class="fa-solid fa-socks text-lg"></i>
+                                    <span class="text-[9px] mt-1 font-semibold">Boots</span>
+                                </button>
                             </div>
+                            <!-- Hidden checkboxes keep the existing save/load logic (handleFormSubmit, startEditDiveLog) unchanged — the icon buttons above just toggle these. -->
+                            <input type="checkbox" id="form-gear-hood" class="hidden">
+                            <input type="checkbox" id="form-gear-gloves" class="hidden">
+                            <input type="checkbox" id="form-gear-boots" class="hidden">
                         </div>
                     </div>
 
@@ -1259,16 +1267,7 @@
             <div class="glass-panel p-6 rounded-3xl space-y-6">
                 <div>
                     <h3 class="text-lg font-bold">Trends Over Time</h3>
-                    <div class="flex flex-wrap items-center gap-4 mt-1">
-                        <span class="flex items-center text-xs text-slate-400">
-                            <span class="h-2.5 w-2.5 rounded-full mr-1.5 flex-shrink-0" style="background-color:#7dd3fc;"></span>
-                            Last 20 dives
-                        </span>
-                        <span class="flex items-center text-xs text-slate-400">
-                            <span class="h-2.5 w-2.5 rounded-full mr-1.5 flex-shrink-0" style="background-color:#f0abfc;"></span>
-                            All logged dives
-                        </span>
-                    </div>
+                    <p class="text-xs text-slate-400 mt-1">Diver's analytic trend over time</p>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2152,6 +2151,47 @@
             "Zimbabwe": [-17.8292, 31.0522],
         };
 
+        // Approximate "fit the whole country in view" zoom levels for the
+        // Log a Dive location-picker map, keyed the same as COUNTRY_COORDS.
+        // These are size-tier approximations, not real bounding-box math
+        // (no geo-bounds dataset available) — good enough to roughly frame
+        // a country rather than always using one fixed zoom regardless of
+        // whether it's Russia or Singapore. Anything not listed here falls
+        // back to DEFAULT_COUNTRY_ZOOM.
+        const DEFAULT_COUNTRY_ZOOM = 6;
+        const COUNTRY_ZOOM = {
+            // Huge / transcontinental — need to zoom out a lot
+            "Russia": 3, "Canada": 3, "United States": 4, "China": 4, "Brazil": 4,
+            "Australia": 4, "India": 4, "Argentina": 4, "Kazakhstan": 4, "Algeria": 5,
+            "Congo (Democratic Republic of the)": 5, "Saudi Arabia": 5, "Mexico": 5,
+            "Indonesia": 4, "Sudan": 5, "Libya": 5, "Iran": 5, "Mongolia": 5, "Peru": 5,
+            "Chad": 5, "Niger": 5, "Angola": 5, "Mali": 5, "Colombia": 5, "Ethiopia": 5,
+            "Bolivia": 5, "Nigeria": 5, "Venezuela": 5, "Namibia": 5, "Mozambique": 5,
+            "Pakistan": 5, "Turkey": 5, "Chile": 4, "Zambia": 5, "Myanmar": 5,
+            "Afghanistan": 5, "Somalia": 5, "Ukraine": 5, "Botswana": 5, "Madagascar": 5,
+            "Kenya": 5, "Papua New Guinea": 5, "Philippines": 5, "Yemen": 5, "Tanzania": 5,
+            "Morocco": 5, "Iraq": 5, "South Africa": 5, "Egypt": 5, "Paraguay": 5,
+
+            // Small / island nations — many are dive destinations, so worth
+            // getting these right rather than leaving them at the default.
+            "Singapore": 10, "Bahrain": 9, "Malta": 9, "Barbados": 10, "Grenada": 10,
+            "Saint Lucia": 10, "Dominica": 10, "Antigua and Barbuda": 9,
+            "Saint Vincent and the Grenadines": 10, "Saint Kitts and Nevis": 10,
+            "Samoa": 9, "Tonga": 8, "Palau": 8, "Nauru": 11, "Tuvalu": 10,
+            "Monaco": 13, "San Marino": 11, "Liechtenstein": 10, "Andorra": 10,
+            "Luxembourg": 9, "Cabo Verde": 8, "Mauritius": 9, "Comoros": 8,
+            "Seychelles": 7, "Maldives": 6, "Micronesia": 6, "Marshall Islands": 6,
+            "Kiribati": 5, "Belgium": 7, "Netherlands": 7, "Switzerland": 7,
+            "Denmark": 7, "Vanuatu": 7, "Solomon Islands": 6, "Belize": 7,
+            "El Salvador": 7, "Jamaica": 8, "Trinidad and Tobago": 8,
+            "Timor-Leste": 7, "Brunei": 8, "Qatar": 8, "Kuwait": 8,
+            "United Arab Emirates": 7, "Djibouti": 8, "Eritrea": 6, "Slovenia": 8,
+            "Slovakia": 7, "Croatia": 6, "Estonia": 7, "Latvia": 7, "Lithuania": 7,
+            "Cyprus": 8, "Montenegro": 8, "North Macedonia": 8, "Bosnia and Herzegovina": 7,
+            "Albania": 8, "Fiji": 7, "Israel": 7, "Lebanon": 8, "Jordan": 7,
+            "Panama": 7, "Costa Rica": 7,
+        };
+
         const INITIAL_DIVE_LOGS = [];
 
         // Certification level progression lists, keyed by diving certification
@@ -2225,11 +2265,18 @@
             }
         };
 
+        // Snapshot of the pristine default profile shape, used to reset the
+        // on-screen view back to a "blank slate" after signing out (see
+        // clearDisplayedDataOnSignOut()) without hardcoding a second copy of
+        // this object that could drift out of sync with the one above.
+        const DEFAULT_DIVER_PROFILE = JSON.parse(JSON.stringify(state.diverProfile));
+
         let tempCritterPhotos = {};
         let map = null;
         let markersGroup = null;
         let locationPickerMap = null;
         let locationPickerMarker = null;
+        let logDetailMap = null;
 
 
         // Initialize State on Launch
@@ -2255,26 +2302,20 @@
             window.AbyssSync.onSyncStatusChange(updateSyncStatusUI);
             window.AbyssSync.initAutoSync();
 
-            await maybeShowLoginPrompt();
+            // Deliberately NOT auto-showing the login prompt here on every
+            // page load — that used to run unconditionally on startup,
+            // which meant it could pop up on a normal offline visit just
+            // because the device wasn't signed in yet. The prompt's only
+            // trigger now is requestSignOut() completing, further down.
         });
 
-        /* ---------------- First-visit login prompt (optional/dismissible) ---------------- */
-        // Shown once, only if the diver hasn't signed in yet — never blocks
-        // use of the app. Dismissing (either button, or the X) marks it seen
-        // via IndexedDB meta so it never resurfaces on later visits, even
-        // though the person stays signed out.
-        async function maybeShowLoginPrompt() {
-            if (window.AbyssAuth.isSignedIn()) return;
-
-            const seen = await window.AbyssDB.getMeta('hasSeenLoginPrompt', false);
-            if (seen) return;
-
+        /* ---------------- Login prompt (shown after explicit sign-out) ---------------- */
+        function showLoginPromptModal() {
             document.getElementById('login-prompt-modal').classList.remove('hidden');
         }
 
-        async function dismissLoginPrompt() {
+        function dismissLoginPrompt() {
             document.getElementById('login-prompt-modal').classList.add('hidden');
-            await window.AbyssDB.setMeta('hasSeenLoginPrompt', true);
         }
 
         async function signInFromLoginPrompt() {
@@ -2938,6 +2979,52 @@
             const s = states[status] || states['signed-out'];
             icon.className = s.cls;
             text.textContent = s.label;
+
+            // Sign-out button only makes sense once actually signed in —
+            // hide it for every other status (signed-out, signing-in, etc.)
+            const signOutBtn = document.getElementById('sign-out-btn');
+            if (signOutBtn) {
+                const showSignOut = window.AbyssAuth.isSignedIn();
+                signOutBtn.classList.toggle('hidden', !showSignOut);
+            }
+        }
+
+        /* ---------------- Sign out ---------------- */
+        function requestSignOut() {
+            openConfirmModal(
+                "Sign Out of OneDrive?",
+                "Your dive log stays safely stored on this device — signing out doesn't delete anything. It just clears what's currently shown on screen until you sign in again (same or different account).",
+                "Sign Out",
+                async () => {
+                    try {
+                        await window.AbyssAuth.signOut();
+                    } catch (e) {
+                        console.warn('Sign-out request failed:', e);
+                    }
+                    clearDisplayedDataOnSignOut();
+                    updateSyncStatusUI('signed-out');
+                    showToast("Signed out of OneDrive", "info");
+                    // Only trigger point for this modal now — it no longer
+                    // auto-shows on page load (see DOMContentLoaded below),
+                    // specifically so it can't pop up just because the
+                    // device is offline/never-signed-in on a normal visit.
+                    showLoginPromptModal();
+                }
+            );
+        }
+
+        // Clears what's currently displayed for this browser tab only.
+        // Deliberately does NOT touch IndexedDB — the real local dive log
+        // is untouched and reappears exactly as-is on reload or the next
+        // successful sign-in (syncNow()/syncAfterSignIn() both read straight
+        // from AbyssDB, never from this in-memory `state`). This exists so a
+        // shared/public device (or switching OneDrive accounts) doesn't keep
+        // showing the previous session's dive log on screen after sign-out.
+        function clearDisplayedDataOnSignOut() {
+            state.dives = [];
+            state.diverProfile = JSON.parse(JSON.stringify(DEFAULT_DIVER_PROFILE));
+            state.editingLogId = null;
+            updateUI();
         }
 
         function switchTab(tabId) {
@@ -3020,10 +3107,11 @@
             document.getElementById('log-form-title').innerText = "Log a dive";
             document.getElementById('submit-btn-text').innerText = "Commit Log to Abyss";
             document.getElementById('edit-indicator').classList.add('hidden');
-            
+
             tempCritterPhotos = {};
             setupFormsAndListeners();
             updateGasMixturePreview();
+            refreshAllGearIconStyles();
             switchTab('add-log');
             rollNextDiveNo();
         }
@@ -3148,7 +3236,7 @@
             } else {
                 const countryVal = document.getElementById('form-country').value;
                 const countryCoords = COUNTRY_COORDS[countryVal];
-                if (countryCoords) { center = countryCoords; zoom = 5; }
+                if (countryCoords) { center = countryCoords; zoom = COUNTRY_ZOOM[countryVal] || DEFAULT_COUNTRY_ZOOM; }
             }
 
             locationPickerMap = L.map('form-location-map', {
@@ -3164,6 +3252,21 @@
             locationPickerMap.on('click', (e) => {
                 placeLocationPin(e.latlng.lat, e.latlng.lng, true);
             });
+        }
+
+        // Wired to form-country's onchange — recenters/zooms the location
+        // picker map to roughly fit the newly selected country, so the user
+        // isn't left looking at an unrelated part of the world (or the
+        // wide default Indo-Pacific view) before dropping their pin. Any
+        // pin already placed is left exactly where it is — this only moves
+        // the view, never clears a pin.
+        function handleCountryChangeForLocationMap() {
+            if (!locationPickerMap) return;
+            const countryVal = document.getElementById('form-country').value;
+            const coords = COUNTRY_COORDS[countryVal];
+            if (!coords) return;
+            const zoom = COUNTRY_ZOOM[countryVal] || DEFAULT_COUNTRY_ZOOM;
+            locationPickerMap.setView(coords, zoom);
         }
 
         function placeLocationPin(lat, lng, fromUserClick) {
@@ -3204,6 +3307,32 @@
             readout.innerText = (lat !== null && lng !== null)
                 ? `Pinned: ${lat.toFixed(5)}, ${lng.toFixed(5)}`
                 : 'No pin placed';
+        }
+
+        /* ---------------- Additional Gear icon toggles ---------------- */
+        // The Hood/Gloves/Boots icon buttons are purely a visual layer over
+        // three hidden checkboxes (form-gear-hood/gloves/boots) — every
+        // other place in the code (handleFormSubmit, startEditDiveLog) keeps
+        // reading/writing those checkboxes' .checked exactly as before.
+        const GEAR_ICON_ACTIVE_CLASS = "gear-icon-btn flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-cyan-400 bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-400/30 transition-all";
+        const GEAR_ICON_INACTIVE_CLASS = "gear-icon-btn flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-ocean-800/50 dark:border-ocean-800/50 text-slate-400 hover:border-cyan-500/40 transition-all";
+
+        function toggleGearIcon(kind) {
+            const checkbox = document.getElementById(`form-gear-${kind}`);
+            if (!checkbox) return;
+            checkbox.checked = !checkbox.checked;
+            updateGearIconStyle(kind);
+        }
+
+        function updateGearIconStyle(kind) {
+            const btn = document.getElementById(`gear-icon-${kind}`);
+            const checkbox = document.getElementById(`form-gear-${kind}`);
+            if (!btn || !checkbox) return;
+            btn.className = checkbox.checked ? GEAR_ICON_ACTIVE_CLASS : GEAR_ICON_INACTIVE_CLASS;
+        }
+
+        function refreshAllGearIconStyles() {
+            ['hood', 'gloves', 'boots'].forEach(updateGearIconStyle);
         }
 
         // Converts a native <input type="date"> ISO value ("YYYY-MM-DD") into the
@@ -3507,6 +3636,7 @@
             state.editingLogId = null;
             state.userHasOverwrittenDiveNo = false;
             document.getElementById('padi-log-form').reset();
+            refreshAllGearIconStyles();
             switchTab('dashboard');
         }
 
@@ -3560,6 +3690,7 @@
             document.getElementById('form-gear-hood').checked = !!(dive.additionalGear && dive.additionalGear.includes('Hood'));
             document.getElementById('form-gear-gloves').checked = !!(dive.additionalGear && dive.additionalGear.includes('Gloves'));
             document.getElementById('form-gear-boots').checked = !!(dive.additionalGear && dive.additionalGear.includes('Boots'));
+            refreshAllGearIconStyles();
             document.getElementById('form-time-in').value = dive.timeIn || '';
             document.getElementById('form-time-out').value = dive.timeOut || '';
             document.getElementById('form-bottom-time').value = dive.bottomTime !== null ? dive.bottomTime : '';
@@ -3728,8 +3859,9 @@
             
             document.getElementById('padi-log-form').reset();
             tempCritterPhotos = {};
-            setupFormsAndListeners(); 
-            
+            setupFormsAndListeners();
+            refreshAllGearIconStyles();
+
             switchTab('dashboard');
         }
 
@@ -4756,6 +4888,28 @@
         // Entry" to hand off to the real (fully editable) dive log form.
         let currentLogDetailId = null;
 
+        // Renders one numbered section card matching the Log a Dive form's
+        // own sectioning style (glass-panel + "0N." + title header), so the
+        // read-only preview mirrors the entry form's structure field-for-field.
+        function buildLogDetailSection(num, title, rowsArr, extraHtml = '') {
+            const rowsHtml = rowsArr.map(([label, value]) => `
+                <div class="flex justify-between items-start gap-4 py-2 border-b border-ocean-900/10 dark:border-ocean-900/10 last:border-b-0">
+                    <span class="text-slate-400 text-xs uppercase font-mono-custom flex-shrink-0">${label}</span>
+                    <span class="font-mono-custom font-semibold text-white dark:text-white text-right">${value}</span>
+                </div>
+            `).join('');
+            return `
+                <div class="glass-panel p-4 rounded-2xl">
+                    <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-ocean-900/20 dark:border-ocean-900/20 pb-2 mb-1">
+                        <span class="font-mono-custom text-xs">${num}.</span>
+                        <h4 class="text-xs tracking-widest uppercase">${title}</h4>
+                    </div>
+                    ${rowsHtml}
+                    ${extraHtml}
+                </div>
+            `;
+        }
+
         function openLogDetailModal(logId) {
             const dive = state.dives.find(d => d.id === logId);
             if (!dive) return;
@@ -4766,46 +4920,12 @@
 
             const fmt = (val, suffix = '') => (val !== null && val !== undefined && val !== '' && !isNaN(val)) ? `${val}${suffix}` : (val || '--');
 
-            const rows = [
-                ['Dive Number', dive.diveNo ?? '--'],
-                ['Date', dive.date ? formatDateDMY(dive.date) : '--'],
-                ['Dive Type', dive.diveType || '--'],
-                ['Country / Territory', dive.country || '--'],
-                ['Dive Site', dive.site || '--'],
-                ['Time In', dive.timeIn || '--'],
-                ['Time Out', dive.timeOut || '--'],
-                ['Bottom Time', fmt(dive.bottomTime, ' min')],
-                ['Max Depth', fmt(dive.maxDepth, 'm')],
-                ['Avg Depth', fmt(dive.avgDepth, 'm')],
-                ['Air Temp', fmt(dive.airTemp, '°C')],
-                ['Surface Temp', fmt(dive.surfaceTemp, '°C')],
-                ['Water Temp', fmt(dive.waterTemp, '°C')],
-                ['Visibility', fmt(dive.visibility, 'm')],
-                ['Weather', dive.weather || '--'],
-                ['Water Type', dive.waterType || '--'],
-                ['Body of Water', dive.bodyOfWater || '--'],
-                ['Waves', dive.waves || '--'],
-                ['Current', dive.current || '--'],
-                ['Surge', dive.surge || '--'],
-                ['Exposure Suit', dive.suit || '--'],
-                ['Weight / Rig', fmt(dive.weight, ' kg')],
-                ['Additional Gear', (dive.additionalGear && dive.additionalGear.length) ? dive.additionalGear.join(', ') : 'None'],
-                ['Tank Type', dive.tankType || '--'],
-                ['Tank Volume', dive.tankVol ? `${dive.tankVol} L` : '--'],
-                ['Gas', dive.gas || '--'],
-                ['Gas Mix (O2 / N2 / He)', `${dive.gasO2 ?? '--'}% / ${dive.gasN2 ?? '--'}% / ${dive.gasHe ?? '--'}%`],
-                ['Start Pressure', dive.gasStart !== null && dive.gasStart !== undefined ? `${dive.gasStart} ${dive.gasUnit}` : '--'],
-                ['End Pressure', dive.gasEnd !== null && dive.gasEnd !== undefined ? `${dive.gasEnd} ${dive.gasUnit}` : '--'],
-                ['Dive Buddy / Guide', dive.buddy || 'Solo'],
-                ['Verification Number', dive.buddyNo || '--'],
-            ];
-
-            const gridHtml = rows.map(([label, value]) => `
-                <div class="flex justify-between items-start gap-4 py-2 border-b border-ocean-900/10 dark:border-ocean-900/10">
-                    <span class="text-slate-400 text-xs uppercase font-mono-custom flex-shrink-0">${label}</span>
-                    <span class="font-mono-custom font-semibold text-white dark:text-white text-right">${value}</span>
-                </div>
-            `).join('');
+            const hasExactPin = typeof dive.latitude === 'number' && typeof dive.longitude === 'number'
+                && !isNaN(dive.latitude) && !isNaN(dive.longitude);
+            const locationHtml = hasExactPin
+                ? `<div id="log-detail-map" class="w-full h-40 rounded-xl overflow-hidden border border-ocean-800/50 dark:border-ocean-800/50 mt-3"></div>
+                   <p class="text-[10px] font-mono-custom text-cyan-400 mt-1">Pinned: ${dive.latitude.toFixed(5)}, ${dive.longitude.toFixed(5)}</p>`
+                : `<p class="text-[11px] text-slate-500 italic mt-3">No exact location pinned for this dive — only the country/territory above was recorded.</p>`;
 
             let crittersHtml = '<p class="text-xs text-slate-500 italic py-2">No marine life observations logged during this run.</p>';
             if (dive.critters && dive.critters.length > 0) {
@@ -4821,24 +4941,121 @@
                 }).join('') + `</div>`;
             }
 
-            document.getElementById('log-detail-content').innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">${gridHtml}</div>
-                <div class="mt-4">
-                    <span class="block text-[10px] font-mono-custom text-slate-400 uppercase mb-1">Journal Notes</span>
-                    <p class="text-xs text-slate-300 bg-ocean-950/30 dark:bg-ocean-950/30 p-3 rounded-xl border border-ocean-850/20 italic">"${dive.notes || 'No log details added.'}"</p>
-                </div>
-                <div class="mt-4">
-                    <span class="block text-[10px] font-mono-custom text-slate-400 uppercase mb-1">Marine Species Sightings</span>
+            // Sections mirror the Log a Dive form's own 7-section structure
+            // (General, Environmental Profile, Equipment, Depth & Time
+            // Profile, Gas Metrics & SAC, Marine Life Sightings,
+            // Verification & Journal Entry) field-for-field.
+            const sectionsHtml = [
+                buildLogDetailSection('01', 'General', [
+                    ['Dive Number', dive.diveNo ?? '--'],
+                    ['Date', dive.date ? formatDateDMY(dive.date) : '--'],
+                    ['Dive Type', dive.diveType || '--'],
+                    ['Country / Territory', dive.country || '--'],
+                    ['Dive Site', dive.site || '--'],
+                ], locationHtml),
+                buildLogDetailSection('02', 'Environmental Profile', [
+                    ['Air Temp', fmt(dive.airTemp, '°C')],
+                    ['Surface Temp', fmt(dive.surfaceTemp, '°C')],
+                    ['Water Temp', fmt(dive.waterTemp, '°C')],
+                    ['Visibility', fmt(dive.visibility, 'm')],
+                    ['Weather', dive.weather || '--'],
+                    ['Water Type', dive.waterType || '--'],
+                    ['Body of Water', dive.bodyOfWater || '--'],
+                    ['Waves', dive.waves || '--'],
+                    ['Current', dive.current || '--'],
+                    ['Surge', dive.surge || '--'],
+                ]),
+                buildLogDetailSection('03', 'Equipment', [
+                    ['Exposure Suit', dive.suit || '--'],
+                    ['Weight / Rig', fmt(dive.weight, ' kg')],
+                    ['Additional Gear', (dive.additionalGear && dive.additionalGear.length) ? dive.additionalGear.join(', ') : 'None'],
+                    ['Tank Type', dive.tankType || '--'],
+                    ['Tank Volume', dive.tankVol ? `${dive.tankVol} L` : '--'],
+                ]),
+                buildLogDetailSection('04', 'Depth &amp; Time Profile', [
+                    ['Time In', dive.timeIn || '--'],
+                    ['Time Out', dive.timeOut || '--'],
+                    ['Bottom Time', fmt(dive.bottomTime, ' min')],
+                    ['Max Depth', fmt(dive.maxDepth, 'm')],
+                    ['Avg Depth', fmt(dive.avgDepth, 'm')],
+                ]),
+                buildLogDetailSection('05', 'Gas Metrics &amp; SAC', [
+                    ['Gas', dive.gas || '--'],
+                    ['Gas Mix (O2 / N2 / He)', `${dive.gasO2 ?? '--'}% / ${dive.gasN2 ?? '--'}% / ${dive.gasHe ?? '--'}%`],
+                    ['Start Pressure', dive.gasStart !== null && dive.gasStart !== undefined ? `${dive.gasStart} ${dive.gasUnit}` : '--'],
+                    ['End Pressure', dive.gasEnd !== null && dive.gasEnd !== undefined ? `${dive.gasEnd} ${dive.gasUnit}` : '--'],
+                ]),
+                `<div class="glass-panel p-4 rounded-2xl">
+                    <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-ocean-900/20 dark:border-ocean-900/20 pb-2 mb-1">
+                        <span class="font-mono-custom text-xs">06.</span>
+                        <h4 class="text-xs tracking-widest uppercase">Marine Life Sightings</h4>
+                    </div>
                     ${crittersHtml}
-                </div>
-            `;
+                </div>`,
+                buildLogDetailSection('07', 'Verification &amp; Journal Entry', [
+                    ['Dive Buddy / Guide', dive.buddy || 'Solo'],
+                    ['Verification Number', dive.buddyNo || '--'],
+                ], `<div class="mt-3">
+                        <span class="block text-[10px] font-mono-custom text-slate-400 uppercase mb-1">Journal Notes</span>
+                        <p class="text-xs text-slate-300 bg-ocean-950/30 dark:bg-ocean-950/30 p-3 rounded-xl border border-ocean-850/20 italic">"${dive.notes || 'No log details added.'}"</p>
+                    </div>`),
+            ].join('');
+
+            document.getElementById('log-detail-content').innerHTML = `<div class="space-y-4">${sectionsHtml}</div>`;
 
             document.getElementById('log-detail-modal').classList.remove('hidden');
+
+            if (hasExactPin) {
+                // Leaflet needs its container actually laid out (not
+                // display:none) before creating a map on it — same
+                // requirement as the Dashboard map and location picker.
+                // The modal was just made visible above, so wait a tick.
+                setTimeout(() => initLogDetailMap(dive.latitude, dive.longitude), 100);
+            }
+        }
+
+        // Small read-only preview map for the "full dive log details" modal
+        // — just centers on the dive's pinned coordinates with a marker, no
+        // click-to-pin behavior (that's only in the Log a Dive form itself).
+        function initLogDetailMap(lat, lng) {
+            const container = document.getElementById('log-detail-map');
+            if (!container) return;
+
+            if (logDetailMap !== null) {
+                logDetailMap.remove();
+                logDetailMap = null;
+            }
+
+            const tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+            const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+            logDetailMap = L.map('log-detail-map', {
+                center: [lat, lng],
+                zoom: 12,
+                minZoom: 1,
+                maxZoom: 18,
+                scrollWheelZoom: false,
+                attributionControl: false,
+                zoomControl: true
+            });
+            L.tileLayer(tileUrl, { attribution, maxZoom: 19, subdomains: 'abcd' }).addTo(logDetailMap);
+
+            const pinIcon = L.divIcon({
+                className: 'leaflet-custom-pulse',
+                html: `<div class="h-4 w-4 rounded-full bg-cyan-400/90 border-2 border-white map-pulsing-marker"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+            L.marker([lat, lng], { icon: pinIcon }).addTo(logDetailMap);
         }
 
         function closeLogDetailModal() {
             document.getElementById('log-detail-modal').classList.add('hidden');
             currentLogDetailId = null;
+            if (logDetailMap) {
+                logDetailMap.remove();
+                logDetailMap = null;
+            }
         }
 
         // Only entry point into actually editing this log — hands off to the
