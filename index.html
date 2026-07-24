@@ -3184,24 +3184,21 @@
             return `
                 <div id="share-card-inner" style="width:720px;background:#03141f;font-family:'Inter',sans-serif;">
                     <!-- Top half: certificate card -->
-                    <div style="background:linear-gradient(135deg, #093054 0%, #061e38 50%, #031b2e 100%);padding:36px;position:relative;">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;">
+                    <div style="background:linear-gradient(135deg, #093054 0%, #061e38 50%, #031b2e 100%);padding:36px 36px 40px;position:relative;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;">
                             <div style="height:32px;width:32px;border-radius:10px;background:linear-gradient(135deg,#06b6d4,#2563eb);display:flex;align-items:center;justify-content:center;">
                                 <i class="fa-solid fa-water" style="font-size:14px;color:#fff;"></i>
                             </div>
-                            <span style="font-weight:800;font-size:16px;color:#fff;letter-spacing:0.02em;">ABYSS</span>
-                            <span style="font-size:10px;color:#22d3ee;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;">Diver Profile</span>
+                            <span style="font-size:16px;color:#22d3ee;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;">Diver Profile</span>
                         </div>
-                        <div style="display:flex;align-items:center;gap:20px;">
-                            <div style="height:84px;width:84px;border-radius:50%;border:3px solid #22d3ee;background:#1e293b;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;">
+                            <div style="height:84px;width:84px;border-radius:50%;border:3px solid #22d3ee;background:#1e293b;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;margin-bottom:14px;">
                                 ${avatarHtml}
                             </div>
-                            <div>
-                                <h2 style="font-size:28px;font-weight:800;color:#fff;margin:0;">${name}</h2>
-                                <div style="display:flex;gap:8px;margin-top:10px;">
-                                    <span style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;background:rgba(255,255,255,0.1);color:#67e8f9;border:1px solid rgba(34,211,238,0.4);font-family:'JetBrains Mono',monospace;">${org}</span>
-                                    <span style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;background:#06b6d4;color:#fff;font-family:'JetBrains Mono',monospace;">${level}</span>
-                                </div>
+                            <h2 style="font-size:26px;font-weight:800;color:#fff;margin:0;">${name}</h2>
+                            <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
+                                <span style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;background:rgba(255,255,255,0.1);color:#67e8f9;border:1px solid rgba(34,211,238,0.4);font-family:'JetBrains Mono',monospace;">${org}</span>
+                                <span style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;background:#06b6d4;color:#fff;font-family:'JetBrains Mono',monospace;">${level}</span>
                             </div>
                         </div>
                     </div>
@@ -3325,6 +3322,7 @@
         let diveLogCardBlob = null;
         let diveLogCardObjectUrl = null;
         let currentDiveLogCardDiveId = null;
+        let diveLogCardChartInstance = null;
 
         // Converts a minutes value (can be fractional, e.g. 0.33 for a short
         // freedive) into mm:ss for the dive log card's time axis — whole
@@ -3337,6 +3335,21 @@
             return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         }
 
+        // Builds the config for the dive log card's depth-over-time graph —
+        // the exact same Chart.js line style used by the Logbook's expanded
+        // preview (buildDepthProfileChartConfig), with two card-specific
+        // overrides: a fixed depth-axis step of 2m (so the value labels land
+        // every 2m instead of wherever Chart.js's auto-tick picker lands),
+        // and the time-axis tick labels formatted as mm:ss.
+        function buildDiveLogCardChartConfig(profilePts, niceMaxD) {
+            const cfg = buildDepthProfileChartConfig(profilePts, true);
+            cfg.options.animation = false;
+            cfg.options.scales.y.max = niceMaxD;
+            cfg.options.scales.y.ticks.stepSize = 2;
+            cfg.options.scales.x.ticks.callback = (val) => fmtMinutesAsMMSS(val);
+            return cfg;
+        }
+
         function buildDiveLogCardMarkup(diveId) {
             const dive = state.dives.find(d => d.id === diveId);
             if (!dive) return '';
@@ -3345,81 +3358,36 @@
             const avatar = profile.avatar || null;
             const avatarHtml = avatar
                 ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;" />`
-                : `<i class="fa-solid fa-user-astronaut" style="font-size:11px;color:#67e8f9;"></i>`;
+                : `<i class="fa-solid fa-user-astronaut" style="font-size:12px;color:#67e8f9;"></i>`;
 
             const profilePts = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : synthDepthProfile(dive.maxDepth, dive.bottomTime);
-
-            const graphW = 260, graphH = 90;
-            let polyline = '';
-            let depthLabelsHtml = '';
-            let gridlinesHtml = '';
-            let timeLabelsHtml = '';
-
-            if (profilePts && profilePts.length > 1) {
-                const rawMaxT = Math.max(...profilePts.map(p => p.t)) || 1;
-                const rawMaxD = Math.max(...profilePts.map(p => p.d)) || 1;
-                // Round the depth scale up to the nearest 5m so gridlines land
-                // on clean values (e.g. a 32m dive gets a 0-35m scale).
-                const niceMaxD = Math.max(5, Math.ceil(rawMaxD / 5) * 5);
-
-                const pts = profilePts.map(p => {
-                    const x = (p.t / rawMaxT) * graphW;
-                    const y = (p.d / niceMaxD) * graphH;
-                    return `${x.toFixed(1)},${y.toFixed(1)}`;
-                }).join(' ');
-                polyline = `<polyline points="${pts}" fill="none" stroke="#22d3ee" stroke-width="2"/>`;
-
-                // Depth axis: a gridline every 5m, but the value label only
-                // every 10m (per design) — no unit suffix on either axis.
-                const gridLines = [];
-                const depthLabels = [];
-                for (let d = 0; d <= niceMaxD; d += 5) {
-                    const y = (d / niceMaxD) * graphH;
-                    gridLines.push(`<line x1="0" y1="${y.toFixed(1)}" x2="${graphW}" y2="${y.toFixed(1)}" stroke="${d % 10 === 0 ? '#163b52' : '#12293a'}" stroke-width="0.5"/>`);
-                    if (d % 10 === 0) {
-                        depthLabels.push(`<span style="position:absolute;top:${y.toFixed(1)}px;right:4px;transform:translateY(-50%);">${d}</span>`);
-                    }
-                }
-                gridlinesHtml = gridLines.join('');
-                depthLabelsHtml = depthLabels.join('');
-
-                // Time axis: 5 evenly spaced ticks across the actual dive
-                // duration, formatted mm:ss (handles freedives under a minute
-                // just as well as long scuba dives).
-                timeLabelsHtml = [0, 0.25, 0.5, 0.75, 1].map(frac =>
-                    `<span>${fmtMinutesAsMMSS(rawMaxT * frac)}</span>`
-                ).join('');
-            }
+            const graphSectionHtml = (profilePts && profilePts.length > 1)
+                ? `<div style="width:100%;height:190px;position:relative;margin-bottom:4px;"><canvas id="dive-log-card-chart-canvas"></canvas></div>`
+                : `<div style="height:190px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7fb8d6;margin-bottom:4px;">No depth profile recorded</div>`;
 
             const fmtStat = (val, suffix) => (val !== null && val !== undefined && val !== '' && !isNaN(val)) ? `${val}${suffix}` : '--';
 
             return `
-                <div id="dive-log-card-inner" style="width:340px;background:#0a1f30;font-family:'Inter',sans-serif;padding:18px;color:#e6f1fb;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#06b6d4,#2563eb);display:flex;align-items:center;justify-content:center;">
-                                <i class="fa-solid fa-water" style="font-size:12px;color:#fff;"></i>
-                            </div>
-                            <span style="font-size:13px;font-weight:800;letter-spacing:0.03em;">ABYSS</span>
+                <div id="dive-log-card-inner" style="width:380px;background:#0a1f30;font-family:'Inter',sans-serif;padding:22px;color:#e6f1fb;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#06b6d4,#2563eb);display:flex;align-items:center;justify-content:center;">
+                            <i class="fa-solid fa-water" style="font-size:14px;color:#fff;"></i>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-size:12px;color:#9fc9e0;">${name}</span>
-                            <div style="width:24px;height:24px;border-radius:50%;background:#1d4e6e;border:1px solid #22d3ee;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${avatarHtml}</div>
+                            <span style="font-size:13px;color:#9fc9e0;">${name}</span>
+                            <div style="width:28px;height:28px;border-radius:50%;background:#1d4e6e;border:1px solid #22d3ee;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${avatarHtml}</div>
                         </div>
                     </div>
-                    <p style="font-size:13px;font-weight:700;margin:0;color:#fff;">${dive.site || 'Dive Site'}</p>
-                    <p style="font-size:11px;color:#7fb8d6;margin:2px 0 8px;">${dive.country ? dive.country + ' · ' : ''}${dive.date ? formatDateDMY(dive.date) : ''}</p>
-                    <div style="display:flex;">
-                        <div style="position:relative;width:20px;height:${graphH}px;font-size:8px;color:#7fb8d6;text-align:right;flex-shrink:0;">${depthLabelsHtml}</div>
-                        <svg width="100%" height="${graphH}" viewBox="0 0 ${graphW} ${graphH}" preserveAspectRatio="none" style="display:block;flex:1;margin:0 0 0 4px;">${gridlinesHtml}${polyline}</svg>
+                    <p style="font-size:14px;font-weight:700;margin:0;color:#fff;">${dive.site || 'Dive Site'}</p>
+                    <p style="font-size:12px;color:#7fb8d6;margin:2px 0 20px;">${dive.country ? dive.country + ' · ' : ''}${dive.date ? formatDateDMY(dive.date) : ''}</p>
+                    ${graphSectionHtml}
+                    <div style="display:flex;justify-content:space-between;text-align:center;border-top:1px solid #163b52;padding-top:12px;margin-top:14px;font-family:'JetBrains Mono',monospace;">
+                        <div><p style="font-size:10px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">BOTTOM TIME</p><p style="font-size:16px;font-weight:700;margin:3px 0 0;">${fmtStat(dive.bottomTime, ' min')}</p></div>
+                        <div><p style="font-size:10px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">MIN TEMP</p><p style="font-size:16px;font-weight:700;margin:3px 0 0;">${fmtStat(dive.waterTemp, '°C')}</p></div>
+                        <div><p style="font-size:10px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">AVG DEPTH</p><p style="font-size:16px;font-weight:700;margin:3px 0 0;">${fmtStat(dive.avgDepth, 'm')}</p></div>
+                        <div><p style="font-size:10px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">MAX DEPTH</p><p style="font-size:16px;font-weight:700;margin:3px 0 0;">${fmtStat(dive.maxDepth, 'm')}</p></div>
                     </div>
-                    <div style="display:flex;padding-left:24px;justify-content:space-between;font-size:8px;color:#7fb8d6;margin-top:2px;">${timeLabelsHtml}</div>
-                    <div style="display:flex;justify-content:space-between;text-align:center;border-top:1px solid #163b52;padding-top:10px;margin-top:10px;">
-                        <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">BOTTOM TIME</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.bottomTime, ' min')}</p></div>
-                        <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">MIN TEMP</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.waterTemp, '°C')}</p></div>
-                        <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">AVG DEPTH</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.avgDepth, 'm')}</p></div>
-                        <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">MAX DEPTH</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.maxDepth, 'm')}</p></div>
-                    </div>
+                    <div style="margin-top:16px;text-align:center;font-size:11px;color:#475569;font-family:'JetBrains Mono',monospace;">Generated by Abyss &mdash; Personal Dive Log</div>
                 </div>`;
         }
 
@@ -3436,6 +3404,10 @@
         function closeDiveLogCardModal() {
             document.getElementById('dive-log-card-modal').classList.add('hidden');
             document.getElementById('dive-log-card-render-host').innerHTML = '';
+            if (diveLogCardChartInstance) {
+                diveLogCardChartInstance.destroy();
+                diveLogCardChartInstance = null;
+            }
             if (diveLogCardObjectUrl) {
                 URL.revokeObjectURL(diveLogCardObjectUrl);
                 diveLogCardObjectUrl = null;
@@ -3458,6 +3430,22 @@
                 showToast("Couldn't find that dive to render a card for.", "error");
                 closeDiveLogCardModal();
                 return;
+            }
+
+            // Instantiate the depth graph as a real Chart.js chart (same style as
+            // the Logbook's expanded preview) on the off-screen canvas before
+            // html2canvas captures it.
+            const dive = state.dives.find(d => d.id === diveId);
+            const profilePts = dive ? ((dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : synthDepthProfile(dive.maxDepth, dive.bottomTime)) : null;
+            const chartCanvasEl = document.getElementById('dive-log-card-chart-canvas');
+            if (diveLogCardChartInstance) {
+                diveLogCardChartInstance.destroy();
+                diveLogCardChartInstance = null;
+            }
+            if (dive && profilePts && profilePts.length > 1 && chartCanvasEl && typeof Chart !== 'undefined') {
+                const rawMaxD = Math.max(...profilePts.map(p => p.d)) || 1;
+                const niceMaxD = Math.max(2, Math.ceil(rawMaxD / 2) * 2);
+                diveLogCardChartInstance = new Chart(chartCanvasEl, buildDiveLogCardChartConfig(profilePts, niceMaxD));
             }
 
             try {
@@ -3484,6 +3472,11 @@
                 console.error('Failed to render dive log card:', err);
                 showToast("Couldn't render the dive log card image. Please try again.", "error");
                 closeDiveLogCardModal();
+            } finally {
+                if (diveLogCardChartInstance) {
+                    diveLogCardChartInstance.destroy();
+                    diveLogCardChartInstance = null;
+                }
             }
         }
 
