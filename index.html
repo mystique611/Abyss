@@ -557,7 +557,7 @@
                         <label class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center space-x-2 cursor-pointer transition-colors" title="Import a dive computer's UDDF export to pre-fill this form">
                             <i class="fa-solid fa-file-import"></i>
                             <span class="hidden sm:inline">Import UDDF</span>
-                            <input type="file" id="uddf-import-input" accept=".uddf,.xml" onchange="handleUDDFImportToForm(this)" class="hidden">
+                            <input type="file" id="uddf-import-input" accept=".uddf,.xml,text/xml,application/xml,application/octet-stream" onchange="handleUDDFImportToForm(this)" class="hidden">
                         </label>
                     </div>
                 </div>
@@ -1001,6 +1001,14 @@
                                     <i class="fa-solid fa-socks text-lg"></i>
                                     <span class="text-[9px] mt-1 font-semibold">Boots</span>
                                 </button>
+
+                                <!-- One toggle button per saved My Gear library entry (see renderMyGearButtons()) -->
+                                <div id="my-gear-buttons-container" class="flex flex-wrap gap-3"></div>
+
+                                <button type="button" onclick="openMyGearModal()" title="My Gear" class="flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-dashed border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 hover:text-cyan-400 transition-all">
+                                    <i class="fa-solid fa-plus text-lg"></i>
+                                    <span class="text-[9px] mt-1 font-semibold">My Gear</span>
+                                </button>
                             </div>
                             <!-- Hidden checkboxes keep the existing save/load logic (handleFormSubmit, startEditDiveLog) unchanged — the icon buttons above just toggle these. -->
                             <input type="checkbox" id="form-gear-hood" class="hidden">
@@ -1124,7 +1132,7 @@
                             <span class="font-mono-custom text-sm">07.</span>
                             <h3 class="text-sm tracking-widest uppercase">Dive Photos</h3>
                         </div>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 font-medium">Add photos from this dive. They're only viewable via the "View Dive Photos" button in the Logbook — never shown inline in previews.</p>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 font-medium">Add photos from this dive. They're viewable via the "View Dive Photos" in Logbook</p>
                         <label class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold cursor-pointer transition-colors">
                             <i class="fa-solid fa-camera"></i>
                             <span>Add Photos</span>
@@ -1544,6 +1552,15 @@
                     <input type="date" id="cert-date" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Current Certification</label>
+                    <button type="button" id="cert-set-current-btn" onclick="toggleCertSetCurrent()" class="w-full px-4 py-2.5 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
+                        <i class="fa-solid fa-check text-xs"></i>
+                        <span id="cert-set-current-btn-label">Set as Current Certification</span>
+                    </button>
+                    <p id="cert-set-current-hint" class="hidden text-[10px] text-slate-500 mt-1"></p>
+                </div>
+
                 <div class="pt-2 border-t border-slate-200 dark:border-ocean-900/20">
                     <p class="text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 uppercase tracking-wider mb-3">Optional details</p>
 
@@ -1577,6 +1594,83 @@
                         </button>
                         <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold shadow-md">
                             Save Certification
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: MY GEAR (ADD/EDIT REUSABLE PERSONAL EQUIPMENT) ==================== -->
+    <div id="my-gear-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeMyGearModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="flex items-center space-x-3 text-cyan-400">
+                <i class="fa-solid fa-gear text-xl"></i>
+                <h3 id="my-gear-modal-title" class="text-base font-bold uppercase tracking-wider">Add My Gear</h3>
+            </div>
+
+            <form id="my-gear-form" onsubmit="saveMyGear(event)" class="space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Category</label>
+                    <select id="my-gear-category" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                        <option value="Mask">Mask</option>
+                        <option value="Snorkel">Snorkel</option>
+                        <option value="Fin">Fin</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Brand</label>
+                    <input type="text" id="my-gear-brand" placeholder="e.g., Cressi" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Model</label>
+                    <input type="text" id="my-gear-model" placeholder="e.g., Big Eyes Evolution" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Custom Label</label>
+                    <input type="text" id="my-gear-custom-label" placeholder="e.g., My Travel Mask" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    <p class="text-[10px] text-slate-500 mt-1">Shown as the button title in the Additional Gear section</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Date of Purchase</label>
+                    <input type="date" id="my-gear-purchase-date" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Serial Number <span class="normal-case text-slate-500">(optional)</span></label>
+                    <input type="text" id="my-gear-serial" placeholder="e.g., SN-88213" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Weight (kg)</label>
+                    <input type="number" step="0.1" min="0" id="my-gear-weight" placeholder="0.3" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Default</label>
+                    <button type="button" id="my-gear-default-btn" onclick="toggleMyGearDefault()" class="w-full px-4 py-2.5 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
+                        <i class="fa-solid fa-check text-xs"></i>
+                        <span id="my-gear-default-btn-label">Add by Default to Future Dive Logs</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between space-x-3 pt-3 border-t border-slate-200 dark:border-ocean-900/20">
+                    <button type="button" id="my-gear-delete-btn" onclick="deleteMyGearFromModal()" class="hidden px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold">
+                        Delete
+                    </button>
+                    <div class="flex items-center space-x-3 ml-auto">
+                        <button type="button" onclick="closeMyGearModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-850 hover:bg-slate-100 dark:hover:bg-ocean-900/10 text-xs font-semibold">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold shadow-md">
+                            Save Gear
                         </button>
                     </div>
                 </div>
@@ -1744,6 +1838,10 @@
                     <div id="pdf-cert-list" class="space-y-1.5">
                         <!-- JS populates one checkbox per certification history entry -->
                     </div>
+                    <div class="mt-3 p-3 rounded-xl border border-dashed border-slate-300 dark:border-ocean-800/50 bg-slate-50 dark:bg-ocean-950/40">
+                        <span class="block text-[9px] font-mono-custom text-slate-500 uppercase tracking-wider mb-1.5">Preview — top of exported page</span>
+                        <div id="pdf-cert-preview" class="text-[11px] leading-snug text-slate-700 dark:text-slate-300 font-mono-custom"></div>
+                    </div>
                 </div>
 
                 <div>
@@ -1763,6 +1861,27 @@
                 </button>
                 <button onclick="confirmPdfExport()" class="px-6 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold flex items-center gap-2">
                     <i class="fa-solid fa-file-pdf"></i> Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: UDDF MULTI-DIVE SELECTION ==================== -->
+    <div id="uddf-dive-select-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-lg rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
+            <button onclick="closeUddfDiveSelectModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="border-b border-slate-200 dark:border-ocean-900/30 pb-4 flex-shrink-0 pr-8">
+                <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Choose a Dive to Import</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">This file contains more than one dive — pick which one to pre-fill the form with</p>
+            </div>
+            <div id="uddf-dive-select-list" class="overflow-y-auto my-4 space-y-2 pr-1 flex-1 text-sm">
+                <!-- JS populates one option per <dive> node, showing start/end time and max depth -->
+            </div>
+            <div class="border-t border-slate-200 dark:border-ocean-900/30 pt-4 flex justify-end flex-shrink-0">
+                <button onclick="closeUddfDiveSelectModal()" class="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
+                    Cancel
                 </button>
             </div>
         </div>
@@ -2481,7 +2600,12 @@
                 // syncCurrentCertificationMirror()) so existing code that
                 // reads those top-level fields for the credentials card
                 // doesn't need to change.
-                certifications: []
+                certifications: [],
+                // Reusable personal gear library (Mask/Snorkel/Fin, etc.) —
+                // added once via the "+ My Gear" button in the Log a Dive
+                // Equipment section, then reused as toggleable buttons on
+                // every future dive log entry. See migrateDiverProfileMyGear().
+                myGear: []
             }
         };
 
@@ -2656,6 +2780,7 @@
             state.dives.sort((a, b) => b.diveNo - a.diveNo);
             if (remoteSnapshot.diverProfile) state.diverProfile = remoteSnapshot.diverProfile;
             migrateDiverProfileCertifications();
+            migrateDiverProfileMyGear();
             updateUI();
             showToast("Synced latest data from OneDrive", "info");
         };
@@ -2689,6 +2814,7 @@
             const profile = await window.AbyssDB.getMeta('diverProfile', null);
             if (profile) state.diverProfile = profile;
             migrateDiverProfileCertifications();
+            migrateDiverProfileMyGear();
 
             // Restore the saved theme (falls back to dark for anyone who
             // never had a preference saved, e.g. everyone before this
@@ -3187,14 +3313,22 @@
             const profile = state.diverProfile || {};
             const list = (profile.certifications && profile.certifications.length)
                 ? profile.certifications
-                : [{ org: profile.org, level: profile.level, certNo: profile.certNo, date: profile.date }];
+                : [{ org: profile.org, level: profile.level, certNo: profile.certNo, date: profile.date, isCurrent: true }];
 
-            let latestIndex = 0;
-            let latestTime = -Infinity;
-            list.forEach((c, i) => {
-                const t = c.date ? new Date(c.date).getTime() : NaN;
-                if (!isNaN(t) && t > latestTime) { latestTime = t; latestIndex = i; }
-            });
+            // Default-check whichever certification is explicitly marked
+            // current (see ensureExactlyOneCurrentCertification()). Only
+            // fall back to the old most-recent-by-date rule for data saved
+            // before that flag existed, so pre-existing profiles still get
+            // a sensible default.
+            let currentIndex = list.findIndex(c => c.isCurrent === true);
+            if (currentIndex === -1) {
+                let latestTime = -Infinity;
+                list.forEach((c, i) => {
+                    const t = c.date ? new Date(c.date).getTime() : NaN;
+                    if (!isNaN(t) && t > latestTime) { latestTime = t; currentIndex = i; }
+                });
+                if (currentIndex === -1) currentIndex = 0;
+            }
 
             return list.map((c, i) => ({
                 index: i,
@@ -3202,7 +3336,7 @@
                 level: c.level || '',
                 certNo: c.certNo || '',
                 label: [c.org, c.level].filter(Boolean).join(' ') + (c.certNo ? ` — #${c.certNo}` : ''),
-                isLatest: i === latestIndex
+                isCurrent: i === currentIndex
             }));
         }
 
@@ -3219,10 +3353,11 @@
             const certList = document.getElementById('pdf-cert-list');
             certList.innerHTML = getCertificationOptions().map(c => `
                 <label class="flex items-center space-x-2.5 cursor-pointer">
-                    <input type="checkbox" data-pdf-cert="${c.index}" ${c.isLatest ? 'checked' : ''} class="accent-cyan-500">
+                    <input type="checkbox" data-pdf-cert="${c.index}" ${c.isCurrent ? 'checked' : ''} onchange="updatePdfCertPreview()" class="accent-cyan-500">
                     <span class="text-xs text-slate-700 dark:text-slate-300">${c.label || 'Untitled certification'}</span>
                 </label>
             `).join('');
+            updatePdfCertPreview();
 
             const groupsEl = document.getElementById('pdf-field-groups');
             const groups = [];
@@ -3246,6 +3381,30 @@
             `).join('');
 
             document.getElementById('pdf-export-modal').classList.remove('hidden');
+        }
+
+        // Mirrors the header block exportDivesToPDF() draws on the exported
+        // page (diver name + one line per checked certification), so the
+        // modal shows exactly what will land on the PDF before exporting.
+        function updatePdfCertPreview() {
+            const previewEl = document.getElementById('pdf-cert-preview');
+            if (!previewEl) return;
+
+            const profile = state.diverProfile || {};
+            const certOptions = getCertificationOptions();
+            const checkedIndexes = Array.from(document.querySelectorAll('[data-pdf-cert]:checked'))
+                .map(c => parseInt(c.getAttribute('data-pdf-cert')));
+            const lines = checkedIndexes
+                .map(i => certOptions.find(c => c.index === i))
+                .filter(Boolean)
+                .map(c => c.label || 'Untitled certification');
+
+            const nameLine = `<div class="font-bold text-slate-900 dark:text-white">Abyss Dive Log — ${profile.name || 'Diver'}</div>`;
+            const certLinesHtml = lines.length
+                ? lines.map(l => `<div class="text-slate-500 dark:text-slate-400">${l}</div>`).join('')
+                : `<div class="italic text-slate-500 dark:text-slate-500">No certifications selected</div>`;
+
+            previewEl.innerHTML = nameLine + certLinesHtml;
         }
 
         function closePdfExportModal() {
@@ -3532,8 +3691,12 @@
             return { date, timeIn, siteName, maxDepth, avgDepth, durationSec, visibility, waterTempK, airTempK, tankBeginBar, tankEndBar, notesText, depthProfile };
         }
 
-        // Pre-fills the currently-open Log a Dive form from the FIRST dive in
-        // a UDDF file. This intentionally does not create/save any dive
+        // Pre-fills the currently-open Log a Dive form from a UDDF file. If
+        // the file contains exactly one dive, it's applied immediately
+        // (same as before). If it contains more than one, the diver is
+        // shown a selection list (start/end time + max depth per dive) via
+        // openUddfDiveSelectModal() instead of silently always taking the
+        // first one. This intentionally does not create/save any dive
         // records itself — the diver reviews and completes the rest of the
         // fields (Country, Dive Type, Buddy, Tags, gear, etc.) before
         // committing, same as a manually-started entry.
@@ -3559,8 +3722,20 @@
                 if (id && nameEl) siteNames[id] = nameEl.textContent.trim();
             });
 
-            const parsed = parseUddfDiveNode(diveNodes[0], siteNames);
+            const parsedDives = diveNodes.map(node => parseUddfDiveNode(node, siteNames));
 
+            if (parsedDives.length === 1) {
+                applyParsedUddfDive(parsedDives[0]);
+                return;
+            }
+
+            openUddfDiveSelectModal(parsedDives);
+        }
+
+        // Fills the Log a Dive form fields from one parsed <dive> node. Split
+        // out of importUDDFIntoForm() so both the single-dive fast path and
+        // the multi-dive selection modal share the same fill logic.
+        function applyParsedUddfDive(parsed) {
             const setVal = (id, val) => {
                 if (val === null || val === undefined || isNaN(val) && typeof val === 'number') return;
                 const el = document.getElementById(id);
@@ -3589,6 +3764,54 @@
             updateRealtimeSAC();
 
             showToast("Form pre-filled from UDDF. Country, Dive Type, Buddy, and Dive Tags aren't part of the UDDF standard — please fill those in.", "success");
+        }
+
+        // Holds the parsed dives while the multi-dive selection modal is open.
+        let pendingUddfDives = [];
+
+        // Computes a HH:MM start/end pair for the selection list preview.
+        // End time is derived from start + dive duration (UDDF has no
+        // separate "end time" field of its own).
+        function formatUddfTimeRange(parsed) {
+            const start = parsed.timeIn || '--:--';
+            let end = '--:--';
+            if (parsed.timeIn && parsed.durationSec !== null) {
+                const [h, m] = parsed.timeIn.split(':').map(Number);
+                const endMinutes = h * 60 + m + Math.round(parsed.durationSec / 60);
+                const eh = Math.floor((endMinutes % 1440) / 60).toString().padStart(2, '0');
+                const em = (endMinutes % 60).toString().padStart(2, '0');
+                end = `${eh}:${em}`;
+            }
+            return { start, end };
+        }
+
+        function openUddfDiveSelectModal(parsedDives) {
+            pendingUddfDives = parsedDives;
+            const listEl = document.getElementById('uddf-dive-select-list');
+            listEl.innerHTML = parsedDives.map((p, i) => {
+                const { start, end } = formatUddfTimeRange(p);
+                const dateStr = p.date ? formatDateDMY(p.date) : 'Unknown date';
+                const siteStr = p.siteName ? ` · ${p.siteName}` : '';
+                const depthStr = (p.maxDepth !== null && p.maxDepth !== undefined) ? `${p.maxDepth}m max depth` : 'Max depth unknown';
+                return `
+                    <button type="button" onclick="confirmUddfDiveSelection(${i})" class="w-full text-left p-3 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:border-cyan-500 hover:bg-slate-100 dark:hover:bg-ocean-900/20 transition-colors">
+                        <div class="text-sm font-semibold text-slate-800 dark:text-slate-200">${dateStr}${siteStr}</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${start} – ${end} · ${depthStr}</div>
+                    </button>
+                `;
+            }).join('');
+            document.getElementById('uddf-dive-select-modal').classList.remove('hidden');
+        }
+
+        function closeUddfDiveSelectModal() {
+            document.getElementById('uddf-dive-select-modal').classList.add('hidden');
+            pendingUddfDives = [];
+        }
+
+        function confirmUddfDiveSelection(index) {
+            const parsed = pendingUddfDives[index];
+            closeUddfDiveSelectModal();
+            if (parsed) applyParsedUddfDive(parsed);
         }
 
         /* ---------------- OneDrive sign-in + sync status UI ---------------- */
@@ -3785,6 +4008,7 @@
             setupFormsAndListeners();
             updateGasMixturePreview();
             refreshAllGearIconStyles();
+            applyDefaultMyGearSelection();
             refreshAllDiveTagStyles();
             refreshSiteAndBuddySuggestions();
             resetDepthProfileState();
@@ -4075,6 +4299,171 @@
 
         function refreshAllGearIconStyles() {
             ['hood', 'gloves', 'boots'].forEach(updateGearIconStyle);
+        }
+
+        /* ---------------- My Gear (reusable personal equipment library) ---------------- */
+        // Each entry lives in state.diverProfile.myGear (persisted/synced like
+        // certifications). On the Log a Dive form these render as extra toggle
+        // buttons next to Hood/Gloves/Boots — selecting one for THIS dive just
+        // adds its Custom Label to the dive's additionalGear string array,
+        // same as the built-in gear types. Which buttons start pre-selected on
+        // a brand-new entry is driven by each item's own "Default" flag (see
+        // applyDefaultMyGearSelection(), called from prepareNewDiveLogTab()).
+
+        let selectedMyGearIds = new Set();
+        let editingMyGearId = null;
+        let pendingMyGearIsDefault = false;
+
+        const MY_GEAR_ACTIVE_CLASS = "gear-icon-btn relative flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-cyan-400 bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-400/30 transition-all";
+        const MY_GEAR_INACTIVE_CLASS = "gear-icon-btn relative flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all";
+
+        // Renders one toggle button per My Gear library entry into the
+        // Additional Gear row. Called after loading state, saving/deleting a
+        // gear item, and whenever the Log a Dive form is (re)opened.
+        function renderMyGearButtons() {
+            const container = document.getElementById('my-gear-buttons-container');
+            if (!container) return;
+            const items = state.diverProfile.myGear || [];
+            container.innerHTML = items.map(g => `
+                <div class="relative">
+                    <button type="button" data-my-gear-id="${g.id}" onclick="toggleMyGear('${g.id}')" title="${g.customLabel || g.category}" class="${MY_GEAR_INACTIVE_CLASS}">
+                        <i class="fa-solid fa-gear text-lg"></i>
+                        <span class="text-[9px] mt-1 font-semibold truncate max-w-[56px]">${g.customLabel || g.category}</span>
+                    </button>
+                    <button type="button" onclick="openMyGearModal('${g.id}')" title="Edit ${g.customLabel || g.category}" class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-700 dark:bg-ocean-900 text-white flex items-center justify-center text-[8px] hover:bg-cyan-500">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                </div>
+            `).join('');
+            refreshAllMyGearButtonStyles();
+        }
+
+        function refreshAllMyGearButtonStyles() {
+            (state.diverProfile.myGear || []).forEach(g => updateMyGearButtonStyle(g.id));
+        }
+
+        function updateMyGearButtonStyle(id) {
+            const btn = document.querySelector(`#my-gear-buttons-container button[data-my-gear-id="${id}"]`);
+            if (!btn) return;
+            btn.className = selectedMyGearIds.has(id) ? MY_GEAR_ACTIVE_CLASS : MY_GEAR_INACTIVE_CLASS;
+        }
+
+        function toggleMyGear(id) {
+            if (selectedMyGearIds.has(id)) selectedMyGearIds.delete(id);
+            else selectedMyGearIds.add(id);
+            updateMyGearButtonStyle(id);
+        }
+
+        // Pre-selects every gear item flagged "Default" — called when
+        // starting a brand-new Log a Dive entry (not when editing an
+        // existing saved dive, which restores its own actual selection
+        // instead — see startEditDiveLog()).
+        function applyDefaultMyGearSelection() {
+            selectedMyGearIds = new Set((state.diverProfile.myGear || []).filter(g => g.isDefault).map(g => g.id));
+            refreshAllMyGearButtonStyles();
+        }
+
+        /* ---- My Gear Add/Edit modal ---- */
+
+        function openMyGearModal(gearId) {
+            editingMyGearId = gearId || null;
+            const gear = editingMyGearId ? (state.diverProfile.myGear || []).find(g => g.id === editingMyGearId) : null;
+
+            document.getElementById('my-gear-modal-title').innerText = gear ? "Edit My Gear" : "Add My Gear";
+            document.getElementById('my-gear-category').value = gear ? gear.category : "Mask";
+            document.getElementById('my-gear-brand').value = gear ? gear.brand : "";
+            document.getElementById('my-gear-model').value = gear ? gear.model : "";
+            document.getElementById('my-gear-custom-label').value = gear ? gear.customLabel : "";
+            document.getElementById('my-gear-purchase-date').value = gear ? gear.purchaseDate : "";
+            document.getElementById('my-gear-serial').value = gear ? (gear.serialNumber || "") : "";
+            document.getElementById('my-gear-weight').value = (gear && gear.weight !== null && gear.weight !== undefined) ? gear.weight : "";
+
+            pendingMyGearIsDefault = gear ? !!gear.isDefault : false;
+            updateMyGearDefaultButtonUI();
+
+            document.getElementById('my-gear-delete-btn').classList.toggle('hidden', !gear);
+
+            document.getElementById('my-gear-modal').classList.remove('hidden');
+        }
+
+        function closeMyGearModal() {
+            document.getElementById('my-gear-modal').classList.add('hidden');
+            document.getElementById('my-gear-form').reset();
+            editingMyGearId = null;
+            pendingMyGearIsDefault = false;
+        }
+
+        function toggleMyGearDefault() {
+            pendingMyGearIsDefault = !pendingMyGearIsDefault;
+            updateMyGearDefaultButtonUI();
+        }
+
+        function updateMyGearDefaultButtonUI() {
+            const btn = document.getElementById('my-gear-default-btn');
+            const label = document.getElementById('my-gear-default-btn-label');
+            if (!btn || !label) return;
+            if (pendingMyGearIsDefault) {
+                btn.className = "w-full px-4 py-2.5 rounded-xl border border-cyan-400 bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-400/30 text-sm font-semibold flex items-center justify-center gap-2 transition-colors";
+                label.innerText = "Added by Default to Future Dive Logs";
+            } else {
+                btn.className = "w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 text-sm font-semibold flex items-center justify-center gap-2 transition-colors";
+                label.innerText = "Add by Default to Future Dive Logs";
+            }
+        }
+
+        function saveMyGear(event) {
+            event.preventDefault();
+
+            const rawWeight = document.getElementById('my-gear-weight').value;
+            const gearData = {
+                category: document.getElementById('my-gear-category').value,
+                brand: document.getElementById('my-gear-brand').value.trim(),
+                model: document.getElementById('my-gear-model').value.trim(),
+                customLabel: document.getElementById('my-gear-custom-label').value.trim(),
+                purchaseDate: document.getElementById('my-gear-purchase-date').value,
+                serialNumber: document.getElementById('my-gear-serial').value.trim(),
+                weight: rawWeight !== "" ? parseFloat(rawWeight) : null,
+                isDefault: pendingMyGearIsDefault
+            };
+
+            if (!state.diverProfile.myGear) state.diverProfile.myGear = [];
+
+            let savedId = editingMyGearId;
+            if (editingMyGearId) {
+                const idx = state.diverProfile.myGear.findIndex(g => g.id === editingMyGearId);
+                if (idx !== -1) {
+                    state.diverProfile.myGear[idx] = { ...state.diverProfile.myGear[idx], ...gearData };
+                }
+            } else {
+                savedId = `mygear-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                state.diverProfile.myGear.push({ id: savedId, ...gearData });
+                // Newly added gear that's flagged Default is useful right now
+                // too, not just on the next new entry — select it immediately.
+                if (gearData.isDefault) selectedMyGearIds.add(savedId);
+            }
+
+            persistDiverProfile();
+            showToast(editingMyGearId ? "Gear updated" : "Gear added to your library", "success");
+            closeMyGearModal();
+            renderMyGearButtons();
+        }
+
+        function deleteMyGearFromModal() {
+            if (!editingMyGearId) return;
+            const id = editingMyGearId;
+            closeMyGearModal();
+            openConfirmModal(
+                "Delete Gear?",
+                "This will remove it from your personal gear library. It won't be removed from dives you've already logged.",
+                "Delete",
+                () => {
+                    state.diverProfile.myGear = (state.diverProfile.myGear || []).filter(g => g.id !== id);
+                    selectedMyGearIds.delete(id);
+                    persistDiverProfile();
+                    showToast("Gear deleted", "info");
+                    renderMyGearButtons();
+                }
+            );
         }
 
         // Dive Tags — same hidden-checkbox-plus-styled-button pattern as the
@@ -4409,6 +4798,12 @@
         }
 
         function setupFormsAndListeners() {
+            // Keep the My Gear toggle buttons in sync with the library
+            // (state.diverProfile.myGear) every time this runs — cheapest
+            // single spot to guarantee they exist before any code tries to
+            // read/set their selection state (initial load, new entry, edit).
+            renderMyGearButtons();
+
             const diveNoInput = document.getElementById('form-dive-no');
             if (diveNoInput) {
                 diveNoInput.addEventListener('input', () => {
@@ -4669,10 +5064,20 @@
             document.getElementById('form-gear-hood').checked = !!(dive.additionalGear && dive.additionalGear.includes('Hood'));
             document.getElementById('form-gear-gloves').checked = !!(dive.additionalGear && dive.additionalGear.includes('Gloves'));
             document.getElementById('form-gear-boots').checked = !!(dive.additionalGear && dive.additionalGear.includes('Boots'));
+            // Restore this dive's own My Gear selection (by matching saved
+            // Custom Labels) rather than falling back to each item's Default
+            // flag — editing a past dive shouldn't silently change what gear
+            // it says was used.
+            selectedMyGearIds = new Set(
+                (state.diverProfile.myGear || [])
+                    .filter(g => dive.additionalGear && dive.additionalGear.includes(g.customLabel || g.category))
+                    .map(g => g.id)
+            );
             DIVE_TAGS.forEach(tag => {
                 document.getElementById(`form-tag-${tag}`).checked = !!(dive.tags && dive.tags.includes(tag));
             });
             refreshAllGearIconStyles();
+            refreshAllMyGearButtonStyles();
             refreshAllDiveTagStyles();
             refreshSiteAndBuddySuggestions();
             document.getElementById('form-time-in').value = dive.timeIn || '';
@@ -4782,6 +5187,11 @@
             if (document.getElementById('form-gear-hood').checked) additionalGear.push('Hood');
             if (document.getElementById('form-gear-gloves').checked) additionalGear.push('Gloves');
             if (document.getElementById('form-gear-boots').checked) additionalGear.push('Boots');
+            // Custom My Gear library items selected for this dive (see the
+            // My Gear toggle buttons rendered by renderMyGearButtons()).
+            (state.diverProfile.myGear || []).forEach(g => {
+                if (selectedMyGearIds.has(g.id)) additionalGear.push(g.customLabel || g.category);
+            });
 
             const diveTags = DIVE_TAGS.filter(tag => document.getElementById(`form-tag-${tag}`)?.checked);
             const divePhotos = tempDivePhotos.map(p => p.id);
@@ -4867,6 +5277,7 @@
             renderDivePhotosGrid();
             setupFormsAndListeners();
             refreshAllGearIconStyles();
+            applyDefaultMyGearSelection();
             refreshAllDiveTagStyles();
             refreshSiteAndBuddySuggestions();
             resetDepthProfileState();
@@ -5038,17 +5449,39 @@
                     diveCenter: "",
                     diveCenterLocation: "",
                     instructorName: "",
-                    instructorCertNo: ""
+                    instructorCertNo: "",
+                    isCurrent: true
                 });
             }
+            // Also covers profiles that already had a certifications array
+            // (from before "current" became an explicit, user-set flag) —
+            // picks a sensible default so nothing appears to have no
+            // current certification after this upgrade.
+            ensureExactlyOneCurrentCertification();
             syncCurrentCertificationMirror();
         }
 
-        // "Current" certification = the one with the most recent date.
-        // Undated entries sort last so a dated cert always takes priority.
+        // Safety net for profiles saved before the My Gear library existed —
+        // ensures state.diverProfile.myGear is always an array so every other
+        // function here can assume it's there without a null check.
+        function migrateDiverProfileMyGear() {
+            if (!state.diverProfile.myGear) {
+                state.diverProfile.myGear = [];
+            }
+        }
+
+        // "Current" certification is now an explicit per-entry flag the diver
+        // sets themselves (see the "Set as Current Certification" button in
+        // the certification modal), not an automatic pick. Falls back to the
+        // most-recently-dated entry only for data saved before that flag
+        // existed — ensureExactlyOneCurrentCertification() normalizes that
+        // away the moment the profile is next loaded or saved, so this
+        // fallback path is mostly a defensive belt-and-suspenders.
         function getCurrentCertification() {
             const certs = state.diverProfile.certifications || [];
             if (certs.length === 0) return null;
+            const explicit = certs.find(c => c.isCurrent === true);
+            if (explicit) return explicit;
             return [...certs].sort(sortCertificationsByDateDesc)[0];
         }
 
@@ -5057,6 +5490,20 @@
             if (!a.date) return 1;
             if (!b.date) return -1;
             return new Date(b.date) - new Date(a.date);
+        }
+
+        // Guarantees exactly one certification (if any exist) is flagged
+        // isCurrent — never zero (e.g. the diver unchecked "current" on the
+        // only one that had it without picking a replacement) and never more
+        // than one. When a fallback pick is needed, the most recently dated
+        // entry wins, same as the old automatic behavior.
+        function ensureExactlyOneCurrentCertification() {
+            const certs = state.diverProfile.certifications || [];
+            if (certs.length === 0) return;
+            const currentOnes = certs.filter(c => c.isCurrent === true);
+            if (currentOnes.length === 1) return;
+            const winner = [...certs].sort(sortCertificationsByDateDesc)[0];
+            certs.forEach(c => { c.isCurrent = (c === winner); });
         }
 
         function syncCurrentCertificationMirror() {
@@ -5082,6 +5529,11 @@
 
         let editingCertificationId = null;
 
+        // Tracks the "Set as Current Certification" button's pending value
+        // while the modal is open — not committed to state.diverProfile
+        // until Save is actually clicked.
+        let pendingCertIsCurrent = false;
+
         function openCertificationModal(certId) {
             editingCertificationId = certId || null;
             const form = document.getElementById('certification-form');
@@ -5100,19 +5552,72 @@
                 document.getElementById('cert-instructor-name').value = cert.instructorName || "";
                 document.getElementById('cert-instructor-certno').value = cert.instructorCertNo || "";
                 document.getElementById('certification-delete-btn').classList.remove('hidden');
+                pendingCertIsCurrent = cert.isCurrent === true;
             } else {
                 document.getElementById('certification-modal-title').innerText = "Add Certification";
                 document.getElementById('cert-org').value = "PADI";
                 updateCertLevelOptions("Open Water Diver");
                 document.getElementById('certification-delete-btn').classList.add('hidden');
+                // Only one certification total (i.e. this is the very first
+                // one being added) → it'll automatically be current.
+                pendingCertIsCurrent = (state.diverProfile.certifications || []).length === 0;
             }
 
+            updateCertSetCurrentButtonUI();
             document.getElementById('certification-modal').classList.remove('hidden');
         }
 
         function closeCertificationModal() {
             document.getElementById('certification-modal').classList.add('hidden');
             editingCertificationId = null;
+        }
+
+        // Number of certifications this modal session is choosing "current"
+        // among — the entry being edited plus every other existing one, or
+        // (in add mode) the new entry plus every existing one.
+        function certificationCountIncludingThisEdit() {
+            const total = (state.diverProfile.certifications || []).length;
+            return editingCertificationId ? total : total + 1;
+        }
+
+        function toggleCertSetCurrent() {
+            const btn = document.getElementById('cert-set-current-btn');
+            if (btn.disabled) return;
+            pendingCertIsCurrent = !pendingCertIsCurrent;
+            updateCertSetCurrentButtonUI();
+        }
+
+        function updateCertSetCurrentButtonUI() {
+            const btn = document.getElementById('cert-set-current-btn');
+            const label = document.getElementById('cert-set-current-btn-label');
+            const hint = document.getElementById('cert-set-current-hint');
+            if (!btn || !label || !hint) return;
+
+            const onlyCertificationOverall = certificationCountIncludingThisEdit() === 1;
+            const baseClass = "w-full px-4 py-2.5 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-colors";
+
+            if (onlyCertificationOverall) {
+                // No real choice to make — it's the only certification, so
+                // it's automatically current. Force-select and grey out.
+                pendingCertIsCurrent = true;
+                btn.disabled = true;
+                btn.className = `${baseClass} border-cyan-500/30 bg-cyan-500/10 text-cyan-400 opacity-70 cursor-not-allowed`;
+                label.innerText = "Current Certification";
+                hint.classList.remove('hidden');
+                hint.innerText = editingCertificationId
+                    ? "This is your only certification, so it's automatically your current one."
+                    : "This will be your only certification, so it's automatically your current one.";
+            } else if (pendingCertIsCurrent) {
+                btn.disabled = false;
+                btn.className = `${baseClass} border-cyan-500/30 bg-cyan-500/10 text-cyan-400`;
+                label.innerText = "Current Certification";
+                hint.classList.add('hidden');
+            } else {
+                btn.disabled = false;
+                btn.className = `${baseClass} border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-300 hover:border-cyan-400 hover:text-cyan-400`;
+                label.innerText = "Set as Current Certification";
+                hint.classList.add('hidden');
+            }
         }
 
         function saveCertification(event) {
@@ -5128,10 +5633,17 @@
                 diveCenter: document.getElementById('cert-dive-center').value.trim(),
                 diveCenterLocation: document.getElementById('cert-dive-center-location').value.trim(),
                 instructorName: document.getElementById('cert-instructor-name').value.trim(),
-                instructorCertNo: document.getElementById('cert-instructor-certno').value.trim()
+                instructorCertNo: document.getElementById('cert-instructor-certno').value.trim(),
+                isCurrent: pendingCertIsCurrent
             };
 
             if (!state.diverProfile.certifications) state.diverProfile.certifications = [];
+
+            // Only one certification can be "current" at a time — if this
+            // save is claiming that spot, every other entry gives it up.
+            if (pendingCertIsCurrent) {
+                state.diverProfile.certifications.forEach(c => { c.isCurrent = false; });
+            }
 
             if (editingCertificationId) {
                 const idx = state.diverProfile.certifications.findIndex(c => c.id === editingCertificationId);
@@ -5145,6 +5657,10 @@
                 });
             }
 
+            // Safety net: if the diver unchecked "current" on the entry that
+            // held it without picking a replacement, don't leave nothing
+            // flagged current — fall back to the most recently dated entry.
+            ensureExactlyOneCurrentCertification();
             syncCurrentCertificationMirror();
             persistDiverProfile();
 
@@ -5163,6 +5679,10 @@
                 "Delete",
                 () => {
                     state.diverProfile.certifications = (state.diverProfile.certifications || []).filter(c => c.id !== certId);
+                    // If the deleted entry was the current one, promote a
+                    // replacement (most recently dated) rather than leaving
+                    // no certification marked current.
+                    ensureExactlyOneCurrentCertification();
                     syncCurrentCertificationMirror();
                     persistDiverProfile();
                     showToast("Certification deleted", "info");

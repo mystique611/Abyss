@@ -1,5 +1,16 @@
 # Changelog
 
+## 260724-v24
+
+- **Certification history: explicit "current" selection.** The certification modal (Diver Detail) now has a "Set as Current Certification" button when adding or editing an entry. It's greyed out/forced on when it's the only certification you have (add-the-first-one or edit-the-only-one), since there always has to be exactly one current certification. Previously "current" was always just whichever entry had the most recent date — now it's a deliberate choice, with the old date-based logic kept only as a fallback for certifications saved before this existed.
+- **PDF export certification default + live preview.** The certification checked by default in "Export to PDF" is now whichever one is marked current (see above) instead of the most recent by date. The dialog also shows a live preview of the certification lines exactly as they'll print at the top of the exported page, updating as checkboxes are toggled.
+- **Dashboard diver credentials card** confirmed to already track whichever certification is current, via the existing org/level/certNo/date mirror — no visible change, just verified against the new explicit-selection logic above.
+- **Log a Dive: My Gear**, a reusable personal equipment library. A new "+ My Gear" button in Section 03 (Equipment), next to Hood/Gloves/Boots, opens a form to save your own gear — Category (Mask/Snorkel/Fin), Brand, Model, Custom Label, Date of Purchase, optional Serial Number, and Weight (kg) — with a "Default" toggle so it's pre-selected on every future dive log automatically. Once saved, each item becomes its own toggle button (gear icon, Custom Label as the title) right alongside Hood/Gloves/Boots, with a small pencil to edit or delete it later. Selected gear is added to the same Additional Gear list already used by PDF export and the Full Log Details view.
+- **UDDF import: multi-dive selection.** A UDDF file containing more than one dive now shows a selection list (date, dive site, start/end time, max depth per dive) instead of always silently pre-filling the form from the first dive. Files with exactly one dive behave exactly as before.
+- **Fixed UDDF import on iOS/mobile Safari** not showing/allowing `.uddf` files in the file picker — the file input's `accept` attribute now also includes `text/xml`, `application/xml`, and `application/octet-stream` alongside the existing `.uddf`/`.xml` extensions, since iOS Safari can't reliably match an unregistered file extension by itself.
+- **Log a Dive wording**: Dive Photos section helper text shortened from "Add photos from this dive. They're only viewable via the "View Dive Photos" button in the Logbook — never shown inline in previews." to "Add photos from this dive. They're viewable via the "View Dive Photos" in Logbook".
+- Service worker cache bumped (`abyss-shell-v23` → `abyss-shell-v24`) to ship all of the above.
+
 ## 260723-v23
 
 - **PDF export is now configurable.** "Export to PDF" opens an options dialog instead of exporting immediately:
