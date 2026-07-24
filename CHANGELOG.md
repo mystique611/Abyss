@@ -1,5 +1,21 @@
 # Changelog
 
+## 260724-v25
+
+- **Dive Log Card**: a new "Create Dive Log Card" button on each Logbook entry (in the expanded preview) generates a shareable snapshot image — depth-over-time graph centered, bottom time / min temp / avg depth / max depth below it, Abyss brand mark upper-left, diver avatar and name upper-right. Share via the OS share sheet or download as PNG, same html2canvas pipeline as the existing Share Diver Profile card.
+- **"View Marine Sightings" button** added to the left of "View Dive Photos" on each expanded Logbook entry — opens a read-only gallery of every marine life sighting photo logged for that dive, labeled by species name.
+- **Fixed: opening a photo showed a blank white screen.** Both the Dive Photos gallery and the new Marine Sightings gallery previously opened full-size photos via `<a target="_blank">` — modern browsers silently block top-level navigation to `data:` URLs, so this just opened a blank tab. Photos now open in an in-app lightbox instead, which doesn't navigate at all.
+- **Dive Tags**: added Reef, Wall, Caves, Muck, Sandy, and Deep Blue alongside the existing Wreck/Night/Drift/Training (Log a Dive Section 1 and the Logbook filter).
+- **Dive Center** field added to Section 08 (Dive Buddy & Dive Journal), above the journal notes, with autocomplete from previously logged entries. Included in Full Log Details, CSV export, and PDF export.
+- **Activity Type** (Scuba / Snorkeling / Freedive) added to Section 01 (General) as a required single-select button group, distinct from the existing Shore/Boat/Others "Dive Type". Included in Full Log Details, CSV export, and PDF export.
+- **Additional Gear icons**: Hood, Gloves, and Boots now all use the same generic gear icon instead of three different icons.
+- **My Gear categories expanded**: Accessories, Safety Equipment, Breathing Apparatus, Buoyancy Control Devices, Dive Instruments, Dive Computer, and Exposure Suit added alongside the existing Mask/Snorkel/Fin.
+- **My Gear fields loosened**: Brand, Model, Date of Purchase, and Weight are no longer required — only Category and Custom Label are.
+- **Diver Details**: the Avg Weight widgets (both last-20-dives and all-logged-dives) now also show Min. Weight and Max. Weight underneath the average, in the same widget.
+- **Wording consistency**: removed "(optional)" annotations app-wide; every genuinely required field's label now consistently ends in `*` instead (Diver Full Name, Certification Organisation/Level/Number/Date, My Gear Category/Custom Label, Activity Type — the rest already had it).
+- **Icon/logo consistency**: the PWA home-screen icons (`icons/icon-192.png`, `icons/icon-512.png`) were a different design (circular wave mark) from the in-app header/share-card brand mark (rounded-square gradient wave mark). Regenerated both icon files to match the in-app mark so the same design appears everywhere.
+- Service worker cache bumped (`abyss-shell-v24` → `abyss-shell-v25`) to ship all of the above.
+
 ## 260724-v24
 
 - **Certification history: explicit "current" selection.** The certification modal (Diver Detail) now has a "Set as Current Certification" button when adding or editing an entry. It's greyed out/forced on when it's the only certification you have (add-the-first-one or edit-the-only-one), since there always has to be exactly one current certification. Previously "current" was always just whichever entry had the most recent date — now it's a deliberate choice, with the old date-based logic kept only as a fallback for certifications saved before this existed.

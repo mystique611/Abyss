@@ -493,6 +493,12 @@
                                     <option value="Night">Night</option>
                                     <option value="Drift">Drift</option>
                                     <option value="Training">Training</option>
+                                    <option value="Reef">Reef</option>
+                                    <option value="Wall">Wall</option>
+                                    <option value="Caves">Caves</option>
+                                    <option value="Muck">Muck</option>
+                                    <option value="Sandy">Sandy</option>
+                                    <option value="Deep Blue">Deep Blue</option>
                                 </select>
                             </div>
                             <button type="button" onclick="clearLogFilters()" class="w-full text-center px-3 py-1.5 rounded-lg text-xs font-semibold text-cyan-500 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-ocean-900/20 transition-colors">Clear filters</button>
@@ -793,21 +799,42 @@
                                 <datalist id="dive-site-suggestions"></datalist>
                             </div>
                             <div class="md:col-span-4">
-                                <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-2">Dive Tags <span class="text-slate-600 dark:text-slate-500">(optional)</span></label>
+                                <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-2">Dive Tags</label>
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" id="dive-tag-btn-Wreck" onclick="toggleDiveTag('Wreck')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Wreck</button>
                                     <button type="button" id="dive-tag-btn-Night" onclick="toggleDiveTag('Night')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Night</button>
                                     <button type="button" id="dive-tag-btn-Drift" onclick="toggleDiveTag('Drift')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Drift</button>
                                     <button type="button" id="dive-tag-btn-Training" onclick="toggleDiveTag('Training')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Training</button>
+                                    <button type="button" id="dive-tag-btn-Reef" onclick="toggleDiveTag('Reef')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Reef</button>
+                                    <button type="button" id="dive-tag-btn-Wall" onclick="toggleDiveTag('Wall')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Wall</button>
+                                    <button type="button" id="dive-tag-btn-Caves" onclick="toggleDiveTag('Caves')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Caves</button>
+                                    <button type="button" id="dive-tag-btn-Muck" onclick="toggleDiveTag('Muck')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Muck</button>
+                                    <button type="button" id="dive-tag-btn-Sandy" onclick="toggleDiveTag('Sandy')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Sandy</button>
+                                    <button type="button" id="dive-tag-btn-Deep Blue" onclick="toggleDiveTag('Deep Blue')" class="dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Deep Blue</button>
                                 </div>
                                 <input type="checkbox" id="form-tag-Wreck" class="hidden">
                                 <input type="checkbox" id="form-tag-Night" class="hidden">
                                 <input type="checkbox" id="form-tag-Drift" class="hidden">
                                 <input type="checkbox" id="form-tag-Training" class="hidden">
+                                <input type="checkbox" id="form-tag-Reef" class="hidden">
+                                <input type="checkbox" id="form-tag-Wall" class="hidden">
+                                <input type="checkbox" id="form-tag-Caves" class="hidden">
+                                <input type="checkbox" id="form-tag-Muck" class="hidden">
+                                <input type="checkbox" id="form-tag-Sandy" class="hidden">
+                                <input type="checkbox" id="form-tag-Deep Blue" class="hidden">
+                            </div>
+                            <div class="md:col-span-4">
+                                <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-2">Activity Type*</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" id="activity-type-btn-Scuba" onclick="setActivityType('Scuba')" class="activity-type-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Scuba</button>
+                                    <button type="button" id="activity-type-btn-Snorkeling" onclick="setActivityType('Snorkeling')" class="activity-type-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Snorkeling</button>
+                                    <button type="button" id="activity-type-btn-Freedive" onclick="setActivityType('Freedive')" class="activity-type-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold">Freedive</button>
+                                </div>
+                                <input type="hidden" id="form-activity-type" required value="">
                             </div>
                             <div class="md:col-span-4">
                                 <div class="flex items-center justify-between mb-1">
-                                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase">Pin Exact Dive Location <span class="text-slate-600 dark:text-slate-500">(optional)</span></label>
+                                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase">Pin Exact Dive Location</label>
                                     <button type="button" onclick="clearLocationPin()" class="text-[10px] font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">Clear Pin</button>
                                 </div>
                                 <p class="text-[10px] text-slate-600 dark:text-slate-500 mb-2">Tap or click the map to drop a pin at the exact dive site. Left blank, the Dashboard map shows an approximate location for the selected country instead.</p>
@@ -990,15 +1017,15 @@
                             <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-2">Additional Gear</label>
                             <div class="flex flex-wrap gap-3">
                                 <button type="button" id="gear-icon-hood" onclick="toggleGearIcon('hood')" title="Hood" class="gear-icon-btn flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all">
-                                    <i class="fa-solid fa-mask text-lg"></i>
+                                    <i class="fa-solid fa-gear text-lg"></i>
                                     <span class="text-[9px] mt-1 font-semibold">Hood</span>
                                 </button>
                                 <button type="button" id="gear-icon-gloves" onclick="toggleGearIcon('gloves')" title="Gloves" class="gear-icon-btn flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all">
-                                    <i class="fa-solid fa-mitten text-lg"></i>
+                                    <i class="fa-solid fa-gear text-lg"></i>
                                     <span class="text-[9px] mt-1 font-semibold">Gloves</span>
                                 </button>
                                 <button type="button" id="gear-icon-boots" onclick="toggleGearIcon('boots')" title="Boots" class="gear-icon-btn flex flex-col items-center justify-center w-16 h-16 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all">
-                                    <i class="fa-solid fa-socks text-lg"></i>
+                                    <i class="fa-solid fa-gear text-lg"></i>
                                     <span class="text-[9px] mt-1 font-semibold">Boots</span>
                                 </button>
 
@@ -1159,6 +1186,11 @@
                                 <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Number</label>
                                 <input type="text" id="form-buddy-no" placeholder="e.g. 0101AB123C" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                             </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Dive Center</label>
+                            <input type="text" id="form-dive-center" list="dive-center-suggestions" placeholder="e.g., Blue Corner Dive Resort" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                            <datalist id="dive-center-suggestions"></datalist>
                         </div>
                         <div>
                             <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1 font-semibold">Sub-surface Journal & Diary Notes</label>
@@ -1339,6 +1371,7 @@
                         <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
                             <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Avg Weight</span>
                             <span id="prof-analytic-avg-weight-20" class="text-2xl font-extrabold font-mono-custom text-blue-400">0 kg</span>
+                            <span id="prof-analytic-minmax-weight-20" class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 mt-0.5">Min 0 kg · Max 0 kg</span>
                         </div>
                     </div>
                 </div>
@@ -1365,6 +1398,7 @@
                         <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
                             <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Avg Weight</span>
                             <span id="prof-analytic-avg-weight-all" class="text-2xl font-extrabold font-mono-custom text-blue-400">0 kg</span>
+                            <span id="prof-analytic-minmax-weight-all" class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 mt-0.5">Min 0 kg · Max 0 kg</span>
                         </div>
                     </div>
                 </div>
@@ -1482,7 +1516,7 @@
 
             <form id="diver-profile-form" onsubmit="saveDiverProfile(event)" class="space-y-4 text-sm">
                 <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Diver Full Name</label>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Diver Full Name*</label>
                     <input type="text" id="prof-name" placeholder="e.g., Jacques Cousteau" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
@@ -1526,7 +1560,7 @@
 
             <form id="certification-form" onsubmit="saveCertification(event)" class="space-y-4 text-sm">
                 <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Organisation</label>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Organisation*</label>
                     <select id="cert-org" required onchange="updateCertLevelOptions()" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                         <option value="PADI">PADI</option>
                         <option value="SSI">SSI</option>
@@ -1536,19 +1570,19 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Level</label>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Level*</label>
                     <select id="cert-level" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                         <!-- JS populates options dynamically based on chosen Certification Organisation -->
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Number</label>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Number*</label>
                     <input type="text" id="cert-no" placeholder="e.g., DIV-102948" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Date of Certification</label>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Date of Certification*</label>
                     <input type="date" id="cert-date" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
@@ -1562,7 +1596,7 @@
                 </div>
 
                 <div class="pt-2 border-t border-slate-200 dark:border-ocean-900/20">
-                    <p class="text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 uppercase tracking-wider mb-3">Optional details</p>
+                    <p class="text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 uppercase tracking-wider mb-3">Additional details</p>
 
                     <div class="space-y-4">
                         <div>
@@ -1614,43 +1648,50 @@
 
             <form id="my-gear-form" onsubmit="saveMyGear(event)" class="space-y-4 text-sm">
                 <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Category</label>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Category*</label>
                     <select id="my-gear-category" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                         <option value="Mask">Mask</option>
                         <option value="Snorkel">Snorkel</option>
                         <option value="Fin">Fin</option>
+                        <option value="Accessories">Accessories</option>
+                        <option value="Safety Equipment">Safety Equipment</option>
+                        <option value="Breathing Apparatus">Breathing Apparatus</option>
+                        <option value="Buoyancy Control Devices">Buoyancy Control Devices</option>
+                        <option value="Dive Instruments">Dive Instruments</option>
+                        <option value="Dive Computer">Dive Computer</option>
+                        <option value="Exposure Suit">Exposure Suit</option>
                     </select>
                 </div>
 
                 <div>
                     <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Brand</label>
-                    <input type="text" id="my-gear-brand" placeholder="e.g., Cressi" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    <input type="text" id="my-gear-brand" placeholder="e.g., Cressi" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
                 <div>
                     <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Model</label>
-                    <input type="text" id="my-gear-model" placeholder="e.g., Big Eyes Evolution" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    <input type="text" id="my-gear-model" placeholder="e.g., Big Eyes Evolution" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Custom Label</label>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Custom Label*</label>
                     <input type="text" id="my-gear-custom-label" placeholder="e.g., My Travel Mask" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                     <p class="text-[10px] text-slate-500 mt-1">Shown as the button title in the Additional Gear section</p>
                 </div>
 
                 <div>
                     <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Date of Purchase</label>
-                    <input type="date" id="my-gear-purchase-date" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    <input type="date" id="my-gear-purchase-date" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Serial Number <span class="normal-case text-slate-500">(optional)</span></label>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Serial Number</label>
                     <input type="text" id="my-gear-serial" placeholder="e.g., SN-88213" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
                 <div>
                     <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Weight (kg)</label>
-                    <input type="number" step="0.1" min="0" id="my-gear-weight" placeholder="0.3" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    <input type="number" step="0.1" min="0" id="my-gear-weight" placeholder="0.3" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                 </div>
 
                 <div>
@@ -1761,6 +1802,39 @@
          it's pushed off-screen with position:fixed instead of hidden. -->
     <div id="share-card-render-host" style="position:fixed; left:-9999px; top:0; z-index:-1;"></div>
 
+    <!-- ==================== MODAL: SHARE DIVE LOG CARD AS IMAGE ==================== -->
+    <div id="dive-log-card-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 space-y-4">
+            <button onclick="closeDiveLogCardModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div>
+                <h3 class="text-lg font-extrabold text-slate-900 dark:text-white">Dive Log Card</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">A shareable snapshot of this dive</p>
+            </div>
+
+            <div id="dive-log-card-preview-container" class="rounded-2xl overflow-hidden border border-slate-300 dark:border-ocean-800/50 flex items-center justify-center bg-slate-50 dark:bg-ocean-950/50 min-h-[220px]">
+                <p class="text-xs text-slate-600 dark:text-slate-400 p-6 text-center" id="dive-log-card-preview-loading">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Rendering your dive log card&hellip;
+                </p>
+                <img id="dive-log-card-preview-img" class="w-full hidden" src="" alt="Dive log card share preview">
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="shareDiveLogCardNow()" id="dive-log-card-share-btn" disabled class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center space-x-2 shadow-md">
+                    <i class="fa-solid fa-share-nodes"></i><span>Share</span>
+                </button>
+                <button onclick="downloadDiveLogCardNow()" id="dive-log-card-download-btn" disabled class="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-ocean-900/40 hover:bg-slate-200 dark:hover:bg-ocean-900/60 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-white text-xs font-bold flex items-center justify-center space-x-2 border border-slate-300 dark:border-ocean-800/50">
+                    <i class="fa-solid fa-download"></i><span>Download</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Off-screen render target for the dive log card — same html2canvas
+         pattern as the share-card-render-host above. -->
+    <div id="dive-log-card-render-host" style="position:fixed; left:-9999px; top:0; z-index:-1;"></div>
+
     <!-- ==================== MODAL: FULL DIVE LOG DETAILS (READ-ONLY, EDIT LOCKED) ==================== -->
     <div id="log-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
         <div class="glass-panel w-full max-w-3xl rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
@@ -1812,6 +1886,39 @@
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- ==================== MODAL: MARINE SIGHHTINGS PHOTO GALLERY (READ-ONLY) ==================== -->
+    <div id="marine-sightings-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
+            <button onclick="closeMarineSightingsModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="border-b border-slate-200 dark:border-ocean-900/30 pb-4 flex-shrink-0 pr-8">
+                <h3 id="marine-sightings-title" class="text-xl font-extrabold text-slate-900 dark:text-white">Marine Sightings</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Photos uploaded for marine life spotted on this dive</p>
+            </div>
+            <div id="marine-sightings-grid" class="overflow-y-auto my-4 grid grid-cols-2 sm:grid-cols-3 gap-3 flex-1">
+                <!-- JS populates thumbnails here -->
+            </div>
+            <div class="border-t border-slate-200 dark:border-ocean-900/30 pt-4 flex justify-end flex-shrink-0">
+                <button onclick="closeMarineSightingsModal()" class="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PHOTO LIGHTBOX (shared full-size viewer) ====================
+         Used instead of <a target="_blank"> for data: URL photos — modern
+         browsers silently block top-level navigation to data: URLs, which
+         made "open full size" clicks show a blank tab. Rendering the image
+         in-app avoids navigation entirely. -->
+    <div id="photo-lightbox-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 hidden" onclick="closePhotoLightbox()">
+        <button onclick="closePhotoLightbox()" class="absolute top-4 right-4 text-white/80 hover:text-white transition-colors z-10">
+            <i class="fa-solid fa-xmark text-2xl"></i>
+        </button>
+        <img id="photo-lightbox-img" src="" class="max-w-full max-h-full rounded-xl object-contain" onclick="event.stopPropagation()">
     </div>
 
     <!-- ==================== MODAL: PDF EXPORT OPTIONS ==================== -->
@@ -3190,6 +3297,166 @@
             document.body.removeChild(a);
         }
 
+        /* ---------------- Share a single Dive Log Card as an image ----------------
+           Same html2canvas off-screen-render pattern as the Diver Profile
+           share card above, but scoped to one dive: depth-over-time graph
+           centered, bottom time / min temp / avg depth / max depth in a row
+           below it, Abyss brand mark upper-left, diver avatar + name
+           upper-right (Design A, chosen from the 3 previewed options). */
+        let diveLogCardBlob = null;
+        let diveLogCardObjectUrl = null;
+        let currentDiveLogCardDiveId = null;
+
+        function buildDiveLogCardMarkup(diveId) {
+            const dive = state.dives.find(d => d.id === diveId);
+            if (!dive) return '';
+            const profile = state.diverProfile || {};
+            const name = profile.name || 'Explorer';
+            const avatar = profile.avatar || null;
+            const avatarHtml = avatar
+                ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;" />`
+                : `<i class="fa-solid fa-user-astronaut" style="font-size:11px;color:#67e8f9;"></i>`;
+
+            const profilePts = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : synthDepthProfile(dive.maxDepth, dive.bottomTime);
+            let polyline = '';
+            if (profilePts && profilePts.length > 1) {
+                const maxT = Math.max(...profilePts.map(p => p.t)) || 1;
+                const maxD = Math.max(...profilePts.map(p => p.d)) || 1;
+                const pts = profilePts.map(p => {
+                    const x = (p.t / maxT) * 280;
+                    const y = 10 + (p.d / maxD) * 70;
+                    return `${x.toFixed(1)},${y.toFixed(1)}`;
+                }).join(' ');
+                polyline = `<polyline points="${pts}" fill="none" stroke="#22d3ee" stroke-width="2"/>`;
+            }
+
+            const fmtStat = (val, suffix) => (val !== null && val !== undefined && val !== '' && !isNaN(val)) ? `${val}${suffix}` : '--';
+
+            return `
+                <div id="dive-log-card-inner" style="width:340px;background:#0a1f30;font-family:'Inter',sans-serif;padding:18px;color:#e6f1fb;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#06b6d4,#2563eb);display:flex;align-items:center;justify-content:center;">
+                                <i class="fa-solid fa-water" style="font-size:12px;color:#fff;"></i>
+                            </div>
+                            <span style="font-size:13px;font-weight:800;letter-spacing:0.03em;">ABYSS</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:12px;color:#9fc9e0;">${name}</span>
+                            <div style="width:24px;height:24px;border-radius:50%;background:#1d4e6e;border:1px solid #22d3ee;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${avatarHtml}</div>
+                        </div>
+                    </div>
+                    <p style="font-size:13px;font-weight:700;margin:0;color:#fff;">${dive.site || 'Dive Site'}</p>
+                    <p style="font-size:11px;color:#7fb8d6;margin:2px 0 8px;">${dive.country ? dive.country + ' · ' : ''}${dive.date ? formatDateDMY(dive.date) : ''}</p>
+                    <svg width="100%" height="90" viewBox="0 0 280 90" preserveAspectRatio="none" style="display:block;margin:6px 0;">${polyline}</svg>
+                    <div style="display:flex;justify-content:space-between;text-align:center;border-top:1px solid #163b52;padding-top:10px;margin-top:4px;">
+                        <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">BOTTOM TIME</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.bottomTime, ' min')}</p></div>
+                        <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">MIN TEMP</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.waterTemp, '°C')}</p></div>
+                        <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">AVG DEPTH</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.avgDepth, 'm')}</p></div>
+                        <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">MAX DEPTH</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.maxDepth, 'm')}</p></div>
+                    </div>
+                </div>`;
+        }
+
+        function openDiveLogCardModal(diveId) {
+            currentDiveLogCardDiveId = diveId;
+            document.getElementById('dive-log-card-modal').classList.remove('hidden');
+            document.getElementById('dive-log-card-preview-loading').classList.remove('hidden');
+            document.getElementById('dive-log-card-preview-img').classList.add('hidden');
+            document.getElementById('dive-log-card-share-btn').disabled = true;
+            document.getElementById('dive-log-card-download-btn').disabled = true;
+            renderDiveLogCard(diveId);
+        }
+
+        function closeDiveLogCardModal() {
+            document.getElementById('dive-log-card-modal').classList.add('hidden');
+            document.getElementById('dive-log-card-render-host').innerHTML = '';
+            if (diveLogCardObjectUrl) {
+                URL.revokeObjectURL(diveLogCardObjectUrl);
+                diveLogCardObjectUrl = null;
+            }
+            diveLogCardBlob = null;
+            currentDiveLogCardDiveId = null;
+        }
+
+        async function renderDiveLogCard(diveId) {
+            if (typeof html2canvas === 'undefined') {
+                showToast("Couldn't load the image renderer (html2canvas). Check your connection and try again.", "error");
+                closeDiveLogCardModal();
+                return;
+            }
+
+            const host = document.getElementById('dive-log-card-render-host');
+            host.innerHTML = buildDiveLogCardMarkup(diveId);
+            const cardEl = document.getElementById('dive-log-card-inner');
+            if (!cardEl) {
+                showToast("Couldn't find that dive to render a card for.", "error");
+                closeDiveLogCardModal();
+                return;
+            }
+
+            try {
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+                const canvas = await html2canvas(cardEl, { backgroundColor: '#0a1f30', scale: 2, useCORS: true });
+                canvas.toBlob(blob => {
+                    if (!blob) {
+                        showToast("Couldn't render the dive log card image. Please try again.", "error");
+                        return;
+                    }
+                    diveLogCardBlob = blob;
+                    if (diveLogCardObjectUrl) URL.revokeObjectURL(diveLogCardObjectUrl);
+                    diveLogCardObjectUrl = URL.createObjectURL(blob);
+
+                    const img = document.getElementById('dive-log-card-preview-img');
+                    img.src = diveLogCardObjectUrl;
+                    img.classList.remove('hidden');
+                    document.getElementById('dive-log-card-preview-loading').classList.add('hidden');
+                    document.getElementById('dive-log-card-share-btn').disabled = false;
+                    document.getElementById('dive-log-card-download-btn').disabled = false;
+                }, 'image/png');
+            } catch (err) {
+                console.error('Failed to render dive log card:', err);
+                showToast("Couldn't render the dive log card image. Please try again.", "error");
+                closeDiveLogCardModal();
+            }
+        }
+
+        function diveLogCardFilename() {
+            const dive = state.dives.find(d => d.id === currentDiveLogCardDiveId);
+            const siteSlug = dive ? sanitizeFilenamePart(dive.site || 'dive') : 'dive';
+            return `abyss-dive-log-card-${siteSlug}.png`;
+        }
+
+        async function shareDiveLogCardNow() {
+            if (!diveLogCardBlob) return;
+            const filename = diveLogCardFilename();
+
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const file = new File([diveLogCardBlob], filename, { type: 'image/png' });
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({ files: [file], title: 'My Abyss Dive Log Card' });
+                        return;
+                    }
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                    console.warn('navigator.share failed, falling back to download:', err);
+                }
+            }
+            downloadDiveLogCardNow();
+        }
+
+        function downloadDiveLogCardNow() {
+            if (!diveLogCardObjectUrl) return;
+            const a = document.createElement('a');
+            a.href = diveLogCardObjectUrl;
+            a.download = diveLogCardFilename();
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
         /* ---------------- CSV export ---------------- */
 
         function csvEscape(value) {
@@ -3207,12 +3474,12 @@
             // One row per dive, one column per field captured in the Log a
             // Dive form — dive number ascending (chronological logbook order).
             const headers = [
-                "Dive Number", "Date", "Dive Type", "Dive Tags", "Country", "Dive Site", "Time In", "Time Out",
+                "Dive Number", "Date", "Dive Type", "Activity Type", "Dive Tags", "Country", "Dive Site", "Time In", "Time Out",
                 "Bottom Time (min)", "Max Depth (m)", "Avg Depth (m)", "Air Temp (C)", "Surface Temp (C)",
                 "Water Temp (C)", "Visibility (m)", "Weather", "Water Type", "Body of Water", "Waves",
                 "Current", "Surge", "Weight (kg)", "Exposure Suit", "Tank Type", "Tank Volume (L)",
                 "Gas", "Gas O2 (%)", "Gas N2 (%)", "Gas He (%)", "Start Pressure", "End Pressure",
-                "Pressure Unit", "Additional Gear", "Dive Buddy/Guide", "Certification Number",
+                "Pressure Unit", "Additional Gear", "Dive Buddy/Guide", "Certification Number", "Dive Center",
                 "Marine Life Sightings", "Notes"
             ];
 
@@ -3225,12 +3492,12 @@
                 }).join('; ');
 
                 return [
-                    dive.diveNo, dive.date, dive.diveType, (dive.tags || []).join('; '), dive.country, dive.site, dive.timeIn, dive.timeOut,
+                    dive.diveNo, dive.date, dive.diveType, dive.activityType, (dive.tags || []).join('; '), dive.country, dive.site, dive.timeIn, dive.timeOut,
                     dive.bottomTime, dive.maxDepth, dive.avgDepth, dive.airTemp, dive.surfaceTemp,
                     dive.waterTemp, dive.visibility, dive.weather, dive.waterType, dive.bodyOfWater, dive.waves,
                     dive.current, dive.surge, dive.weight, dive.suit, dive.tankType, dive.tankVol,
                     dive.gas, dive.gasO2, dive.gasN2, dive.gasHe, dive.gasStart, dive.gasEnd,
-                    dive.gasUnit, (dive.additionalGear || []).join('; '), dive.buddy, dive.buddyNo,
+                    dive.gasUnit, (dive.additionalGear || []).join('; '), dive.buddy, dive.buddyNo, dive.diveCenter,
                     crittersText, dive.notes
                 ].map(csvEscape).join(',');
             });
@@ -3257,6 +3524,7 @@
             { key: 'diveNo', label: 'Dive #', group: 'General', def: true, get: d => d.diveNo ?? '--' },
             { key: 'date', label: 'Date', group: 'General', def: true, get: d => d.date ? formatDateDMY(d.date) : '--' },
             { key: 'diveType', label: 'Dive Type', group: 'General', def: true, get: d => d.diveType || '--' },
+            { key: 'activityType', label: 'Activity Type', group: 'General', def: true, get: d => d.activityType || '--' },
             { key: 'tags', label: 'Dive Tags', group: 'General', def: true, get: d => (d.tags && d.tags.length) ? d.tags.join(', ') : '--' },
             { key: 'country', label: 'Country', group: 'General', def: true, get: d => d.country || '--' },
             { key: 'site', label: 'Dive Site', group: 'General', def: true, get: d => d.site || '--' },
@@ -3294,6 +3562,7 @@
 
             { key: 'buddy', label: 'Dive Buddy', group: 'Dive Buddy & Journal', def: false, get: d => d.buddy || 'Solo' },
             { key: 'buddyNo', label: 'Buddy Cert Number', group: 'Dive Buddy & Journal', def: false, get: d => d.buddyNo || '--' },
+            { key: 'diveCenter', label: 'Dive Center', group: 'Dive Buddy & Journal', def: false, get: d => d.diveCenter || '--' },
             { key: 'notes', label: 'Journal Notes', group: 'Dive Buddy & Journal', def: false, get: d => d.notes || '--' }
         ];
 
@@ -4010,6 +4279,7 @@
             refreshAllGearIconStyles();
             applyDefaultMyGearSelection();
             refreshAllDiveTagStyles();
+            setActivityType('Scuba');
             refreshSiteAndBuddySuggestions();
             resetDepthProfileState();
             switchTab('add-log');
@@ -4468,7 +4738,7 @@
 
         // Dive Tags — same hidden-checkbox-plus-styled-button pattern as the
         // gear icons above, just without an icon (plain text pill).
-        const DIVE_TAGS = ['Wreck', 'Night', 'Drift', 'Training'];
+        const DIVE_TAGS = ['Wreck', 'Night', 'Drift', 'Training', 'Reef', 'Wall', 'Caves', 'Muck', 'Sandy', 'Deep Blue'];
         const DIVE_TAG_ACTIVE_CLASS = "dive-tag-btn px-4 py-2 rounded-xl border border-cyan-400 bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-400/30 transition-all text-xs font-semibold";
         const DIVE_TAG_INACTIVE_CLASS = "dive-tag-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold";
 
@@ -4490,6 +4760,26 @@
             DIVE_TAGS.forEach(updateDiveTagStyle);
         }
 
+        // Activity Type — single-select button group (Scuba/Snorkeling/
+        // Freedive) backed by one hidden input, same visual language as the
+        // Dive Tags pills above but mutually exclusive rather than multi-toggle.
+        const ACTIVITY_TYPES = ['Scuba', 'Snorkeling', 'Freedive'];
+        const ACTIVITY_TYPE_ACTIVE_CLASS = "activity-type-btn px-4 py-2 rounded-xl border border-cyan-400 bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-400/30 transition-all text-xs font-semibold";
+        const ACTIVITY_TYPE_INACTIVE_CLASS = "activity-type-btn px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40 transition-all text-xs font-semibold";
+
+        function setActivityType(type) {
+            document.getElementById('form-activity-type').value = type;
+            refreshActivityTypeStyles();
+        }
+
+        function refreshActivityTypeStyles() {
+            const current = document.getElementById('form-activity-type').value;
+            ACTIVITY_TYPES.forEach(type => {
+                const btn = document.getElementById(`activity-type-btn-${type}`);
+                if (btn) btn.className = (type === current) ? ACTIVITY_TYPE_ACTIVE_CLASS : ACTIVITY_TYPE_INACTIVE_CLASS;
+            });
+        }
+
         // Dive Site / Dive Buddy stay plain free-text fields (not a managed
         // entity list) — this just repopulates their <datalist> with every
         // distinct value already used across the logbook, so typing offers
@@ -4497,6 +4787,7 @@
         function refreshSiteAndBuddySuggestions() {
             const siteList = document.getElementById('dive-site-suggestions');
             const buddyList = document.getElementById('buddy-name-suggestions');
+            const diveCenterList = document.getElementById('dive-center-suggestions');
             if (siteList) {
                 const sites = Array.from(new Set(state.dives.map(d => d.site).filter(Boolean))).sort();
                 siteList.innerHTML = sites.map(s => `<option value="${s.replace(/"/g, '&quot;')}"></option>`).join('');
@@ -4504,6 +4795,10 @@
             if (buddyList) {
                 const buddies = Array.from(new Set(state.dives.map(d => d.buddy).filter(Boolean))).sort();
                 buddyList.innerHTML = buddies.map(b => `<option value="${b.replace(/"/g, '&quot;')}"></option>`).join('');
+            }
+            if (diveCenterList) {
+                const centers = Array.from(new Set(state.dives.map(d => d.diveCenter).filter(Boolean))).sort();
+                diveCenterList.innerHTML = centers.map(c => `<option value="${c.replace(/"/g, '&quot;')}"></option>`).join('');
             }
         }
 
@@ -5006,6 +5301,7 @@
             document.getElementById('padi-log-form').reset();
             refreshAllGearIconStyles();
             refreshAllDiveTagStyles();
+            setActivityType('Scuba');
             refreshSiteAndBuddySuggestions();
             resetDepthProfileState();
             tempDivePhotos = [];
@@ -5061,6 +5357,7 @@
                 document.getElementById('form-gas-n2').value = dive.gasN2 !== undefined && dive.gasN2 !== null ? dive.gasN2 : '';
                 document.getElementById('form-gas-he').value = dive.gasHe !== undefined && dive.gasHe !== null ? dive.gasHe : '';
             }
+            document.getElementById('form-dive-center').value = dive.diveCenter || '';
             document.getElementById('form-gear-hood').checked = !!(dive.additionalGear && dive.additionalGear.includes('Hood'));
             document.getElementById('form-gear-gloves').checked = !!(dive.additionalGear && dive.additionalGear.includes('Gloves'));
             document.getElementById('form-gear-boots').checked = !!(dive.additionalGear && dive.additionalGear.includes('Boots'));
@@ -5076,9 +5373,11 @@
             DIVE_TAGS.forEach(tag => {
                 document.getElementById(`form-tag-${tag}`).checked = !!(dive.tags && dive.tags.includes(tag));
             });
+            document.getElementById('form-activity-type').value = dive.activityType || 'Scuba';
             refreshAllGearIconStyles();
             refreshAllMyGearButtonStyles();
             refreshAllDiveTagStyles();
+            refreshActivityTypeStyles();
             refreshSiteAndBuddySuggestions();
             document.getElementById('form-time-in').value = dive.timeIn || '';
             document.getElementById('form-time-out').value = dive.timeOut || '';
@@ -5141,6 +5440,11 @@
             const diveNo = parseInt(document.getElementById('form-dive-no').value);
             const date = document.getElementById('form-date').value;
             const diveType = document.getElementById('form-dive-type').value || null;
+            const activityType = document.getElementById('form-activity-type').value || null;
+            if (!activityType) {
+                showToast("Select an Activity Type (Scuba, Snorkeling, or Freedive)", "error");
+                return;
+            }
             const country = document.getElementById('form-country').value;
             const site = document.getElementById('form-site').value;
 
@@ -5217,6 +5521,7 @@
             const gasUnit = document.getElementById('form-gas-unit').value || "BAR";
             const buddy = document.getElementById('form-buddy').value || null;
             const buddyNo = document.getElementById('form-buddy-no').value || null;
+            const diveCenter = document.getElementById('form-dive-center').value || null;
             const notes = document.getElementById('form-notes').value || '';
 
             const crittersList = [];
@@ -5239,11 +5544,11 @@
                 if (index !== -1) {
                     state.dives[index] = {
                         ...state.dives[index],
-                        diveNo, date, diveType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
+                        diveNo, date, diveType, activityType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
                         waterType, bodyOfWater, waves, current, surge,
                         weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear, tags: diveTags,
                         timeIn, timeOut, bottomTime, maxDepth, avgDepth,
-                        gasStart, gasEnd, gasUnit, buddy, buddyNo, notes, critters: crittersList,
+                        gasStart, gasEnd, gasUnit, buddy, buddyNo, diveCenter, notes, critters: crittersList,
                         depthProfile: state.importedDepthProfile || null,
                         photos: divePhotos
                     };
@@ -5252,11 +5557,11 @@
             } else {
                 const newLog = {
                     id: 'log-' + Date.now(),
-                    diveNo, date, diveType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
+                    diveNo, date, diveType, activityType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
                     waterType, bodyOfWater, waves, current, surge,
                     weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear, tags: diveTags,
                     timeIn, timeOut, bottomTime, maxDepth, avgDepth,
-                    gasStart, gasEnd, gasUnit, buddy, buddyNo, notes, critters: crittersList,
+                    gasStart, gasEnd, gasUnit, buddy, buddyNo, diveCenter, notes, critters: crittersList,
                     depthProfile: state.importedDepthProfile || null,
                     photos: divePhotos
                 };
@@ -5279,6 +5584,7 @@
             refreshAllGearIconStyles();
             applyDefaultMyGearSelection();
             refreshAllDiveTagStyles();
+            setActivityType('Scuba');
             refreshSiteAndBuddySuggestions();
             resetDepthProfileState();
 
@@ -5783,6 +6089,8 @@
             }
 
             const avgOf = (arr) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+            const minOf = (arr) => arr.length > 0 ? Math.min(...arr) : null;
+            const maxOf = (arr) => arr.length > 0 ? Math.max(...arr) : null;
             const collect = (list, fn) => list.map(fn).filter(v => v !== null && v !== undefined && !isNaN(v));
             const stdDevOf = (arr) => {
                 if (arr.length < 2) return null;
@@ -5808,6 +6116,10 @@
             const sacStdDevAll = stdDevOf(collect(dives, diveSAC));
             const avgWeight20 = avgOf(collect(last20Dives, d => d.weight));
             const avgWeightAll = avgOf(collect(dives, d => d.weight));
+            const minWeight20 = minOf(collect(last20Dives, d => d.weight));
+            const maxWeight20 = maxOf(collect(last20Dives, d => d.weight));
+            const minWeightAll = minOf(collect(dives, d => d.weight));
+            const maxWeightAll = maxOf(collect(dives, d => d.weight));
 
             // ---- Gas mixture breakdown (all logged dives) ----
             const gasMixCounts = {};
@@ -5907,6 +6219,7 @@
                 totalDives, totalMins, maxDepth, maxBottomTime,
                 avgDepth20, avgDepthAll, avgBottomTime20, avgBottomTimeAll,
                 avgSAC20, avgSACAll, sacStdDev20, sacStdDevAll, avgWeight20, avgWeightAll,
+                minWeight20, maxWeight20, minWeightAll, maxWeightAll,
                 monthLabels: monthKeys.map(monthLabel),
                 sacByMonthAll, weightByMonthAll,
                 quarterLabels: quarterKeys.map(quarterLabel), divesByQuarter,
@@ -5946,6 +6259,7 @@
             document.getElementById('prof-analytic-avg-sac-20').innerText = fmtSAC(analytics.avgSAC20);
             document.getElementById('prof-analytic-sac-stddev-20').innerText = fmtSACStdDev(analytics.sacStdDev20);
             document.getElementById('prof-analytic-avg-weight-20').innerText = fmtWeight(analytics.avgWeight20);
+            document.getElementById('prof-analytic-minmax-weight-20').innerText = `Min ${fmtWeight(analytics.minWeight20)} · Max ${fmtWeight(analytics.maxWeight20)}`;
 
             // Section 3 — average of all logged dives
             document.getElementById('prof-analytic-avg-depth-all').innerText = fmtDepth(analytics.avgDepthAll);
@@ -5953,6 +6267,7 @@
             document.getElementById('prof-analytic-avg-sac-all').innerText = fmtSAC(analytics.avgSACAll);
             document.getElementById('prof-analytic-sac-stddev-all').innerText = fmtSACStdDev(analytics.sacStdDevAll);
             document.getElementById('prof-analytic-avg-weight-all').innerText = fmtWeight(analytics.avgWeightAll);
+            document.getElementById('prof-analytic-minmax-weight-all').innerText = `Min ${fmtWeight(analytics.minWeightAll)} · Max ${fmtWeight(analytics.maxWeightAll)}`;
 
             // Section 4 — trend charts
             lastComputedAnalytics = analytics;
@@ -6511,11 +6826,20 @@
                             </div>
 
                             <div class="flex justify-end pt-1 space-x-2">
+                                ${(dive.critters && dive.critters.some(c => c.photoId)) ? `
+                                <button onclick="openMarineSightingsModal('${dive.id}')" class="px-4 py-2 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 text-xs font-semibold flex items-center space-x-2 transition-colors">
+                                    <i class="fa-solid fa-fish"></i>
+                                    <span>View Marine Sightings</span>
+                                </button>` : ''}
                                 ${(dive.photos && dive.photos.length) ? `
                                 <button onclick="openDivePhotosModal('${dive.id}')" class="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center space-x-2 transition-colors">
                                     <i class="fa-solid fa-images"></i>
                                     <span>View Dive Photos</span>
                                 </button>` : ''}
+                                <button onclick="openDiveLogCardModal('${dive.id}')" class="px-4 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-semibold flex items-center space-x-2 transition-colors">
+                                    <i class="fa-solid fa-id-badge"></i>
+                                    <span>Create Dive Log Card</span>
+                                </button>
                                 <button onclick="openLogDetailModal('${dive.id}')" class="px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold flex items-center space-x-2 transition-colors">
                                     <i class="fa-solid fa-file-lines"></i>
                                     <span>View Full Log Details</span>
@@ -6596,6 +6920,7 @@
                     ['Dive Number', dive.diveNo ?? '--'],
                     ['Date', dive.date ? formatDateDMY(dive.date) : '--'],
                     ['Dive Type', dive.diveType || '--'],
+                    ['Activity Type', dive.activityType || '--'],
                     ['Dive Tags', (dive.tags && dive.tags.length) ? dive.tags.join(', ') : '--'],
                     ['Country / Territory', dive.country || '--'],
                     ['Dive Site', dive.site || '--'],
@@ -6642,6 +6967,7 @@
                 buildLogDetailSection('07', 'Dive Buddy &amp; Dive Journal', [
                     ['Dive Buddy / Guide', dive.buddy || 'Solo'],
                     ['Certification Number', dive.buddyNo || '--'],
+                    ['Dive Center', dive.diveCenter || '--'],
                 ], `<div class="mt-3">
                         <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Journal Notes</span>
                         <p class="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-ocean-950/30 p-3 rounded-xl border border-slate-200 dark:border-ocean-850/20 italic">"${dive.notes || 'No log details added.'}"</p>
@@ -6737,9 +7063,7 @@
             const missingCount = resolved.length - available.length;
 
             grid.innerHTML = available.map(p => `
-                <a href="${p.dataUrl}" target="_blank" rel="noopener">
-                    <img src="${p.dataUrl}" class="w-full h-32 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40 hover:opacity-80 transition-opacity">
-                </a>
+                <img src="${p.dataUrl}" onclick="openPhotoLightbox(this.src)" class="w-full h-32 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40 hover:opacity-80 transition-opacity cursor-pointer">
             `).join('') + (missingCount > 0
                 ? `<p class="col-span-full text-xs text-slate-600 dark:text-slate-500 italic text-center py-2">${missingCount} photo${missingCount !== 1 ? 's' : ''} couldn't be loaded right now — try again once you're online and signed in.</p>`
                 : '');
@@ -6747,6 +7071,54 @@
 
         function closeDivePhotosModal() {
             document.getElementById('dive-photos-modal').classList.add('hidden');
+        }
+
+        // Read-only gallery of every marine life sighting photo logged for
+        // this dive (dive.critters[].photoId) — mirrors openDivePhotosModal
+        // but sourced from critter sightings instead of Section 07 photos,
+        // and labels each thumbnail with the species name.
+        async function openMarineSightingsModal(diveId) {
+            const dive = state.dives.find(d => d.id === diveId);
+            if (!dive || !dive.critters || dive.critters.length === 0) return;
+            const sightingsWithPhotos = dive.critters.filter(c => c.photoId);
+            if (sightingsWithPhotos.length === 0) return;
+
+            document.getElementById('marine-sightings-title').innerText = `${dive.site} — Dive #${dive.diveNo} Marine Sightings`;
+            const grid = document.getElementById('marine-sightings-grid');
+            grid.innerHTML = `<p class="col-span-full text-xs text-slate-600 dark:text-slate-500 italic text-center py-6"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading photos&hellip;</p>`;
+            document.getElementById('marine-sightings-modal').classList.remove('hidden');
+
+            const resolved = await Promise.all(sightingsWithPhotos.map(async c => {
+                const template = CRITTER_DATABASE[c.id];
+                const name = c.customName || (template ? template.name : 'Unknown species');
+                return { name, dataUrl: await getPhotoDataUrl(c.photoId) };
+            }));
+
+            const available = resolved.filter(p => p.dataUrl);
+            const missingCount = resolved.length - available.length;
+
+            grid.innerHTML = available.map(p => `
+                <div>
+                    <img src="${p.dataUrl}" onclick="openPhotoLightbox(this.src)" class="w-full h-32 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40 hover:opacity-80 transition-opacity cursor-pointer">
+                    <p class="text-[10px] text-slate-600 dark:text-slate-400 mt-1 truncate">${p.name}</p>
+                </div>
+            `).join('') + (missingCount > 0
+                ? `<p class="col-span-full text-xs text-slate-600 dark:text-slate-500 italic text-center py-2">${missingCount} photo${missingCount !== 1 ? 's' : ''} couldn't be loaded right now — try again once you're online and signed in.</p>`
+                : '');
+        }
+
+        function closeMarineSightingsModal() {
+            document.getElementById('marine-sightings-modal').classList.add('hidden');
+        }
+
+        function openPhotoLightbox(dataUrl) {
+            document.getElementById('photo-lightbox-img').src = dataUrl;
+            document.getElementById('photo-lightbox-modal').classList.remove('hidden');
+        }
+
+        function closePhotoLightbox() {
+            document.getElementById('photo-lightbox-modal').classList.add('hidden');
+            document.getElementById('photo-lightbox-img').src = '';
         }
 
         // Only entry point into actually editing this log — hands off to the
