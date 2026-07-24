@@ -8,6 +8,8 @@
     <!-- PWA: installable app + offline support -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#04141f">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1244,6 +1246,8 @@
             <div id="critterdex-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <!-- Dynamic High Fidelity Cards or Silhouette Locked Cards -->
             </div>
+
+            <p class="text-center text-[10px] text-slate-500 dark:text-slate-600 pt-2">Icon created by Amethyst prime - Flaticon</p>
         </section>
 
         <!-- ==================== DIVER DETAIL VIEW (15-STAGE PROGRESSION SYSTEM) ==================== -->
@@ -1515,9 +1519,24 @@
             </div>
 
             <form id="diver-profile-form" onsubmit="saveDiverProfile(event)" class="space-y-4 text-sm">
-                <div>
-                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Diver Full Name*</label>
-                    <input type="text" id="prof-name" placeholder="e.g., Jacques Cousteau" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">First Name*</label>
+                        <input type="text" id="prof-first-name" placeholder="e.g., Jacques" required oninput="refreshNameCombinationOptions()" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Last Name</label>
+                        <input type="text" id="prof-last-name" placeholder="e.g., Cousteau" oninput="refreshNameCombinationOptions()" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Nickname</label>
+                        <input type="text" id="prof-nickname" placeholder="e.g., Jack" oninput="refreshNameCombinationOptions()" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    </div>
+                </div>
+
+                <div id="name-combination-container" class="hidden">
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-2">Name to show on credential card</label>
+                    <div id="name-combination-options" class="space-y-1.5"></div>
                 </div>
 
                 <div>
@@ -2079,19 +2098,19 @@
     <script>
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
-            "Marine Mammals": `<svg class="w-10 h-10 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C6.5 2 2 6 2 11c0 2.5 1.1 4.7 3 6.3V22l4.5-2.7c.8.2 1.6.3 2.5.3 5.5 0 10-4 10-9S17.5 2 12 2z"/><path d="M10 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/><path d="M15 14s-1-1-3-1-3 1-3 1"/></svg>`,
-            "Sharks": `<svg class="w-10 h-10 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 12C12 11 8 11 4 12c-2 .5-2 3 0 3.5 4 1 8 1 12 0"/><path d="M10 12.5V8a3 3 0 0 1 6 0v4.5"/><path d="M10 14v4.5a3 3 0 0 0 6 0V14"/><path d="M22 13.5c.5-1-.5-2-2-1.5"/></svg>`,
-            "Rays": `<svg class="w-10 h-10 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22V6M2 10s5-4 10-4 10 4 10 4-2 3-5 5c-2.5 1.7-4 3-5 5-1-2-2.5-3.3-5-5-3-2-5-5-5-5z"/><path d="M9 4s1.5-2 3-2 3 2 3 2"/></svg>`,
-            "Pelagic Fish": `<svg class="w-10 h-10 text-teal-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c4-6 10-6 14-3 1.5 1.1 2.5 3 2 5s-2.1 3.2-4 3.5c-4 .7-9-.5-12-5.5z"/><path d="M18 14l4 3v-10l-4 3"/><path d="M7 8c.5 1 1 2.5.5 4M13 7.5c1 1.5 1 3.5 0 5"/></svg>`,
-            "Reef Fish": `<svg class="w-10 h-10 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13c2-4 5-6 9-6s7 2 9 6c-1 3-3 5-6 5.5s-5-.5-7-2c-2 1.5-4 1.5-5-3.5z"/><path d="M8 7c0-2 .5-3.5 1.5-3.5s1 1.5 1 3.5"/><path d="M15 16s.5 4-1 4-1.5-3-1.5-4"/></svg>`,
-            "Cephalopods": `<svg class="w-10 h-10 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="7" r="4"/><path d="M8 10c-1 3-3 5-3 8s2.5 1.5 4-.5c1-1.5 1-3.5 0-5.5M16 10c1 3 3 5 3 8s-2.5 1.5-4-.5c-1-1.5-1-3.5 0-5.5M12 11c0 3 0 6-1.5 8s-.5 1.5 1 .5c1-1 1-3 1.5-5"/></svg>`,
-            "Crustaceans": `<svg class="w-10 h-10 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M5 8c2 0 4 1 5 3M19 8c-2 0-4 1-5 3M4 12h16M3 16s3-1 5 1M21 16s-3-1-5 1"/></svg>`,
-            "Nudibranchs": `<svg class="w-10 h-10 text-pink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17c1-1 3-3 6-3s5 2 8 1 4-1 4-1"/><path d="M19 14s2-2 1-4c-1-1-3 0-3 0"/><path d="M6 14c-1-2-1-4 0-5s2-1 2 1"/><path d="M10 13c0-3 .5-5 1.5-5s1.5 2 1.5 5"/></svg>`,
-            "Echinoderms": `<svg class="w-10 h-10 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" /></svg>`,
-            "Corals & Anemones": `<svg class="w-10 h-10 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg>`,
-            "Eel": `<svg class="w-10 h-10 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9c1.5-2 2.5-2 3.5 0s1.5 4.5 3.5 3 1-5 3.5-4.5 2.5 3 4.5 2c1.5-.7 2.5-1.5 3-3"/><circle cx="3.4" cy="8.2" r="0.9" fill="currentColor" stroke="none"/></svg>`,
-            "Turtles": `<svg class="w-10 h-10 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="13" rx="7" ry="6"/><path d="M12 7v12M7 10c1.5 1 3 1.5 5 1.5s3.5-.5 5-1.5M7 16c1.5-1 3-1.5 5-1.5s3.5.5 5 1.5"/><path d="M5 12c-1.5-.5-2.5-2-2.5-2M19 12c1.5-.5 2.5-2 2.5-2M8 19s-.5 1.5-2 2M16 19s.5 1.5 2 2M12 19v2.5"/></svg>`,
-            "Others": `<svg class="w-10 h-10 text-slate-600 dark:text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c4-5 10-6 15-3 2 1.2 3 2 3 3s-1 1.8-3 3c-5 3-11 2-15-3z"/><path d="M17 9l4-3v12l-4-3"/><circle cx="7" cy="11" r="0.9" fill="currentColor" stroke="none"/></svg>`
+            "Marine Mammals": `<img src="icons/critters/marine-mammals.png" class="w-10 h-10" alt="Marine Mammals">`,
+            "Sharks": `<img src="icons/critters/sharks.png" class="w-10 h-10" alt="Sharks">`,
+            "Rays": `<img src="icons/critters/rays.png" class="w-10 h-10" alt="Rays">`,
+            "Pelagic Fish": `<img src="icons/critters/pelagic-fish.png" class="w-10 h-10" alt="Pelagic Fish">`,
+            "Reef Fish": `<img src="icons/critters/reef-fish.png" class="w-10 h-10" alt="Reef Fish">`,
+            "Cephalopods": `<img src="icons/critters/cephalopods.png" class="w-10 h-10" alt="Cephalopods">`,
+            "Crustaceans": `<img src="icons/critters/crustaceans.png" class="w-10 h-10" alt="Crustaceans">`,
+            "Nudibranchs": `<img src="icons/critters/nudibranchs.png" class="w-10 h-10" alt="Nudibranchs">`,
+            "Echinoderms": `<img src="icons/critters/echinoderms.png" class="w-10 h-10" alt="Echinoderms">`,
+            "Corals & Anemones": `<img src="icons/critters/corals-anemones.png" class="w-10 h-10" alt="Corals & Anemones">`,
+            "Eel": `<img src="icons/critters/eel.png" class="w-10 h-10" alt="Eel">`,
+            "Turtles": `<img src="icons/critters/turtles.png" class="w-10 h-10" alt="Turtles">`,
+            "Others": `<img src="icons/critters/others.png" class="w-10 h-10" alt="Others">`
         };
 
         // Complete Diver Milestones array from image_3de9a7.png
@@ -3307,6 +3326,17 @@
         let diveLogCardObjectUrl = null;
         let currentDiveLogCardDiveId = null;
 
+        // Converts a minutes value (can be fractional, e.g. 0.33 for a short
+        // freedive) into mm:ss for the dive log card's time axis — whole
+        // minutes render as e.g. "10:00", sub-minute values as e.g. "00:20".
+        function fmtMinutesAsMMSS(mins) {
+            if (mins === null || mins === undefined || isNaN(mins)) return '00:00';
+            const totalSeconds = Math.max(0, Math.round(mins * 60));
+            const m = Math.floor(totalSeconds / 60);
+            const s = totalSeconds % 60;
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
         function buildDiveLogCardMarkup(diveId) {
             const dive = state.dives.find(d => d.id === diveId);
             if (!dive) return '';
@@ -3318,16 +3348,47 @@
                 : `<i class="fa-solid fa-user-astronaut" style="font-size:11px;color:#67e8f9;"></i>`;
 
             const profilePts = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : synthDepthProfile(dive.maxDepth, dive.bottomTime);
+
+            const graphW = 260, graphH = 90;
             let polyline = '';
+            let depthLabelsHtml = '';
+            let gridlinesHtml = '';
+            let timeLabelsHtml = '';
+
             if (profilePts && profilePts.length > 1) {
-                const maxT = Math.max(...profilePts.map(p => p.t)) || 1;
-                const maxD = Math.max(...profilePts.map(p => p.d)) || 1;
+                const rawMaxT = Math.max(...profilePts.map(p => p.t)) || 1;
+                const rawMaxD = Math.max(...profilePts.map(p => p.d)) || 1;
+                // Round the depth scale up to the nearest 5m so gridlines land
+                // on clean values (e.g. a 32m dive gets a 0-35m scale).
+                const niceMaxD = Math.max(5, Math.ceil(rawMaxD / 5) * 5);
+
                 const pts = profilePts.map(p => {
-                    const x = (p.t / maxT) * 280;
-                    const y = 10 + (p.d / maxD) * 70;
+                    const x = (p.t / rawMaxT) * graphW;
+                    const y = (p.d / niceMaxD) * graphH;
                     return `${x.toFixed(1)},${y.toFixed(1)}`;
                 }).join(' ');
                 polyline = `<polyline points="${pts}" fill="none" stroke="#22d3ee" stroke-width="2"/>`;
+
+                // Depth axis: a gridline every 5m, but the value label only
+                // every 10m (per design) — no unit suffix on either axis.
+                const gridLines = [];
+                const depthLabels = [];
+                for (let d = 0; d <= niceMaxD; d += 5) {
+                    const y = (d / niceMaxD) * graphH;
+                    gridLines.push(`<line x1="0" y1="${y.toFixed(1)}" x2="${graphW}" y2="${y.toFixed(1)}" stroke="${d % 10 === 0 ? '#163b52' : '#12293a'}" stroke-width="0.5"/>`);
+                    if (d % 10 === 0) {
+                        depthLabels.push(`<span style="position:absolute;top:${y.toFixed(1)}px;right:4px;transform:translateY(-50%);">${d}</span>`);
+                    }
+                }
+                gridlinesHtml = gridLines.join('');
+                depthLabelsHtml = depthLabels.join('');
+
+                // Time axis: 5 evenly spaced ticks across the actual dive
+                // duration, formatted mm:ss (handles freedives under a minute
+                // just as well as long scuba dives).
+                timeLabelsHtml = [0, 0.25, 0.5, 0.75, 1].map(frac =>
+                    `<span>${fmtMinutesAsMMSS(rawMaxT * frac)}</span>`
+                ).join('');
             }
 
             const fmtStat = (val, suffix) => (val !== null && val !== undefined && val !== '' && !isNaN(val)) ? `${val}${suffix}` : '--';
@@ -3348,8 +3409,12 @@
                     </div>
                     <p style="font-size:13px;font-weight:700;margin:0;color:#fff;">${dive.site || 'Dive Site'}</p>
                     <p style="font-size:11px;color:#7fb8d6;margin:2px 0 8px;">${dive.country ? dive.country + ' · ' : ''}${dive.date ? formatDateDMY(dive.date) : ''}</p>
-                    <svg width="100%" height="90" viewBox="0 0 280 90" preserveAspectRatio="none" style="display:block;margin:6px 0;">${polyline}</svg>
-                    <div style="display:flex;justify-content:space-between;text-align:center;border-top:1px solid #163b52;padding-top:10px;margin-top:4px;">
+                    <div style="display:flex;">
+                        <div style="position:relative;width:20px;height:${graphH}px;font-size:8px;color:#7fb8d6;text-align:right;flex-shrink:0;">${depthLabelsHtml}</div>
+                        <svg width="100%" height="${graphH}" viewBox="0 0 ${graphW} ${graphH}" preserveAspectRatio="none" style="display:block;flex:1;margin:0 0 0 4px;">${gridlinesHtml}${polyline}</svg>
+                    </div>
+                    <div style="display:flex;padding-left:24px;justify-content:space-between;font-size:8px;color:#7fb8d6;margin-top:2px;">${timeLabelsHtml}</div>
+                    <div style="display:flex;justify-content:space-between;text-align:center;border-top:1px solid #163b52;padding-top:10px;margin-top:10px;">
                         <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">BOTTOM TIME</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.bottomTime, ' min')}</p></div>
                         <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">MIN TEMP</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.waterTemp, '°C')}</p></div>
                         <div><p style="font-size:9px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">AVG DEPTH</p><p style="font-size:14px;font-weight:700;margin:2px 0 0;">${fmtStat(dive.avgDepth, 'm')}</p></div>
@@ -3781,9 +3846,20 @@
             }
 
             const sortedDives = [...state.dives].sort((a, b) => (a.diveNo || 0) - (b.diveNo || 0));
-            const nameParts = (state.diverProfile.name || 'Explorer').trim().split(/\s+/);
-            const firstName = nameParts[0] || 'Explorer';
-            const lastName = nameParts.slice(1).join(' ');
+            // Prefer the dedicated firstName/lastName fields (saved via the Diver
+            // Details form) so combination formats with commas/reordering (e.g.
+            // "Cousteau Jacques, Jack") don't get mangled by a naive whitespace
+            // split. Fall back to splitting the legacy combined name for older
+            // profiles saved before this field split existed.
+            let firstName = state.diverProfile.firstName;
+            let lastName = state.diverProfile.lastName;
+            if (!firstName) {
+                const nameParts = (state.diverProfile.name || 'Explorer').trim().split(/\s+/);
+                firstName = nameParts[0] || 'Explorer';
+                lastName = nameParts.slice(1).join(' ');
+            }
+            firstName = firstName || 'Explorer';
+            lastName = lastName || '';
 
             const diveBlocks = sortedDives.map(dive => {
                 const dateTimeStr = dive.date ? `${dive.date}T${dive.timeIn || '00:00'}:00` : null;
@@ -5588,7 +5664,7 @@
             refreshSiteAndBuddySuggestions();
             resetDepthProfileState();
 
-            switchTab('dashboard');
+            switchTab('logs');
         }
 
         function updateUI() {
@@ -6519,8 +6595,81 @@
             }
         }
 
+        // Diver display name is built from First/Last/Nickname via one of these
+        // combinations, chosen by the user based on which fields they filled in.
+        // The computed result is stored back into the single legacy
+        // state.diverProfile.name string so every existing read-site (share
+        // cards, PDF/CSV/UDDF exports, dashboard header, etc.) keeps working
+        // unmodified.
+        const NAME_COMBINATIONS = [
+            { id: 1, label: 'First + Last', requires: ['last'], build: (f, l, n) => `${f} ${l}` },
+            { id: 2, label: 'Last + First', requires: ['last'], build: (f, l, n) => `${l} ${f}` },
+            { id: 3, label: 'Last + First, Nickname', requires: ['last', 'nick'], build: (f, l, n) => `${l} ${f}, ${n}` },
+            { id: 4, label: 'Nickname + Last', requires: ['last', 'nick'], build: (f, l, n) => `${n} ${l}` },
+            { id: 5, label: 'Nickname + Last + First', requires: ['last', 'nick'], build: (f, l, n) => `${n} ${l} ${f}` }
+        ];
+
+        function nameCombinationIsAvailable(combo, last, nick) {
+            return combo.requires.every(req => req === 'last' ? !!last : !!nick);
+        }
+
+        function computeDiverDisplayName(first, last, nick, comboId) {
+            first = (first || '').trim();
+            last = (last || '').trim();
+            nick = (nick || '').trim();
+            const combo = NAME_COMBINATIONS.find(c => c.id === comboId);
+            if (combo && nameCombinationIsAvailable(combo, last, nick)) {
+                return combo.build(first, last, nick);
+            }
+            return [first, last].filter(Boolean).join(' ') || first || 'Explorer';
+        }
+
+        let selectedNameCombination = 0;
+
+        function refreshNameCombinationOptions() {
+            const first = document.getElementById('prof-first-name').value.trim();
+            const last = document.getElementById('prof-last-name').value.trim();
+            const nick = document.getElementById('prof-nickname').value.trim();
+
+            const available = NAME_COMBINATIONS.filter(c => nameCombinationIsAvailable(c, last, nick));
+            const container = document.getElementById('name-combination-container');
+            const optionsEl = document.getElementById('name-combination-options');
+
+            if (available.length === 0) {
+                container.classList.add('hidden');
+                optionsEl.innerHTML = '';
+                selectedNameCombination = 0;
+                return;
+            }
+
+            container.classList.remove('hidden');
+            if (!available.some(c => c.id === selectedNameCombination)) {
+                selectedNameCombination = available[0].id;
+            }
+
+            optionsEl.innerHTML = available.map(c => {
+                const preview = c.build(first || 'First', last || 'Last', nick || 'Nickname');
+                const active = c.id === selectedNameCombination;
+                return `
+                    <button type="button" onclick="selectNameCombination(${c.id})" class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition-colors ${active ? 'border-cyan-400 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 ring-1 ring-cyan-400/30' : 'border-slate-300 dark:border-ocean-800/50 text-slate-600 dark:text-slate-400 hover:border-cyan-500/40'}">
+                        <span class="text-xs font-semibold">${c.label}</span>
+                        <span class="text-xs font-mono-custom truncate">${preview}</span>
+                    </button>`;
+            }).join('');
+        }
+
+        function selectNameCombination(id) {
+            selectedNameCombination = id;
+            refreshNameCombinationOptions();
+        }
+
         function openDiverProfileModal() {
-            document.getElementById('prof-name').value = state.diverProfile.name || "";
+            const p = state.diverProfile;
+            document.getElementById('prof-first-name').value = p.firstName || p.name || "";
+            document.getElementById('prof-last-name').value = p.lastName || "";
+            document.getElementById('prof-nickname').value = p.nickname || "";
+            selectedNameCombination = p.nameCombination || 0;
+            refreshNameCombinationOptions();
 
             const previewCont = document.getElementById('prof-avatar-preview-container');
             const previewImg = document.getElementById('prof-avatar-preview-img');
@@ -6562,7 +6711,15 @@
 
         function saveDiverProfile(event) {
             event.preventDefault();
-            state.diverProfile.name = document.getElementById('prof-name').value;
+            const first = document.getElementById('prof-first-name').value.trim();
+            const last = document.getElementById('prof-last-name').value.trim();
+            const nick = document.getElementById('prof-nickname').value.trim();
+
+            state.diverProfile.firstName = first;
+            state.diverProfile.lastName = last;
+            state.diverProfile.nickname = nick;
+            state.diverProfile.nameCombination = selectedNameCombination;
+            state.diverProfile.name = computeDiverDisplayName(first, last, nick, selectedNameCombination);
 
             if (tempProfileAvatar !== null) {
                 state.diverProfile.avatar = tempProfileAvatar;

@@ -1,5 +1,14 @@
 # Changelog
 
+## 260724-v26
+
+- **Fixed missing favicon.** The app had no `<link rel="icon">` at all, so Chrome/browser tabs fell back to a generic default icon instead of the Abyss brand mark — even though the header and PWA home-screen icons were already consistent with each other. Added explicit `rel="icon"` links pointing at the same icon files.
+- **Log a Dive now returns to the Logbook after saving** (both a brand-new entry and an edit to an existing one), instead of the Dashboard.
+- **AquaDex icons**: all 13 categories now use hand-picked line-art icons (Flaticon, by Amethyst prime) recolored to match each category's existing accent color, replacing every hand-drawn SVG. Attribution ("Icon created by Amethyst prime - Flaticon") added at the bottom of the AquaDex page.
+- **Dive Log Card graph now has axis values**: depth gridlines every 5m (labeled every 10m), time axis in `mm:ss` format — no unit suffixes on either axis.
+- **Diver Full Name split into First Name\* / Last Name / Nickname.** Diver Details now offers a choice of name combinations (First + Last, Last + First, Last + First & Nickname, Nickname + Last, Nickname + Last + First) to control how the name appears on the credential card and everywhere else in the app, based on which fields are filled in.
+- Service worker cache bumped (`abyss-shell-v25` → `abyss-shell-v26`) to ship all of the above.
+
 ## 260724-v25
 
 - **Dive Log Card**: a new "Create Dive Log Card" button on each Logbook entry (in the expanded preview) generates a shareable snapshot image — depth-over-time graph centered, bottom time / min temp / avg depth / max depth below it, Abyss brand mark upper-left, diver avatar and name upper-right. Share via the OS share sheet or download as PNG, same html2canvas pipeline as the existing Share Diver Profile card.
