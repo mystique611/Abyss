@@ -253,7 +253,7 @@
 
     </style>
 </head>
-<body class="bg-white text-slate-900 dark:bg-ocean-950 dark:text-slate-100 min-h-screen pb-24">
+<body class="bg-white text-slate-900 dark:bg-ocean-950 dark:text-slate-100 min-h-screen pb-36 md:pb-24">
 
     <!-- Toast Notification System -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-3 pointer-events-none"></div>
@@ -263,8 +263,8 @@
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <!-- Brand Logo -->
             <div class="flex items-center space-x-3">
-                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-cyan-500/20">
-                    <i class="fa-solid fa-water text-lg"></i>
+                <div class="h-10 w-10 rounded-xl overflow-hidden shadow-lg shadow-cyan-500/20 flex-shrink-0">
+                    <img src="icons/icon-192.png" alt="Abyss" class="h-full w-full object-cover">
                 </div>
                 <div>
                     <h1 class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-slate-900 to-cyan-600 dark:from-white dark:to-cyan-400 bg-clip-text text-transparent">ABYSS</h1>
@@ -1242,6 +1242,15 @@
                 <button onclick="filterCritters('Others')" id="cf-others" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Others</button>
             </div>
 
+            <!-- Rarity Filter (applies on top of the category filter above) -->
+            <div class="flex items-center space-x-2 overflow-x-auto w-full">
+                <span class="text-[10px] font-mono-custom uppercase tracking-widest text-slate-600 dark:text-slate-500 flex-shrink-0">Rarity:</span>
+                <button onclick="filterCrittersByRarity('all')" id="cr-all" class="critter-rarity-pill px-3 py-1 rounded-full text-[11px] font-semibold bg-cyan-500 text-white flex-shrink-0 transition-all">All</button>
+                <button onclick="filterCrittersByRarity('Common')" id="cr-common" class="critter-rarity-pill px-3 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Common</button>
+                <button onclick="filterCrittersByRarity('Epic')" id="cr-epic" class="critter-rarity-pill px-3 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Epic</button>
+                <button onclick="filterCrittersByRarity('Ultra-Rare')" id="cr-ultrarare" class="critter-rarity-pill px-3 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Ultra-Rare</button>
+            </div>
+
             <!-- Critter Grid -->
             <div id="critterdex-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <!-- Dynamic High Fidelity Cards or Silhouette Locked Cards -->
@@ -2072,26 +2081,26 @@
     </div>
 
     <!-- Bottom Mobile Nav Indicator -->
-    <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-ocean-950/90 border-t border-slate-200 dark:border-ocean-900/20 backdrop-blur-lg flex justify-around py-2.5">
-        <button onclick="switchTab('dashboard')" class="mobile-nav-btn flex flex-col items-center space-y-1 text-cyan-400" id="mob-btn-dashboard">
-            <i class="fa-solid fa-chart-line text-lg"></i>
-            <span class="text-[9px] font-semibold uppercase">Dashboard</span>
+    <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-ocean-950/90 border-t border-slate-200 dark:border-ocean-900/20 backdrop-blur-lg flex justify-around pt-[15px] pb-[max(15px,env(safe-area-inset-bottom))]">
+        <button onclick="switchTab('dashboard')" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-cyan-400" id="mob-btn-dashboard">
+            <i class="fa-solid fa-chart-line text-[27px]"></i>
+            <span class="text-[13px] font-semibold uppercase">Dashboard</span>
         </button>
-        <button onclick="switchTab('logs')" class="mobile-nav-btn flex flex-col items-center space-y-1 text-slate-600 dark:text-slate-500" id="mob-btn-logs">
-            <i class="fa-solid fa-book-open text-lg"></i>
-            <span class="text-[9px] font-semibold uppercase">Logbook</span>
+        <button onclick="switchTab('logs')" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500" id="mob-btn-logs">
+            <i class="fa-solid fa-book-open text-[27px]"></i>
+            <span class="text-[13px] font-semibold uppercase">Logbook</span>
         </button>
-        <button onclick="prepareNewDiveLogTab()" class="mobile-nav-btn flex flex-col items-center space-y-1 text-slate-600 dark:text-slate-500" id="mob-btn-add-log">
-            <i class="fa-solid fa-circle-plus text-lg"></i>
-            <span class="text-[9px] font-semibold uppercase">Log Dive</span>
+        <button onclick="prepareNewDiveLogTab()" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500" id="mob-btn-add-log">
+            <i class="fa-solid fa-circle-plus text-[27px]"></i>
+            <span class="text-[13px] font-semibold uppercase">Log Dive</span>
         </button>
-        <button onclick="switchTab('critterdex')" class="mobile-nav-btn flex flex-col items-center space-y-1 text-slate-600 dark:text-slate-500" id="mob-btn-critterdex">
-            <i class="fa-solid fa-fish text-lg"></i>
-            <span class="text-[9px] font-semibold uppercase">AquaDex</span>
+        <button onclick="switchTab('critterdex')" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500" id="mob-btn-critterdex">
+            <i class="fa-solid fa-fish text-[27px]"></i>
+            <span class="text-[13px] font-semibold uppercase">AquaDex</span>
         </button>
-        <button onclick="switchTab('profile')" class="mobile-nav-btn flex flex-col items-center space-y-1 text-slate-600 dark:text-slate-500" id="mob-btn-profile">
-            <i class="fa-solid fa-id-card text-lg"></i>
-            <span class="text-[9px] font-semibold uppercase">Profile</span>
+        <button onclick="switchTab('profile')" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500" id="mob-btn-profile">
+            <i class="fa-solid fa-id-card text-[27px]"></i>
+            <span class="text-[13px] font-semibold uppercase">Profile</span>
         </button>
     </div>
 
@@ -2698,6 +2707,7 @@
         let state = {
             dives: [],
             critterFilter: 'all',
+            critterRarityFilter: 'all',
             currentTab: 'dashboard',
             isDark: true,
             editingLogId: null,
@@ -3186,8 +3196,8 @@
                     <!-- Top half: certificate card -->
                     <div style="background:linear-gradient(135deg, #093054 0%, #061e38 50%, #031b2e 100%);padding:36px 36px 40px;position:relative;">
                         <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;">
-                            <div style="height:32px;width:32px;border-radius:10px;background:linear-gradient(135deg,#06b6d4,#2563eb);display:flex;align-items:center;justify-content:center;">
-                                <i class="fa-solid fa-water" style="font-size:14px;color:#fff;"></i>
+                            <div style="height:32px;width:32px;border-radius:10px;overflow:hidden;flex-shrink:0;">
+                                <img src="icons/icon-192.png" style="width:100%;height:100%;object-fit:cover;" />
                             </div>
                             <span style="font-size:16px;color:#22d3ee;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;">Diver Profile</span>
                         </div>
@@ -3355,6 +3365,8 @@
             if (!dive) return '';
             const profile = state.diverProfile || {};
             const name = profile.name || 'Explorer';
+            const org = profile.org || 'PADI';
+            const level = profile.level || 'Open Water Diver';
             const avatar = profile.avatar || null;
             const avatarHtml = avatar
                 ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;" />`
@@ -3369,13 +3381,19 @@
 
             return `
                 <div id="dive-log-card-inner" style="width:380px;background:#0a1f30;font-family:'Inter',sans-serif;padding:22px;color:#e6f1fb;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                        <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#06b6d4,#2563eb);display:flex;align-items:center;justify-content:center;">
-                            <i class="fa-solid fa-water" style="font-size:14px;color:#fff;"></i>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+                        <div style="width:30px;height:30px;border-radius:9px;overflow:hidden;flex-shrink:0;">
+                            <img src="icons/icon-192.png" style="width:100%;height:100%;object-fit:cover;" />
                         </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-size:13px;color:#9fc9e0;">${name}</span>
-                            <div style="width:28px;height:28px;border-radius:50%;background:#1d4e6e;border:1px solid #22d3ee;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${avatarHtml}</div>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-size:13px;color:#9fc9e0;">${name}</span>
+                                <div style="width:28px;height:28px;border-radius:50%;background:#1d4e6e;border:1px solid #22d3ee;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${avatarHtml}</div>
+                            </div>
+                            <div style="display:flex;gap:6px;font-family:'JetBrains Mono',monospace;">
+                                <span style="padding:2px 8px;border-radius:6px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;background:rgba(255,255,255,0.1);color:#67e8f9;border:1px solid rgba(34,211,238,0.4);">${org}</span>
+                                <span style="padding:2px 8px;border-radius:6px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;background:#06b6d4;color:#fff;">${level}</span>
+                            </div>
                         </div>
                     </div>
                     <p style="font-size:14px;font-weight:700;margin:0;color:#fff;">${dive.site || 'Dive Site'}</p>
@@ -4283,11 +4301,11 @@
 
             // Reset mobile buttons
             document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
-                btn.className = "mobile-nav-btn flex flex-col items-center space-y-1 text-slate-600 dark:text-slate-500";
+                btn.className = "mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500";
             });
             const activeMobBtn = document.getElementById(`mob-btn-${tabId}`);
             if (activeMobBtn) {
-                activeMobBtn.className = "mobile-nav-btn flex flex-col items-center space-y-1 text-cyan-400";
+                activeMobBtn.className = "mobile-nav-btn flex flex-col items-center space-y-1.5 text-cyan-400";
             }
 
             // Handle Leaflet Map recreation if switching back to dashboard
@@ -6851,7 +6869,7 @@
                         }
                     });
                 } else {
-                    crittersCardList = `<p class="text-xs text-slate-600 dark:text-slate-500 italic py-2">No marine life observations logged during this run.</p>`;
+                    crittersCardList = `<p class="text-xs text-slate-600 dark:text-slate-500 italic py-2">No marine life observations logged during this dive.</p>`;
                 }
 
                 const maxDepthText = dive.maxDepth !== null ? `${dive.maxDepth}m` : '--';
@@ -6990,10 +7008,6 @@
                                     <i class="fa-solid fa-id-badge"></i>
                                     <span>Create Dive Log Card</span>
                                 </button>
-                                <button onclick="openLogDetailModal('${dive.id}')" class="px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold flex items-center space-x-2 transition-colors">
-                                    <i class="fa-solid fa-file-lines"></i>
-                                    <span>View Full Log Details</span>
-                                </button>
                             </div>
                         </div>
                     </details>
@@ -7046,7 +7060,7 @@
                    <p class="text-[10px] font-mono-custom text-cyan-400 mt-1">Pinned: ${dive.latitude.toFixed(5)}, ${dive.longitude.toFixed(5)}</p>`
                 : `<p class="text-[11px] text-slate-600 dark:text-slate-500 italic mt-3">No exact location pinned for this dive — only the country/territory above was recorded.</p>`;
 
-            let crittersHtml = '<p class="text-xs text-slate-600 dark:text-slate-500 italic py-2">No marine life observations logged during this run.</p>';
+            let crittersHtml = '<p class="text-xs text-slate-600 dark:text-slate-500 italic py-2">No marine life observations logged during this dive.</p>';
             if (dive.critters && dive.critters.length > 0) {
                 crittersHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">` + dive.critters.map(c => {
                     const template = CRITTER_DATABASE[c.id];
@@ -7344,6 +7358,28 @@
             renderCritterdex();
         }
 
+        // Rarity filter — applies on top of the category filter above, across
+        // every AquaDex category (not scoped to whichever category is active).
+        function filterCrittersByRarity(rarity) {
+            state.critterRarityFilter = rarity;
+
+            document.querySelectorAll('.critter-rarity-pill').forEach(btn => {
+                btn.className = "critter-rarity-pill px-3 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all";
+            });
+
+            let activeId = "cr-all";
+            if (rarity === "Common") activeId = "cr-common";
+            else if (rarity === "Epic") activeId = "cr-epic";
+            else if (rarity === "Ultra-Rare") activeId = "cr-ultrarare";
+
+            const activeBtn = document.getElementById(activeId);
+            if (activeBtn) {
+                activeBtn.className = "critter-rarity-pill px-3 py-1 rounded-full text-[11px] font-semibold bg-cyan-500 text-white flex-shrink-0 transition-all";
+            }
+
+            renderCritterdex();
+        }
+
         function getUnlockedSpeciesCount() {
             let count = 0;
             Object.keys(CRITTER_DATABASE).forEach(critterId => {
@@ -7477,9 +7513,11 @@
 
             grid.innerHTML = '';
 
-            // Filter species by current active category tab
+            // Filter species by current active category tab and rarity filter
             const filteredSpecies = Object.values(CRITTER_DATABASE).filter(species => {
-                return state.critterFilter === 'all' || species.tag === state.critterFilter;
+                const matchesCategory = state.critterFilter === 'all' || species.tag === state.critterFilter;
+                const matchesRarity = state.critterRarityFilter === 'all' || species.rarity === state.critterRarityFilter;
+                return matchesCategory && matchesRarity;
             });
 
             // Sort logic: Discovered (unlocked) species on top, then sort alphabetically by name
