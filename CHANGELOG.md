@@ -1,5 +1,15 @@
 # Changelog
 
+## 260724-v29
+
+- **Mobile bottom nav resized**: icons reduced 20% and labels reduced 50% from the previous enlargement, while keeping the taller tap-target bar itself unchanged.
+- **Log a Dive**: added a "Clear All" button beside "Import UDDF" that resets every field in the form, including any depth/time profile imported from a UDDF file (with a confirmation prompt first).
+- **Update Diver Info**: added optional Date of Birth, Nationality, and Residence Country fields below the name fields, and a new Emergency Contact section (name, relationship, contact number, email) below the avatar upload — none of these appear on the credential card.
+- **Diver Details**: added an info button next to "Edit Diver Info" that opens a read-only preview of every diver info field, including the new ones above.
+- **Light mode fix**: the certification card (Diver Details) and diver credential card (Dashboard) had grey label text left over from dark mode, which looked out of place against the card's light-blue gradient. Labels now use the same light-blue tone as the "Current Certification" header in both themes.
+- Verified: Log a Dive and Edit Dive already redirect to the Logbook after saving (from the earlier v25 change) — no regression found.
+- Service worker cache bumped (`abyss-shell-v28` → `abyss-shell-v29`) to ship all of the above.
+
 ## 260724-v28
 
 - **Dive Log Card**: now shows Certification Organisation and Certificate Level badges under the diver name, matching the credential info already on the Share Diver Profile card.

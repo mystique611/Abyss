@@ -373,7 +373,7 @@
                     <div class="flex justify-between items-start relative z-10">
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-id-card text-xl text-cyan-400"></i>
-                            <span class="text-xs font-bold uppercase tracking-wider font-mono-custom text-slate-700 dark:text-slate-300">Diver Credentials</span>
+                            <span class="text-xs font-bold uppercase tracking-wider font-mono-custom text-cyan-300">Diver Credentials</span>
                         </div>
                         <button onclick="switchTab('profile')" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center space-x-1" title="View Diver Details">
                             <span>View Diver Detail</span>
@@ -396,13 +396,13 @@
                     </div>
 
                     <!-- Bottom metadata credential card parameters -->
-                    <div class="grid grid-cols-2 gap-2 text-[10px] font-mono-custom text-slate-700 dark:text-slate-300 relative z-10 border-t border-white/10 pt-3">
+                    <div class="grid grid-cols-2 gap-2 text-[10px] font-mono-custom text-cyan-100 relative z-10 border-t border-white/10 pt-3">
                         <div>
-                            <span class="block text-[8px] text-slate-600 dark:text-slate-400 uppercase">Certification Number</span>
+                            <span class="block text-[8px] text-cyan-200/70 uppercase">Certification Number</span>
                             <span id="card-cert-no" class="font-bold text-white"># PENDING</span>
                         </div>
                         <div class="text-right">
-                            <span class="block text-[8px] text-slate-600 dark:text-slate-400 uppercase">Current Milestone</span>
+                            <span class="block text-[8px] text-cyan-200/70 uppercase">Current Milestone</span>
                             <span id="card-rank-milestone" class="font-bold text-cyan-400">Ocean Novice</span>
                         </div>
                     </div>
@@ -562,6 +562,10 @@
                         <div id="edit-indicator" class="hidden bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-xl text-xs font-mono-custom font-bold">
                             <i class="fa-solid fa-pen-to-square mr-1"></i> EDIT MODE
                         </div>
+                        <button type="button" onclick="clearLogForm()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 text-sm font-semibold flex items-center space-x-2 transition-colors" title="Clear every field in this form, including any imported depth/time profile">
+                            <i class="fa-solid fa-eraser"></i>
+                            <span class="hidden sm:inline">Clear All</span>
+                        </button>
                         <label class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center space-x-2 cursor-pointer transition-colors" title="Import a dive computer's UDDF export to pre-fill this form">
                             <i class="fa-solid fa-file-import"></i>
                             <span class="hidden sm:inline">Import UDDF</span>
@@ -1271,6 +1275,9 @@
                         <i class="fa-solid fa-share-nodes"></i>
                         <span>Share Profile</span>
                     </button>
+                    <button onclick="openDiverInfoPreviewModal()" class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-600 dark:text-slate-400" title="Preview all diver info">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </button>
                     <button onclick="openDiverProfileModal()" class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-xs font-bold rounded-xl flex items-center space-x-2 shadow-md">
                         <i class="fa-solid fa-user-pen"></i>
                         <span>Edit Diver Info</span>
@@ -1299,13 +1306,13 @@
                             </div>
                         </div>
 
-                        <div class="border-t border-white/10 pt-4 grid grid-cols-2 gap-3 text-xs font-mono-custom text-slate-700 dark:text-slate-300">
+                        <div class="border-t border-white/10 pt-4 grid grid-cols-2 gap-3 text-xs font-mono-custom text-cyan-100">
                             <div>
-                                <span class="block text-[10px] text-slate-600 dark:text-slate-400">CERTIFICATION NUMBER</span>
+                                <span class="block text-[10px] text-cyan-200/70">CERTIFICATION NUMBER</span>
                                 <strong id="prof-detail-cert-no" class="text-white">DIV-PENDING</strong>
                             </div>
                             <div>
-                                <span class="block text-[10px] text-slate-600 dark:text-slate-400">ISSUE DATE</span>
+                                <span class="block text-[10px] text-cyan-200/70">ISSUE DATE</span>
                                 <strong id="prof-detail-cert-date" class="text-white">--/--/----</strong>
                             </div>
                         </div>
@@ -1548,6 +1555,22 @@
                     <div id="name-combination-options" class="space-y-1.5"></div>
                 </div>
 
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Date of Birth</label>
+                        <input type="date" id="prof-dob" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Nationality</label>
+                        <input type="text" id="prof-nationality" placeholder="e.g., French" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Residence Country</label>
+                        <input type="text" id="prof-residence-country" placeholder="e.g., France" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                    </div>
+                    <p class="col-span-full text-[10px] text-slate-500 dark:text-slate-600">Not shown on the credential card.</p>
+                </div>
+
                 <div>
                     <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Diver Profile Image</label>
                     <div class="flex items-center space-x-3 mt-1">
@@ -1563,6 +1586,31 @@
                     </div>
                 </div>
 
+                <div class="border-t border-slate-200 dark:border-ocean-900/20 pt-4 space-y-3">
+                    <div>
+                        <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-0.5">Emergency Contact</label>
+                        <p class="text-[10px] text-slate-500 dark:text-slate-600">Not shown on the credential card.</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Contact Name</label>
+                            <input type="text" id="prof-emergency-name" placeholder="e.g., Marie Cousteau" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Relationship</label>
+                            <input type="text" id="prof-emergency-relationship" placeholder="e.g., Spouse" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Contact Number</label>
+                            <input type="tel" id="prof-emergency-phone" placeholder="e.g., +33 6 12 34 56 78" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Email</label>
+                            <input type="email" id="prof-emergency-email" placeholder="e.g., marie@example.com" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200 dark:border-ocean-900/20">
                     <button type="button" onclick="closeDiverProfileModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-850 hover:bg-slate-100 dark:hover:bg-ocean-900/10 text-xs font-semibold">
                         Cancel
@@ -1572,6 +1620,83 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: DIVER INFO PREVIEW (READ-ONLY) ==================== -->
+    <div id="diver-info-preview-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeDiverInfoPreviewModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="flex items-center space-x-3 text-cyan-400">
+                <i class="fa-solid fa-circle-info text-xl"></i>
+                <h3 class="text-base font-bold uppercase tracking-wider">Diver Info Preview</h3>
+            </div>
+
+            <div class="space-y-4 text-sm">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">First Name</span>
+                        <p id="preview-first-name" class="font-semibold">--</p>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Last Name</span>
+                        <p id="preview-last-name" class="font-semibold">--</p>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Nickname</span>
+                        <p id="preview-nickname" class="font-semibold">--</p>
+                    </div>
+                </div>
+                <div>
+                    <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Name shown on credential card</span>
+                    <p id="preview-display-name" class="font-semibold">--</p>
+                </div>
+
+                <div class="border-t border-slate-200 dark:border-ocean-900/20 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Date of Birth</span>
+                        <p id="preview-dob">--</p>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Nationality</span>
+                        <p id="preview-nationality">--</p>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Residence Country</span>
+                        <p id="preview-residence-country">--</p>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-200 dark:border-ocean-900/20 pt-4">
+                    <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-2">Emergency Contact</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <span class="block text-[10px] text-slate-500 dark:text-slate-600">Contact Name</span>
+                            <p id="preview-emergency-name">--</p>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-500 dark:text-slate-600">Relationship</span>
+                            <p id="preview-emergency-relationship">--</p>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-500 dark:text-slate-600">Contact Number</span>
+                            <p id="preview-emergency-phone">--</p>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-500 dark:text-slate-600">Email</span>
+                            <p id="preview-emergency-email">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end pt-3 border-t border-slate-200 dark:border-ocean-900/20">
+                <button type="button" onclick="closeDiverInfoPreviewModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-850 hover:bg-slate-100 dark:hover:bg-ocean-900/10 text-xs font-semibold">
+                    Close
+                </button>
+            </div>
         </div>
     </div>
 
@@ -2083,24 +2208,24 @@
     <!-- Bottom Mobile Nav Indicator -->
     <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-ocean-950/90 border-t border-slate-200 dark:border-ocean-900/20 backdrop-blur-lg flex justify-around pt-[15px] pb-[max(15px,env(safe-area-inset-bottom))]">
         <button onclick="switchTab('dashboard')" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-cyan-400" id="mob-btn-dashboard">
-            <i class="fa-solid fa-chart-line text-[27px]"></i>
-            <span class="text-[13px] font-semibold uppercase">Dashboard</span>
+            <i class="fa-solid fa-chart-line text-[21.6px]"></i>
+            <span class="text-[6.5px] font-semibold uppercase">Dashboard</span>
         </button>
         <button onclick="switchTab('logs')" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500" id="mob-btn-logs">
-            <i class="fa-solid fa-book-open text-[27px]"></i>
-            <span class="text-[13px] font-semibold uppercase">Logbook</span>
+            <i class="fa-solid fa-book-open text-[21.6px]"></i>
+            <span class="text-[6.5px] font-semibold uppercase">Logbook</span>
         </button>
         <button onclick="prepareNewDiveLogTab()" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500" id="mob-btn-add-log">
-            <i class="fa-solid fa-circle-plus text-[27px]"></i>
-            <span class="text-[13px] font-semibold uppercase">Log Dive</span>
+            <i class="fa-solid fa-circle-plus text-[21.6px]"></i>
+            <span class="text-[6.5px] font-semibold uppercase">Log Dive</span>
         </button>
         <button onclick="switchTab('critterdex')" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500" id="mob-btn-critterdex">
-            <i class="fa-solid fa-fish text-[27px]"></i>
-            <span class="text-[13px] font-semibold uppercase">AquaDex</span>
+            <i class="fa-solid fa-fish text-[21.6px]"></i>
+            <span class="text-[6.5px] font-semibold uppercase">AquaDex</span>
         </button>
         <button onclick="switchTab('profile')" class="mobile-nav-btn flex flex-col items-center space-y-1.5 text-slate-600 dark:text-slate-500" id="mob-btn-profile">
-            <i class="fa-solid fa-id-card text-[27px]"></i>
-            <span class="text-[13px] font-semibold uppercase">Profile</span>
+            <i class="fa-solid fa-id-card text-[21.6px]"></i>
+            <span class="text-[6.5px] font-semibold uppercase">Profile</span>
         </button>
     </div>
 
@@ -5663,6 +5788,16 @@
             state.dives.sort((a,b) => b.diveNo - a.diveNo);
             saveState();
 
+            resetLogFormFields();
+
+            switchTab('logs');
+        }
+
+        // Resets every field/widget in the Log a Dive form back to blank —
+        // shared by the post-submit cleanup above and the standalone "Clear
+        // All" button, which lets the diver wipe the form (including an
+        // imported UDDF depth/time profile) without submitting it.
+        function resetLogFormFields() {
             document.getElementById('padi-log-form').reset();
             tempCritterPhotos = {};
             tempDivePhotos = [];
@@ -5674,8 +5809,18 @@
             setActivityType('Scuba');
             refreshSiteAndBuddySuggestions();
             resetDepthProfileState();
+        }
 
-            switchTab('logs');
+        function clearLogForm() {
+            openConfirmModal(
+                "Clear all fields?",
+                "This clears every field in this form, including any depth/time profile imported from a UDDF file. This cannot be undone.",
+                "Clear All",
+                () => {
+                    resetLogFormFields();
+                    showToast("Form cleared", "info");
+                }
+            );
         }
 
         function updateUI() {
@@ -6682,6 +6827,14 @@
             selectedNameCombination = p.nameCombination || 0;
             refreshNameCombinationOptions();
 
+            document.getElementById('prof-dob').value = p.dob || "";
+            document.getElementById('prof-nationality').value = p.nationality || "";
+            document.getElementById('prof-residence-country').value = p.residenceCountry || "";
+            document.getElementById('prof-emergency-name').value = (p.emergencyContact && p.emergencyContact.name) || "";
+            document.getElementById('prof-emergency-relationship').value = (p.emergencyContact && p.emergencyContact.relationship) || "";
+            document.getElementById('prof-emergency-phone').value = (p.emergencyContact && p.emergencyContact.phone) || "";
+            document.getElementById('prof-emergency-email').value = (p.emergencyContact && p.emergencyContact.email) || "";
+
             const previewCont = document.getElementById('prof-avatar-preview-container');
             const previewImg = document.getElementById('prof-avatar-preview-img');
             if (state.diverProfile.avatar) {
@@ -6696,6 +6849,34 @@
 
         function closeDiverProfileModal() {
             document.getElementById('diver-profile-modal').classList.add('hidden');
+        }
+
+        // Read-only preview of every diver info field, including the ones
+        // that don't appear on the credential card (DOB, nationality,
+        // residence, emergency contact) — opened via the info button next
+        // to "Edit Diver Info" on the Diver Details page.
+        function openDiverInfoPreviewModal() {
+            const p = state.diverProfile || {};
+            const emg = p.emergencyContact || {};
+            const setText = (id, val) => { document.getElementById(id).innerText = (val && String(val).trim()) ? val : '--'; };
+
+            setText('preview-first-name', p.firstName || p.name);
+            setText('preview-last-name', p.lastName);
+            setText('preview-nickname', p.nickname);
+            setText('preview-display-name', p.name);
+            setText('preview-dob', p.dob ? formatDateDMY(p.dob) : '');
+            setText('preview-nationality', p.nationality);
+            setText('preview-residence-country', p.residenceCountry);
+            setText('preview-emergency-name', emg.name);
+            setText('preview-emergency-relationship', emg.relationship);
+            setText('preview-emergency-phone', emg.phone);
+            setText('preview-emergency-email', emg.email);
+
+            document.getElementById('diver-info-preview-modal').classList.remove('hidden');
+        }
+
+        function closeDiverInfoPreviewModal() {
+            document.getElementById('diver-info-preview-modal').classList.add('hidden');
         }
 
         let tempProfileAvatar = null;
@@ -6731,6 +6912,16 @@
             state.diverProfile.nickname = nick;
             state.diverProfile.nameCombination = selectedNameCombination;
             state.diverProfile.name = computeDiverDisplayName(first, last, nick, selectedNameCombination);
+
+            state.diverProfile.dob = document.getElementById('prof-dob').value || "";
+            state.diverProfile.nationality = document.getElementById('prof-nationality').value.trim();
+            state.diverProfile.residenceCountry = document.getElementById('prof-residence-country').value.trim();
+            state.diverProfile.emergencyContact = {
+                name: document.getElementById('prof-emergency-name').value.trim(),
+                relationship: document.getElementById('prof-emergency-relationship').value.trim(),
+                phone: document.getElementById('prof-emergency-phone').value.trim(),
+                email: document.getElementById('prof-emergency-email').value.trim()
+            };
 
             if (tempProfileAvatar !== null) {
                 state.diverProfile.avatar = tempProfileAvatar;
