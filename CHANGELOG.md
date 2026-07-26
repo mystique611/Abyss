@@ -1,5 +1,10 @@
 # Changelog
 
+## 260724-v30
+
+- **Fixed modal scrolling.** Popups like "Update Diver Info" and "Full Log Details" could scroll the page behind them instead of scrolling their own content. Fixed two causes: the Update Diver Info popup (and a couple of others) had no height cap or internal scrollbar at all, and no popup locked background scroll while open. Every modal now caps its height with its own scrollbar, and the page behind is locked from scrolling for as long as any popup is open.
+- Service worker cache bumped (`abyss-shell-v29` → `abyss-shell-v30`) to ship the above.
+
 ## 260724-v29
 
 - **Mobile bottom nav resized**: icons reduced 20% and labels reduced 50% from the previous enlargement, while keeping the taller tap-target bar itself unchanged.

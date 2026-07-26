@@ -1525,7 +1525,7 @@
 
     <!-- ==================== MODAL: DIVER PROFILE EDIT ==================== -->
     <div id="diver-profile-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
-        <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl relative">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeDiverProfileModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
@@ -1923,7 +1923,7 @@
 
     <!-- ==================== MODAL: SHARE DIVER PROFILE AS IMAGE ==================== -->
     <div id="share-profile-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
-        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 space-y-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 space-y-4 max-h-[90vh] overflow-y-auto">
             <button onclick="closeShareProfileModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
@@ -1957,7 +1957,7 @@
 
     <!-- ==================== MODAL: SHARE DIVE LOG CARD AS IMAGE ==================== -->
     <div id="dive-log-card-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
-        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 space-y-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 space-y-4 max-h-[90vh] overflow-y-auto">
             <button onclick="closeDiveLogCardModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
@@ -2988,12 +2988,41 @@
         }
 
 
+        // Every modal in the app is a fixed full-screen overlay toggled via
+        // the "hidden" class. None of them locked background scroll, so on
+        // long modals (Update Diver Info, Full Log Details, etc.) a scroll
+        // gesture that didn't land exactly on the modal's own scrollable
+        // area fell through and scrolled the page behind it instead. This
+        // watches every modal for its hidden class toggling and locks the
+        // body's scroll for as long as at least one modal is open.
+        function initModalScrollLock() {
+            const modalIds = [
+                'diver-profile-modal', 'diver-info-preview-modal', 'certification-modal', 'my-gear-modal',
+                'critter-detail-modal', 'share-profile-modal', 'dive-log-card-modal', 'log-detail-modal',
+                'dive-photos-modal', 'marine-sightings-modal', 'photo-lightbox-modal', 'pdf-export-modal',
+                'uddf-dive-select-modal', 'login-prompt-modal', 'confirm-modal'
+            ];
+            const modals = modalIds.map(id => document.getElementById(id)).filter(Boolean);
+
+            const refreshLock = () => {
+                const anyOpen = modals.some(m => !m.classList.contains('hidden'));
+                document.body.classList.toggle('overflow-hidden', anyOpen);
+            };
+
+            modals.forEach(modal => {
+                new MutationObserver(refreshLock).observe(modal, { attributes: true, attributeFilter: ['class'] });
+            });
+
+            refreshLock();
+        }
+
         // Initialize State on Launch
         window.addEventListener('DOMContentLoaded', async () => {
             await loadState();
             await migrateLegacyPhotosToStore();
             updateThemeToggleIcon();
             setupFormsAndListeners();
+            initModalScrollLock();
             switchTab('dashboard'); // Triggers Leaflet initialization automatically
 
             // Register service worker (offline app-shell caching)
