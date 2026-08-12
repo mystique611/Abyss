@@ -1,5 +1,15 @@
 # Changelog
 
+## 260724-v31
+
+- **Dashboard**: added two new widgets, Unique Dive Sites and Total Cumulative Depth, and reordered the row to Countries → Unique Dive Sites → Total Dives → Total Bottom Time → Cumulative Depth → Marine Life.
+- **Profile "Lifetime Totals"** now mirrors every dashboard widget (Countries, Unique Dive Sites, Total Dives, Total Bottom Time, Cumulative Depth, Marine Life), alongside the existing Maximum Depth and Max Bottom Time stats, all driven from one shared analytics source.
+- **SAC rate everywhere**: added a shared SAC calculation used consistently by the Logbook card preview (now shows bar/min on a second row under L/min), Full Log Details ("05. Gas Metrics & SAC" now includes both L/min and bar/min), and PDF export (new SAC Rate (L/min) field, checked by default).
+- **CSV export rebuilt**: exporting to CSV now opens a field-selection modal just like PDF export, letting you choose exactly which fields to include (SAC Rate in L/min is included and checked by default).
+- **Export order fixed**: UDDF, CSV, and PDF exports now list the most recent dive first instead of last.
+- **UDDF import improvements**: dive site GPS coordinates from the file now automatically pre-pin the location on the map; dive site name resolution was hardened with fallbacks (dive name, site text content) for files that don't reference a full `<site>` catalog entry; imported average and max depth now round to the nearest 0.1m; confirmed average depth already prefers the file's own value over a manual calculation when both are available.
+- Service worker cache bumped (`abyss-shell-v30` → `abyss-shell-v31`) to ship all of the above.
+
 ## 260724-v30
 
 - **Fixed modal scrolling.** Popups like "Update Diver Info" and "Full Log Details" could scroll the page behind them instead of scrolling their own content. Fixed two causes: the Update Diver Info popup (and a couple of others) had no height cap or internal scrollbar at all, and no popup locked background scroll while open. Every modal now caps its height with its own scrollbar, and the page behind is locked from scrolling for as long as any popup is open.
