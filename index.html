@@ -1248,6 +1248,12 @@
                     <h2 class="text-2xl font-extrabold tracking-tight">AquaDex</h2>
                     <p class="text-sm text-slate-600 dark:text-slate-400">Marine Life Logbook</p>
                 </div>
+                <div class="relative w-full md:w-64 flex-shrink-0">
+                    <input type="text" id="critter-search-input" placeholder="Search species..." oninput="searchCritters()" onkeydown="if(event.key==='Enter'){event.preventDefault();searchCritters();}" class="w-full pl-4 pr-11 py-2.5 rounded-full text-sm bg-slate-100 dark:bg-ocean-900/20 border border-slate-200 dark:border-ocean-900/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
+                    <button type="button" onclick="searchCritters()" aria-label="Search AquaDex" class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Enhanced Category Filter System (Pills Container) -->
@@ -2905,6 +2911,7 @@
             dives: [],
             critterFilter: 'all',
             critterRarityFilter: 'all',
+            critterSearchQuery: '',
             currentTab: 'dashboard',
             isDark: true,
             editingLogId: null,
@@ -4298,7 +4305,7 @@
         // needs to be read back for the Depth & Time Profile graph.
         // Returns null for anything the UDDF standard has no concept of —
         // callers should leave the corresponding field untouched in that case.
-        function parseUddfDiveNode(diveEl, siteNames, siteCoords) {
+        function parseUddfDiveNode(diveEl, siteNames, siteCoords, gasMixes, tankToMix) {
             const text = (parent, tag) => {
                 if (!parent) return null;
                 const el = parent.getElementsByTagName(tag)[0];
@@ -4351,18 +4358,72 @@
             const visibility = num(after, 'visibility');
             const waterTempK = num(after, 'lowesttemperature');
             const airTempK = num(before, 'airtemperature');
-            const tankBeginBar = num(after, 'tankpressurebegin');
-            const tankEndBar = num(after, 'tankpressureend');
             const notesText = text(after, 'notes');
+
+            // Tank pressures are stored in Pascal per the UDDF spec (some
+            // exporters put tankpressurebegin under informationbeforedive and
+            // tankpressureend under informationafterdive, others put both
+            // under the same block) — search the whole dive node rather than
+            // assuming one block, then convert Pa -> bar.
+            const tankBeginPa = num(diveEl, 'tankpressurebegin');
+            const tankEndPa = num(diveEl, 'tankpressureend');
+            const tankBeginBar = tankBeginPa !== null ? Math.round((tankBeginPa / 100000) * 10) / 10 : null;
+            const tankEndBar = tankEndPa !== null ? Math.round((tankEndPa / 100000) * 10) / 10 : null;
+
+            // Resolve the gas blend actually used for this dive, if the file
+            // ties a <gasdefinitions><mix> to it. The link can point straight
+            // at a mix id, or indirectly at an <equipment> tank definition
+            // that itself links to the mix — both are checked.
+            let gasMix = null;
+            if (gasMixes) {
+                const linkEls = Array.from(diveEl.getElementsByTagName('link'));
+                for (const linkEl of linkEls) {
+                    const ref = linkEl.getAttribute('ref');
+                    if (!ref) continue;
+                    if (gasMixes[ref]) { gasMix = gasMixes[ref]; break; }
+                    if (tankToMix && tankToMix[ref] && gasMixes[tankToMix[ref]]) { gasMix = gasMixes[tankToMix[ref]]; break; }
+                }
+            }
 
             // Sample waypoints double as (a) a fallback source for whichever
             // summary stats weren't provided, and (b) the raw series plotted
             // on the Depth & Time Profile graph.
             const waypointEls = Array.from(diveEl.getElementsByTagName('waypoint'));
-            const depthProfile = waypointEls
+            let depthProfile = waypointEls
                 .map(w => ({ t: num(w, 'divetime'), d: num(w, 'depth') }))
                 .filter(p => p.t !== null && p.d !== null)
                 .map(p => ({ t: Math.round((p.t / 60) * 100) / 100, d: p.d })); // seconds -> minutes
+
+            // Cull trailing surface time: some dive computers keep logging
+            // samples after the diver has already surfaced (boat ride, etc).
+            // Once the diver has actually been underwater and 3 consecutive
+            // ~0.0m samples show up, drop everything from the first of those
+            // samples onward so the graph ends at the surface, not a long
+            // flat tail.
+            if (depthProfile.length > 0) {
+                let hasDescended = false;
+                let zeroRunStart = -1;
+                let zeroRunLen = 0;
+                let cutIndex = -1;
+                for (let i = 0; i < depthProfile.length; i++) {
+                    const d = depthProfile[i].d;
+                    if (d > 0.5) hasDescended = true;
+                    if (Math.abs(d) <= 0.05) {
+                        if (zeroRunLen === 0) zeroRunStart = i;
+                        zeroRunLen++;
+                        if (hasDescended && zeroRunLen >= 3) {
+                            cutIndex = zeroRunStart;
+                            break;
+                        }
+                    } else {
+                        zeroRunLen = 0;
+                        zeroRunStart = -1;
+                    }
+                }
+                if (cutIndex > 0) {
+                    depthProfile = depthProfile.slice(0, cutIndex + 1);
+                }
+            }
 
             if (depthProfile.length > 0) {
                 const depths = depthProfile.map(p => p.d);
@@ -4377,7 +4438,7 @@
             if (maxDepth !== null) maxDepth = Math.round(maxDepth * 10) / 10;
             if (avgDepth !== null) avgDepth = Math.round(avgDepth * 10) / 10;
 
-            return { date, timeIn, siteName, siteLat, siteLng, maxDepth, avgDepth, durationSec, visibility, waterTempK, airTempK, tankBeginBar, tankEndBar, notesText, depthProfile };
+            return { date, timeIn, siteName, siteLat, siteLng, maxDepth, avgDepth, durationSec, visibility, waterTempK, airTempK, tankBeginBar, tankEndBar, notesText, depthProfile, gasMix };
         }
 
         // Pre-fills the currently-open Log a Dive form from a UDDF file. If
@@ -4422,7 +4483,36 @@
                 }
             });
 
-            const parsedDives = diveNodes.map(node => parseUddfDiveNode(node, siteNames, siteCoords));
+            // Gas blends live in a top-level <gasdefinitions><mix id="..."> catalog
+            // (fractions, not percentages) — collected once and matched to each
+            // dive via whichever <link ref="..."> it carries.
+            const gasMixes = {};
+            Array.from(xml.getElementsByTagName('mix')).forEach(mixEl => {
+                const id = mixEl.getAttribute('id');
+                if (!id) return;
+                const o2El = mixEl.getElementsByTagName('o2')[0];
+                const n2El = mixEl.getElementsByTagName('n2')[0];
+                const heEl = mixEl.getElementsByTagName('he')[0];
+                const o2 = o2El ? parseFloat(o2El.textContent.trim()) : NaN;
+                if (isNaN(o2)) return;
+                const he = heEl ? parseFloat(heEl.textContent.trim()) : 0;
+                const n2 = n2El ? parseFloat(n2El.textContent.trim()) : (1 - o2 - (isNaN(he) ? 0 : he));
+                gasMixes[id] = { o2, n2: isNaN(n2) ? 0 : n2, he: isNaN(he) ? 0 : he };
+            });
+
+            // Some files link a dive's tank to a mix indirectly through an
+            // <equipment> tank definition rather than tagging the mix
+            // directly — build a tank-id -> mix-id lookup so both resolve.
+            const tankToMix = {};
+            Array.from(xml.getElementsByTagName('tankdata')).forEach(tankEl => {
+                const id = tankEl.getAttribute('id');
+                if (!id) return;
+                const linkEl = tankEl.getElementsByTagName('link')[0];
+                const ref = linkEl ? linkEl.getAttribute('ref') : null;
+                if (ref) tankToMix[id] = ref;
+            });
+
+            const parsedDives = diveNodes.map(node => parseUddfDiveNode(node, siteNames, siteCoords, gasMixes, tankToMix));
 
             if (parsedDives.length === 1) {
                 applyParsedUddfDive(parsedDives[0]);
@@ -4459,9 +4549,45 @@
             }
             if (parsed.timeIn) handleBottomTimeChange(); // keep Time Out in sync if only Time In + duration came from the file
 
-            if (parsed.siteLat !== null && parsed.siteLat !== undefined && parsed.siteLng !== null && parsed.siteLng !== undefined && locationPickerMap) {
-                locationPickerMap.setView([parsed.siteLat, parsed.siteLng], 12);
-                placeLocationPin(parsed.siteLat, parsed.siteLng, false);
+            if (parsed.siteLat !== null && parsed.siteLat !== undefined && parsed.siteLng !== null && parsed.siteLng !== undefined) {
+                // The map may not have been created yet (e.g. import fired
+                // before the location picker's own init timer ran) — create
+                // it lazily rather than silently skipping the pin.
+                if (!locationPickerMap && document.getElementById('form-location-map')) {
+                    initLocationPickerMap();
+                }
+                if (locationPickerMap) {
+                    // Leaflet caches the container size at creation time; if it
+                    // was 0x0 while hidden, the pin can end up rendered off
+                    // the visible viewport until the map is told to re-measure.
+                    locationPickerMap.invalidateSize();
+                    locationPickerMap.setView([parsed.siteLat, parsed.siteLng], 12);
+                    placeLocationPin(parsed.siteLat, parsed.siteLng, false);
+                }
+            }
+
+            if (parsed.gasMix) {
+                const o2Pct = Math.round(parsed.gasMix.o2 * 1000) / 10;
+                const hePct = Math.round(parsed.gasMix.he * 1000) / 10;
+                const n2Pct = Math.max(0, Math.round((1 - parsed.gasMix.o2 - parsed.gasMix.he) * 1000) / 10);
+
+                let gasType = 'Enriched';
+                if (hePct > 0.5) gasType = 'Trimix';
+                else if (Math.abs(o2Pct - 21) <= 1) gasType = 'Air';
+                else if (Math.abs(o2Pct - 32) <= 1) gasType = 'EANX32';
+                else if (Math.abs(o2Pct - 36) <= 1) gasType = 'EANX36';
+                else if (Math.abs(o2Pct - 40) <= 1) gasType = 'EANX40';
+
+                const gasSelect = document.getElementById('form-gas');
+                if (gasSelect) gasSelect.value = gasType;
+                updateGasMixturePreview(); // fills known blends, clears+unlocks the rest
+
+                if (!KNOWN_GAS_MIXTURES[gasType]) {
+                    // Enriched/Trimix stay editable — fill in the file's actual blend.
+                    setVal('form-gas-o2', o2Pct);
+                    setVal('form-gas-n2', n2Pct);
+                    setVal('form-gas-he', hePct);
+                }
             }
 
             state.importedDepthProfile = parsed.depthProfile.length > 1 ? parsed.depthProfile : null;
@@ -7804,6 +7930,14 @@
             renderCritterdex();
         }
 
+        // Search box + button above the category pills — filters by common
+        // or scientific name, on top of whatever category/rarity is active.
+        function searchCritters() {
+            const input = document.getElementById('critter-search-input');
+            state.critterSearchQuery = input ? input.value.trim().toLowerCase() : '';
+            renderCritterdex();
+        }
+
         function getUnlockedSpeciesCount() {
             let count = 0;
             Object.keys(CRITTER_DATABASE).forEach(critterId => {
@@ -7938,10 +8072,12 @@
             grid.innerHTML = '';
 
             // Filter species by current active category tab and rarity filter
+            const searchQuery = (state.critterSearchQuery || '').toLowerCase();
             const filteredSpecies = Object.values(CRITTER_DATABASE).filter(species => {
                 const matchesCategory = state.critterFilter === 'all' || species.tag === state.critterFilter;
                 const matchesRarity = state.critterRarityFilter === 'all' || species.rarity === state.critterRarityFilter;
-                return matchesCategory && matchesRarity;
+                const matchesSearch = !searchQuery || species.name.toLowerCase().includes(searchQuery) || (species.scientific || '').toLowerCase().includes(searchQuery);
+                return matchesCategory && matchesRarity && matchesSearch;
             });
 
             // Sort logic: Discovered (unlocked) species on top, then sort alphabetically by name

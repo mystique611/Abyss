@@ -1,5 +1,14 @@
 # Changelog
 
+## 260724-v32
+
+- **AquaDex**: added a search box + button that filters species by common or scientific name, on top of the existing category and rarity filters.
+- **UDDF import — tank pressure fixed**: start/end pressure is now correctly converted from Pascal (the UDDF spec's unit) to bar when prefilling the form; previously the raw Pascal value was plugged in unconverted.
+- **UDDF import — map pin fixed**: GPS coordinates from the file now reliably drop a pin on the location map. The picker map is created on demand if it wasn't ready yet, and its size is re-measured before placing the pin so it can no longer render off-screen.
+- **UDDF import — depth profile trimmed**: once the diver has actually descended, three consecutive ~0.0m samples near the end of a dive (extra surface/boat time some computers keep logging) now cut off the rest of the profile instead of leaving a long flat tail on the graph.
+- **UDDF import — gas mix prefilled**: if the file ties a dive to a gas blend via `<gasdefinitions>`, the Gas Mixture dropdown and O₂/N₂/He fields are now prefilled (Air/EANX32/36/40 when it matches a known blend, otherwise Enriched or Trimix with the file's exact percentages).
+- Service worker cache bumped (`abyss-shell-v31` → `abyss-shell-v32`) to ship all of the above.
+
 ## 260724-v31
 
 - **Dashboard**: added two new widgets, Unique Dive Sites and Total Cumulative Depth, and reordered the row to Countries → Unique Dive Sites → Total Dives → Total Bottom Time → Cumulative Depth → Marine Life.
