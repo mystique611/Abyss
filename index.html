@@ -3794,11 +3794,11 @@
             { key: 'maxDepth', label: 'Max Depth (m)', group: 'Depth & Time Profile', def: true, get: d => d.maxDepth },
             { key: 'avgDepth', label: 'Avg Depth (m)', group: 'Depth & Time Profile', def: true, get: d => d.avgDepth },
 
-            { key: 'airTemp', label: 'Air Temp (C)', group: 'Environmental Profile', def: true, get: d => d.airTemp },
-            { key: 'surfaceTemp', label: 'Surface Temp (C)', group: 'Environmental Profile', def: true, get: d => d.surfaceTemp },
+            { key: 'airTemp', label: 'Air Temp (C)', group: 'Environmental Profile', def: false, get: d => d.airTemp },
+            { key: 'surfaceTemp', label: 'Surface Temp (C)', group: 'Environmental Profile', def: false, get: d => d.surfaceTemp },
             { key: 'waterTemp', label: 'Water Temp (C)', group: 'Environmental Profile', def: true, get: d => d.waterTemp },
             { key: 'visibility', label: 'Visibility (m)', group: 'Environmental Profile', def: true, get: d => d.visibility },
-            { key: 'weather', label: 'Weather', group: 'Environmental Profile', def: true, get: d => d.weather },
+            { key: 'weather', label: 'Weather', group: 'Environmental Profile', def: false, get: d => d.weather },
             { key: 'waterType', label: 'Water Type', group: 'Environmental Profile', def: true, get: d => d.waterType },
             { key: 'bodyOfWater', label: 'Body of Water', group: 'Environmental Profile', def: true, get: d => d.bodyOfWater },
             { key: 'waves', label: 'Waves', group: 'Environmental Profile', def: true, get: d => d.waves },
@@ -3809,22 +3809,22 @@
             { key: 'suit', label: 'Exposure Suit', group: 'Equipment', def: true, get: d => d.suit },
             { key: 'tankType', label: 'Tank Type', group: 'Equipment', def: true, get: d => d.tankType },
             { key: 'tankVol', label: 'Tank Volume (L)', group: 'Equipment', def: true, get: d => d.tankVol },
-            { key: 'additionalGear', label: 'Additional Gear', group: 'Equipment', def: true, get: d => (d.additionalGear || []).join('; ') },
+            { key: 'additionalGear', label: 'Additional Gear', group: 'Equipment', def: false, get: d => (d.additionalGear || []).join('; ') },
 
             { key: 'gas', label: 'Gas', group: 'Gas Metrics & SAC', def: true, get: d => d.gas },
-            { key: 'gasO2', label: 'Gas O2 (%)', group: 'Gas Metrics & SAC', def: true, get: d => d.gasO2 },
-            { key: 'gasN2', label: 'Gas N2 (%)', group: 'Gas Metrics & SAC', def: true, get: d => d.gasN2 },
-            { key: 'gasHe', label: 'Gas He (%)', group: 'Gas Metrics & SAC', def: true, get: d => d.gasHe },
+            { key: 'gasO2', label: 'Gas O2 (%)', group: 'Gas Metrics & SAC', def: false, get: d => d.gasO2 },
+            { key: 'gasN2', label: 'Gas N2 (%)', group: 'Gas Metrics & SAC', def: false, get: d => d.gasN2 },
+            { key: 'gasHe', label: 'Gas He (%)', group: 'Gas Metrics & SAC', def: false, get: d => d.gasHe },
             { key: 'gasStart', label: 'Start Pressure', group: 'Gas Metrics & SAC', def: true, get: d => d.gasStart },
             { key: 'gasEnd', label: 'End Pressure', group: 'Gas Metrics & SAC', def: true, get: d => d.gasEnd },
             { key: 'gasUnit', label: 'Pressure Unit', group: 'Gas Metrics & SAC', def: true, get: d => d.gasUnit },
             { key: 'sacRate', label: 'SAC Rate (L/min)', group: 'Gas Metrics & SAC', def: true, get: d => { const s = computeSingleDiveSAC(d); return s ? s.sacLiters.toFixed(1) : ''; } },
 
-            { key: 'buddy', label: 'Dive Buddy/Guide', group: 'Dive Buddy & Journal', def: true, get: d => d.buddy },
-            { key: 'buddyNo', label: 'Certification Number', group: 'Dive Buddy & Journal', def: true, get: d => d.buddyNo },
-            { key: 'diveCenter', label: 'Dive Center', group: 'Dive Buddy & Journal', def: true, get: d => d.diveCenter },
+            { key: 'buddy', label: 'Dive Buddy/Guide', group: 'Dive Buddy & Journal', def: false, get: d => d.buddy },
+            { key: 'buddyNo', label: 'Certification Number', group: 'Dive Buddy & Journal', def: false, get: d => d.buddyNo },
+            { key: 'diveCenter', label: 'Dive Center', group: 'Dive Buddy & Journal', def: false, get: d => d.diveCenter },
             { key: 'critters', label: 'Marine Life Sightings', group: 'Dive Buddy & Journal', def: true, get: d => (d.critters || []).map(c => { const t = CRITTER_DATABASE[c.id]; return c.customName || (t ? t.name : 'Unknown species'); }).join('; ') },
-            { key: 'notes', label: 'Notes', group: 'Dive Buddy & Journal', def: true, get: d => d.notes }
+            { key: 'notes', label: 'Notes', group: 'Dive Buddy & Journal', def: false, get: d => d.notes }
         ];
 
         function openCsvExportModal() {
@@ -4330,19 +4330,52 @@
 
             let siteName = null;
             let siteLat = null, siteLng = null;
-            const siteRefEl = before ? before.getElementsByTagName('site')[0] : null;
-            if (siteRefEl) {
-                const ref = siteRefEl.getAttribute('ref');
-                if (ref && siteNames[ref]) {
-                    siteName = siteNames[ref];
-                } else if (siteRefEl.textContent && siteRefEl.textContent.trim()) {
-                    // Some exporters put the site name directly as the <site>
-                    // element's text content instead of a ref+catalog lookup.
-                    siteName = siteRefEl.textContent.trim();
+
+            // Per the UDDF spec (and real-world exporters like Subsurface), a
+            // dive cross-references its dive site via <link ref="..."/>
+            // inside informationbeforedive, pointing at a <site id="..."> in
+            // the top-level <divesite> catalog — NOT a literal <site
+            // ref="..."> child. That was the original assumption here and is
+            // why GPS coordinates (and, coincidentally, site names) never
+            // resolved through this path.
+            let siteRef = null;
+            if (before) {
+                const linkEls = Array.from(before.getElementsByTagName('link'));
+                for (const linkEl of linkEls) {
+                    const r = linkEl.getAttribute('ref');
+                    if (r && ((siteNames && siteNames[r]) || (siteCoords && siteCoords[r]))) {
+                        siteRef = r;
+                        break;
+                    }
                 }
-                if (ref && siteCoords && siteCoords[ref]) {
-                    siteLat = siteCoords[ref].lat;
-                    siteLng = siteCoords[ref].lng;
+                if (!siteRef && linkEls.length > 0) {
+                    // No link matched a known catalog entry — still capture the
+                    // first link's ref in case the catalog itself is incomplete.
+                    siteRef = linkEls[0].getAttribute('ref');
+                }
+            }
+            if (siteRef && siteNames[siteRef]) siteName = siteNames[siteRef];
+            if (siteRef && siteCoords && siteCoords[siteRef]) {
+                siteLat = siteCoords[siteRef].lat;
+                siteLng = siteCoords[siteRef].lng;
+            }
+
+            if (!siteName && before) {
+                // A handful of non-standard exporters use a literal <site
+                // ref="..."> child instead of <link>, or put the name
+                // directly as that element's text content.
+                const siteRefEl = before.getElementsByTagName('site')[0];
+                if (siteRefEl) {
+                    const sref = siteRefEl.getAttribute('ref');
+                    if (sref && siteNames[sref]) {
+                        siteName = siteNames[sref];
+                        if (siteLat === null && siteCoords && siteCoords[sref]) {
+                            siteLat = siteCoords[sref].lat;
+                            siteLng = siteCoords[sref].lng;
+                        }
+                    } else if (siteRefEl.textContent && siteRefEl.textContent.trim()) {
+                        siteName = siteRefEl.textContent.trim();
+                    }
                 }
             }
             if (!siteName) {
@@ -5868,7 +5901,7 @@
             resetDepthProfileState();
             tempDivePhotos = [];
             renderDivePhotosGrid();
-            switchTab('dashboard');
+            switchTab('logs');
         }
 
         function startEditDiveLog(logId) {
@@ -7016,6 +7049,19 @@
             yearBtn.className = divesChartGranularity === 'year' ? activeClass : inactiveClass;
         }
 
+        // Dive counts are always whole numbers, so the y-axis should only
+        // ever label whole ticks (no 0.5 increments Chart.js would otherwise
+        // insert for small ranges) — extends baseChartOptions() rather than
+        // changing it globally, since other charts (SAC, weight) still want
+        // their normal fractional scaling.
+        function divesChartOptions() {
+            const opts = baseChartOptions('Dives', false);
+            opts.scales.y.beginAtZero = true;
+            opts.scales.y.ticks.stepSize = 1;
+            opts.scales.y.ticks.precision = 0;
+            return opts;
+        }
+
         function renderDivesChart(analytics) {
             if (typeof Chart === 'undefined') { console.warn('Chart.js is not loaded — the Total Dives chart cannot render.'); return; }
             updateDivesGranularityButtonStyles();
@@ -7032,16 +7078,16 @@
                 // (e.g. switching Quarter <-> Year granularity) via update().
                 profileCharts.dives.data.labels = labels;
                 profileCharts.dives.data.datasets[0].data = data;
-                profileCharts.dives.options = baseChartOptions('Dives', false);
+                profileCharts.dives.options = divesChartOptions();
                 profileCharts.dives.update();
             } else {
                 profileCharts.dives = new Chart(divesCtx, {
-                    type: 'line',
+                    type: 'bar',
                     data: {
                         labels,
-                        datasets: [{ label: 'Dives', data, borderColor: '#22d3ee', backgroundColor: '#22d3ee', spanGaps: true, tension: 0.3 }]
+                        datasets: [{ label: 'Dives', data, backgroundColor: '#22d3ee', borderRadius: 4, maxBarThickness: 36 }]
                     },
-                    options: baseChartOptions('Dives', false)
+                    options: divesChartOptions()
                 });
             }
         }

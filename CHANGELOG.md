@@ -1,5 +1,13 @@
 # Changelog
 
+## 260724-v33
+
+- **UDDF import — GPS pin actually fixed**: the previous fix addressed a real but secondary map-sizing issue; the actual root cause was that the site cross-reference inside a dive is `<link ref="...">` per the UDDF spec, not `<site ref="...">` as the parser assumed, so a dive site's coordinates (and, for spec-compliant files, its name) were never being looked up. Both `<link>` (spec-correct) and `<site ref="...">` (a small number of non-standard exporters) are now checked.
+- **CSV export defaults now match PDF export**: the field-selection modal's pre-checked fields for CSV export are aligned with PDF export's defaults (e.g. Air/Surface Temp, Weather, Additional Gear, Gas % breakdown, Dive Buddy, Dive Center, and Notes now start unchecked in both, matching what PDF already used).
+- **Total Dives chart**: changed from a line chart to a bar chart, and the vertical axis now only shows whole-number tick values (no more 0.5 increments on small dive counts).
+- **Cancel button** on Log a Dive and Edit Dive now returns to the Logbook instead of the Dashboard, matching where Save already goes.
+- Service worker cache bumped (`abyss-shell-v32` → `abyss-shell-v33`) to ship all of the above.
+
 ## 260724-v32
 
 - **AquaDex**: added a search box + button that filters species by common or scientific name, on top of the existing category and rarity filters.
