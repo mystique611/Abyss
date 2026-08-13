@@ -1,5 +1,15 @@
 # Changelog
 
+## 260724-v34
+
+- **UDDF export overhauled** — previously only a handful of fields (dates, depths, temps, pressure, buddy/country stuffed into notes) made it into the exported file. Now every piece of information the app captures for a dive is exported:
+  - Dive site name and exact GPS pin now export as a proper `<divesite><site>` catalog entry with `<geography>`, cross-referenced from each dive via a spec-correct `<link ref="...">` (deduplicated — dives at the same site share one entry).
+  - Gas mixture (O₂/N₂/He) now exports as a proper `<gasdefinitions><mix>` entry linked from each dive's `<tankdata>`, alongside tank volume and start/end pressure — all correctly in UDDF's native units (fractions, cubic metres, Pascal) so they round-trip exactly back through Abyss's own UDDF import.
+  - A dive's real recorded depth/time profile (e.g. one originally brought in via UDDF import) is now exported as-is instead of always being flattened to a synthetic 3-point 0→max→0 line.
+  - Every other field without a standard UDDF element — dive type, activity type, tags, buddy name & cert number, dive center, weight, exposure suit, tank type, water type, body of water, waves, current, surge, weather, surface temp, and marine life sightings — is now written into the dive's notes as clearly labeled lines, so nothing entered in the app is silently dropped from the export.
+  - Fixed the tank pressure unit bug found alongside this: pressures are now correctly written in Pascal (UDDF's spec unit) instead of bar, and tank data now lives in its own `<tankdata>` block rather than incorrectly nested inside `<informationafterdive>`.
+- Service worker cache bumped (`abyss-shell-v33` → `abyss-shell-v34`) to ship the above.
+
 ## 260724-v33
 
 - **UDDF import — GPS pin actually fixed**: the previous fix addressed a real but secondary map-sizing issue; the actual root cause was that the site cross-reference inside a dive is `<link ref="...">` per the UDDF spec, not `<site ref="...">` as the parser assumed, so a dive site's coordinates (and, for spec-compliant files, its name) were never being looked up. Both `<link>` (spec-correct) and `<site ref="...">` (a small number of non-standard exporters) are now checked.

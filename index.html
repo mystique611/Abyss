@@ -4189,6 +4189,60 @@
             firstName = firstName || 'Explorer';
             lastName = lastName || '';
 
+            // ---- Dive site catalog (<divesite><site>) — one entry per unique
+            // site name + country, cross-referenced from each dive via
+            // <link ref="..."/> per the UDDF spec (see parseUddfDiveNode's
+            // matching lookup on import). Exact GPS coordinates are included
+            // when the dive has a map pin.
+            const siteIdByKey = {};
+            const siteBlocks = [];
+            function getSiteId(dive) {
+                if (!dive.site) return null;
+                const key = `${dive.site.trim().toLowerCase()}|${dive.country || ''}`;
+                if (siteIdByKey[key]) return siteIdByKey[key];
+                const id = `site${Object.keys(siteIdByKey).length}`;
+                siteIdByKey[key] = id;
+                const hasPin = typeof dive.latitude === 'number' && typeof dive.longitude === 'number' && !isNaN(dive.latitude) && !isNaN(dive.longitude);
+                const geoParts = [];
+                if (dive.country) geoParts.push(`<country>${xmlEscape(dive.country)}</country>`);
+                if (hasPin) geoParts.push(`<latitude>${dive.latitude}</latitude>`, `<longitude>${dive.longitude}</longitude>`);
+                const geoXml = geoParts.length ? `
+                <geography>${geoParts.join('')}</geography>` : '';
+                siteBlocks.push(`
+        <site id="${id}">
+                <name>${xmlEscape(dive.site)}</name>${geoXml}
+        </site>`);
+                return id;
+            }
+
+            // ---- Gas mix catalog (<gasdefinitions><mix>) — one entry per
+            // unique O2/N2/He blend, cross-referenced from each dive's
+            // <tankdata><link ref="..."/> the same way parseUddfDiveNode
+            // resolves it on import.
+            const mixIdByKey = {};
+            const mixBlocks = [];
+            function getMixId(dive) {
+                if (dive.gasO2 === null || dive.gasO2 === undefined || dive.gasO2 === '') return null;
+                const o2 = parseFloat(dive.gasO2) / 100;
+                if (isNaN(o2)) return null;
+                const heRaw = (dive.gasHe !== null && dive.gasHe !== undefined && dive.gasHe !== '') ? parseFloat(dive.gasHe) / 100 : 0;
+                const he = isNaN(heRaw) ? 0 : heRaw;
+                const n2Raw = (dive.gasN2 !== null && dive.gasN2 !== undefined && dive.gasN2 !== '') ? parseFloat(dive.gasN2) / 100 : (1 - o2 - he);
+                const n2 = isNaN(n2Raw) ? Math.max(0, 1 - o2 - he) : n2Raw;
+                const key = `${o2.toFixed(3)}_${n2.toFixed(3)}_${he.toFixed(3)}`;
+                if (mixIdByKey[key]) return mixIdByKey[key];
+                const id = `mix${Object.keys(mixIdByKey).length}`;
+                mixIdByKey[key] = id;
+                mixBlocks.push(`
+        <mix id="${id}">
+                <name>${xmlEscape(dive.gas || 'Custom')}</name>
+                <o2>${o2.toFixed(3)}</o2>
+                <n2>${n2.toFixed(3)}</n2>
+                <he>${he.toFixed(3)}</he>
+        </mix>`);
+                return id;
+            }
+
             const diveBlocks = sortedDives.map(dive => {
                 const dateTimeStr = dive.date ? `${dive.date}T${dive.timeIn || '00:00'}:00` : null;
                 const airTempK = celsiusToKelvin(dive.airTemp);
@@ -4198,9 +4252,21 @@
                 const gasStartBar = pressureToBar(dive.gasStart, dive.gasUnit);
                 const gasEndBar = pressureToBar(dive.gasEnd, dive.gasUnit);
                 const hasDepth = dive.maxDepth !== null && dive.maxDepth !== undefined;
+                const hasTankVol = dive.tankVol !== null && dive.tankVol !== undefined && dive.tankVol !== '';
+                const siteId = getSiteId(dive);
+                const mixId = getMixId(dive);
 
+                // A real recorded depth profile (e.g. carried over from a UDDF
+                // import) takes priority over the synthetic 0 → max → 0
+                // three-point fallback used when only summary stats are known.
                 let samplesXml = '';
-                if (hasDepth && durationSec) {
+                if (dive.depthProfile && dive.depthProfile.length > 1) {
+                    const points = dive.depthProfile.map(p => `
+                    <waypoint><depth>${p.d}</depth><divetime>${Math.round(p.t * 60)}</divetime></waypoint>`).join('');
+                    samplesXml = `
+                <samples>${points}
+                </samples>`;
+                } else if (hasDepth && durationSec) {
                     const mid = Math.round(durationSec / 2);
                     samplesXml = `
                 <samples>
@@ -4210,30 +4276,83 @@
                 </samples>`;
                 }
 
+                // Tank pressures/volume are stored in Pascal/cubic-metres per
+                // the UDDF spec (see parseUddfDiveNode's matching Pa -> bar
+                // conversion on import) and live under <tankdata>, a sibling
+                // of informationbeforedive/informationafterdive — not nested
+                // inside either, as the export previously (incorrectly) did.
+                const tankDataXml = (mixId || gasStartBar || gasEndBar || hasTankVol) ? `
+                <tankdata>${mixId ? `
+                    <link ref="${mixId}"/>` : ''}${hasTankVol ? `
+                    <tankvolume>${(parseFloat(dive.tankVol) / 1000).toFixed(4)}</tankvolume>` : ''}${gasStartBar ? `
+                    <tankpressurebegin>${Math.round(parseFloat(gasStartBar) * 100000)}</tankpressurebegin>` : ''}${gasEndBar ? `
+                    <tankpressureend>${Math.round(parseFloat(gasEndBar) * 100000)}</tankpressureend>` : ''}
+                </tankdata>` : '';
+
+                // Everything else the diver can enter has no clean 1:1 UDDF
+                // element (dive/activity type, tags, buddy, gear, conditions,
+                // marine life, etc.) — appended to <notes> as labeled lines so
+                // every piece of information still ends up in the file rather
+                // than being silently dropped.
                 const noteParts = [];
                 if (dive.notes) noteParts.push(dive.notes);
+                if (dive.diveType) noteParts.push(`Dive Type: ${dive.diveType}`);
+                if (dive.activityType) noteParts.push(`Activity Type: ${dive.activityType}`);
+                if (dive.tags && dive.tags.length) noteParts.push(`Tags: ${dive.tags.join(', ')}`);
+                if (!siteId && dive.country) noteParts.push(`Country: ${dive.country}`);
                 if (dive.buddy) noteParts.push(`Buddy: ${dive.buddy}`);
-                if (dive.country) noteParts.push(`Country: ${dive.country}`);
+                if (dive.buddyNo) noteParts.push(`Buddy Cert Number: ${dive.buddyNo}`);
+                if (dive.diveCenter) noteParts.push(`Dive Center: ${dive.diveCenter}`);
+                if (dive.weight !== null && dive.weight !== undefined && dive.weight !== '') noteParts.push(`Weight: ${dive.weight} kg`);
+                if (dive.suit) noteParts.push(`Exposure Suit: ${dive.suit}`);
+                if (dive.tankType) noteParts.push(`Tank Type: ${dive.tankType}`);
+                if (hasTankVol) noteParts.push(`Tank Volume: ${dive.tankVol} L`);
+                if (dive.additionalGear && dive.additionalGear.length) noteParts.push(`Additional Gear: ${dive.additionalGear.join(', ')}`);
+                if (dive.surfaceTemp !== null && dive.surfaceTemp !== undefined && dive.surfaceTemp !== '' && dive.waterTemp !== null && dive.waterTemp !== undefined && dive.waterTemp !== '') {
+                    // Only called out separately when both were recorded — if
+                    // waterTemp was blank, surfaceTemp already became
+                    // <lowesttemperature> above via the waterTempSource fallback.
+                    noteParts.push(`Surface Temp: ${dive.surfaceTemp} C`);
+                }
+                if (dive.weather) noteParts.push(`Weather: ${dive.weather}`);
+                if (dive.waterType) noteParts.push(`Water Type: ${dive.waterType}`);
+                if (dive.bodyOfWater) noteParts.push(`Body of Water: ${dive.bodyOfWater}`);
+                if (dive.waves) noteParts.push(`Waves: ${dive.waves}`);
+                if (dive.current) noteParts.push(`Current: ${dive.current}`);
+                if (dive.surge) noteParts.push(`Surge: ${dive.surge}`);
+                if (dive.critters && dive.critters.length) {
+                    const sightings = dive.critters.map(c => {
+                        const t = CRITTER_DATABASE[c.id];
+                        return c.customName || (t ? t.name : 'Unknown species');
+                    }).join(', ');
+                    noteParts.push(`Marine Life Sighted: ${sightings}`);
+                }
 
                 return `
             <dive id="dive${dive.diveNo}">
-                <informationbeforedive>${dateTimeStr ? `
+                <informationbeforedive>${siteId ? `
+                    <link ref="${siteId}"/>` : ''}${dateTimeStr ? `
                     <datetime>${xmlEscape(dateTimeStr)}</datetime>` : ''}
-                    <internaldivenumber>${dive.diveNo}</internaldivenumber>${airTempK ? `
+                    <divenumber>${dive.diveNo}</divenumber>${airTempK ? `
                     <airtemperature>${airTempK}</airtemperature>` : ''}
-                </informationbeforedive>${samplesXml}
+                </informationbeforedive>${tankDataXml}${samplesXml}
                 <informationafterdive>${hasDepth ? `
                     <greatestdepth>${dive.maxDepth}</greatestdepth>` : ''}${(dive.avgDepth !== null && dive.avgDepth !== undefined) ? `
                     <averagedepth>${dive.avgDepth}</averagedepth>` : ''}${durationSec !== null ? `
                     <diveduration>${durationSec}</diveduration>` : ''}${waterTempK ? `
                     <lowesttemperature>${waterTempK}</lowesttemperature>` : ''}${(dive.visibility !== null && dive.visibility !== undefined) ? `
-                    <visibility>${dive.visibility}</visibility>` : ''}${gasStartBar ? `
-                    <tankpressurebegin>${gasStartBar}</tankpressurebegin>` : ''}${gasEndBar ? `
-                    <tankpressureend>${gasEndBar}</tankpressureend>` : ''}${noteParts.length ? `
+                    <visibility>${dive.visibility}</visibility>` : ''}${noteParts.length ? `
                     <notes><para>${xmlEscape(noteParts.join(' — '))}</para></notes>` : ''}
                 </informationafterdive>
             </dive>`;
             }).join('');
+
+            const divesiteXml = siteBlocks.length ? `
+    <divesite>${siteBlocks.join('')}
+    </divesite>` : '';
+            const gasDefinitionsXml = mixBlocks.length ? `
+    <gasdefinitions>${mixBlocks.join('')}
+    </gasdefinitions>` : '';
 
             const uddfXml = `<?xml version="1.0" encoding="UTF-8"?>
 <uddf version="3.2.1" xmlns="http://www.streit.cc/uddf/3.2/">
@@ -4251,7 +4370,7 @@
                 <lastname>${xmlEscape(lastName)}</lastname>
             </personal>
         </owner>
-    </diver>
+    </diver>${divesiteXml}${gasDefinitionsXml}
     <profiledata>
         <repetitiongroup id="rg1">${diveBlocks}
         </repetitiongroup>
