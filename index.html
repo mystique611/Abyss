@@ -1271,6 +1271,7 @@
                 <button onclick="filterCritters('Corals & Anemones')" id="cf-coral" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Corals & Anemones</button>
                 <button onclick="filterCritters('Eel')" id="cf-eel" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Eel</button>
                 <button onclick="filterCritters('Turtles')" id="cf-turtles" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Turtles</button>
+                <button onclick="filterCritters('Jellyfish')" id="cf-jellyfish" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Jellyfish</button>
                 <button onclick="filterCritters('Others')" id="cf-others" class="critter-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-ocean-900/20 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 flex-shrink-0 transition-all">Others</button>
             </div>
 
@@ -2322,6 +2323,7 @@
             "Corals & Anemones": `<img src="icons/critters/corals-anemones.png" class="w-10 h-10" alt="Corals & Anemones">`,
             "Eel": `<img src="icons/critters/eel.png" class="w-10 h-10" alt="Eel">`,
             "Turtles": `<img src="icons/critters/turtles.png" class="w-10 h-10" alt="Turtles">`,
+            "Jellyfish": `<img src="icons/critters/jellyfish.png" class="w-10 h-10" alt="Jellyfish">`,
             "Others": `<img src="icons/critters/others.png" class="w-10 h-10" alt="Others">`
         };
 
@@ -2614,6 +2616,28 @@
             "kemps_ridley_turtle": { id: "kemps_ridley_turtle", name: "Kemp's Ridley Turtle", scientific: "Lepidochelys kempii", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Gulf of Mexico & NW Atlantic", description: "The rarest and most endangered sea turtle, almost entirely restricted to the Gulf of Mexico." },
             "flatback_turtle": { id: "flatback_turtle", name: "Flatback Turtle", scientific: "Natator depressus", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Northern Australian Coast", description: "Found only on Australia's continental shelf, with a distinctively flattened, upturned-edge shell." },
             "leatherback_turtle": { id: "leatherback_turtle", name: "Leatherback Turtle", scientific: "Dermochelys coriacea", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Open Pelagic Waters", description: "The largest sea turtle, with a flexible, ridged leathery shell instead of a hard carapace." },
+
+            // ==================== JELLYFISH (true jellies + notable colonial/hydrozoan look-alikes) ====================
+            "moon_jellyfish": { id: "moon_jellyfish", name: "Moon Jellyfish", scientific: "Aurelia aurita", rarity: "Common", tag: "Jellyfish", typicalRegion: "Coastal Waters Worldwide", description: "Translucent bell with four horseshoe-shaped gonads visible through the tissue — often the first jellyfish divers learn to recognize." },
+            "lions_mane_jellyfish": { id: "lions_mane_jellyfish", name: "Lion's Mane Jellyfish", scientific: "Cyanea capillata", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Cold Northern Atlantic & Pacific", description: "The largest known jellyfish species, trailing tentacles that can stretch tens of metres behind its reddish-brown bell." },
+            "box_jellyfish": { id: "box_jellyfish", name: "Box Jellyfish", scientific: "Chironex fleckeri", rarity: "Ultra-Rare", tag: "Jellyfish", typicalRegion: "Northern Australian Tropical Waters", description: "Among the most venomous marine animals alive, with near-invisible tentacles and image-forming eyes unusual for a jellyfish." },
+            "portuguese_man_o_war": { id: "portuguese_man_o_war", name: "Portuguese Man o' War", scientific: "Physalia physalis", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Open Ocean & Warm Surface Currents", description: "Not a true jellyfish but a colonial siphonophore — its gas-filled float rides the surface while stinging tentacles trail below." },
+            "compass_jellyfish": { id: "compass_jellyfish", name: "Compass Jellyfish", scientific: "Chrysaora hysoscella", rarity: "Common", tag: "Jellyfish", typicalRegion: "Eastern Atlantic & Mediterranean", description: "Named for the brown radiating markings on its bell that resemble compass points." },
+            "barrel_jellyfish": { id: "barrel_jellyfish", name: "Barrel Jellyfish", scientific: "Rhizostoma pulmo", rarity: "Common", tag: "Jellyfish", typicalRegion: "Atlantic & Mediterranean Coastal Waters", description: "One of the largest jellyfish in temperate Atlantic waters, often trailed by juvenile fish sheltering beneath its bell." },
+            "cannonball_jellyfish": { id: "cannonball_jellyfish", name: "Cannonball Jellyfish", scientific: "Stomolophus meleagris", rarity: "Common", tag: "Jellyfish", typicalRegion: "Warm Atlantic & Gulf of Mexico", description: "A firm, dome-shaped bell with almost no visible tentacles, commonly seen in warm coastal shallows." },
+            "upside_down_jellyfish": { id: "upside_down_jellyfish", name: "Upside-down Jellyfish", scientific: "Cassiopea andromeda", rarity: "Common", tag: "Jellyfish", typicalRegion: "Mangrove Lagoons & Tropical Flats", description: "Rests bell-down on sandy or mangrove-lined bottoms, pulsing gently to farm light for its symbiotic algae." },
+            "atlantic_sea_nettle": { id: "atlantic_sea_nettle", name: "Atlantic Sea Nettle", scientific: "Chrysaora quinquecirrha", rarity: "Common", tag: "Jellyfish", typicalRegion: "Atlantic & Gulf Coastal Estuaries", description: "Long, spiraling oral arms trail beneath a bell striped in warm amber and cream." },
+            "pacific_sea_nettle": { id: "pacific_sea_nettle", name: "Pacific Sea Nettle", scientific: "Chrysaora fuscescens", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Eastern Pacific Upwelling Zones", description: "A striking golden-brown bell with dark maroon streamers, often drifting in large seasonal blooms." },
+            "flower_hat_jelly": { id: "flower_hat_jelly", name: "Flower Hat Jelly", scientific: "Olindias formosa", rarity: "Ultra-Rare", tag: "Jellyfish", typicalRegion: "Temperate Reefs, Japan & Brazil", description: "A small, richly patterned jelly whose curled fluorescent tentacles resemble a flower in bloom." },
+            "mauve_stinger": { id: "mauve_stinger", name: "Mauve Stinger", scientific: "Pelagia noctiluca", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Mediterranean & Open Ocean", description: "Small but potent, this open-ocean drifter glows with bioluminescence when disturbed at night." },
+            "blue_blubber_jellyfish": { id: "blue_blubber_jellyfish", name: "Blue Blubber Jellyfish", scientific: "Catostylus mosaicus", rarity: "Common", tag: "Jellyfish", typicalRegion: "Indo-Pacific Coastal Bays", description: "A firm blue-tinted bell with short, blunt oral arms — a mild sting compared to most true jellyfish." },
+            "australian_spotted_jellyfish": { id: "australian_spotted_jellyfish", name: "Australian Spotted Jellyfish", scientific: "Phyllorhiza punctata", rarity: "Common", tag: "Jellyfish", typicalRegion: "Indo-Pacific & Introduced Gulf Waters", description: "Pale bell dotted with white nodules, often seen in large aggregations in sheltered bays." },
+            "egg_yolk_jellyfish": { id: "egg_yolk_jellyfish", name: "Egg-yolk Jellyfish", scientific: "Phacellophora camtschatica", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Cold Pacific & Atlantic Waters", description: "Named for its yellow center resembling a cracked egg, trailing long, delicate frilled arms." },
+            "immortal_jellyfish": { id: "immortal_jellyfish", name: "Immortal Jellyfish", scientific: "Turritopsis dohrnii", rarity: "Ultra-Rare", tag: "Jellyfish", typicalRegion: "Mediterranean & Temperate Worldwide", description: "A pinhead-sized hydrozoan capable of reverting to its polyp stage instead of dying — effectively biologically immortal." },
+            "crystal_jellyfish": { id: "crystal_jellyfish", name: "Crystal Jellyfish", scientific: "Aequorea victoria", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Pacific Coastal Waters", description: "A near-invisible bell ringed with bioluminescent points, the source of the green fluorescent protein used in modern biology." },
+            "purple_striped_jellyfish": { id: "purple_striped_jellyfish", name: "Purple-striped Jellyfish", scientific: "Chrysaora colorata", rarity: "Epic", tag: "Jellyfish", typicalRegion: "California Coastal Upwelling Waters", description: "Deep purple radial stripes fan out across a pale bell, trailing long, dark tentacles." },
+            "blue_jellyfish": { id: "blue_jellyfish", name: "Blue Jellyfish", scientific: "Cyanea lamarckii", rarity: "Common", tag: "Jellyfish", typicalRegion: "Northeast Atlantic Coastal Waters", description: "A small, deep blue bell with dense fringed tentacles, common in coastal blooms." },
+            "thimble_jellyfish": { id: "thimble_jellyfish", name: "Thimble Jellyfish", scientific: "Linuche unguiculata", rarity: "Common", tag: "Jellyfish", typicalRegion: "Caribbean & Gulf of Mexico", description: "Tiny thimble-sized jelly whose larvae are responsible for the itchy welts known as \"sea lice.\"" },
 
             // ==================== OTHERS (custom / uncatalogued sightings) ====================
             "others": { id: "others", name: "Others", scientific: "Custom Sighting", rarity: "Common", tag: "Others", typicalRegion: "Anywhere", description: "Use this entry to log a marine life sighting that isn't in the catalog — enter the species name you observed for each sighting." }
@@ -3398,6 +3422,18 @@
         let shareCardBlob = null;
         let shareCardObjectUrl = null;
 
+        // Single shared credential-line style for both the Diver Profile and
+        // Dive Log cards — plain text (org · level), no pill/badge shapes.
+        // Two mismatched pill widths (a short "PADI" pill next to a long
+        // "Advanced Open Water Diver" pill) read as visually lopsided; one
+        // consistent line of text sidesteps that entirely.
+        function buildCredentialLineHtml(org, level, fontSize) {
+            return `
+                <span style="color:#67e8f9;font-weight:700;text-transform:uppercase;">${org}</span>
+                <span style="color:#3f6a86;margin:0 ${fontSize > 10 ? 8 : 4}px;">&middot;</span>
+                <span style="color:#e6f1fb;font-weight:700;text-transform:uppercase;">${level}</span>`;
+        }
+
         function buildShareCardMarkup() {
             const profile = state.diverProfile || {};
             const name = profile.name || 'Explorer';
@@ -3406,7 +3442,6 @@
             const avatar = profile.avatar || null;
 
             const analytics = computeDiveAnalytics();
-            const countriesVisited = new Set((state.dives || []).map(d => d.country).filter(Boolean)).size;
 
             const avatarHtml = avatar
                 ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;" />`
@@ -3415,49 +3450,60 @@
             const totalMins = analytics.totalMins || 0;
             const totalTimeStr = `${Math.floor(totalMins / 60)}h ${String(totalMins % 60).padStart(2, '0')}m`;
 
-            const statTile = (label, value, iconClass, colorClass) => `
-                <div class="glass-panel" style="border-radius:16px;padding:14px;">
+            // Flat tile (no colored border/highlight) used for both stat
+            // sections — the icon's own color is the only accent, matching
+            // the Dashboard's widget style exactly.
+            const statTile = (label, value, iconClass, iconColor, iconBg) => `
+                <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:11px;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                        <span style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;font-family:'JetBrains Mono',monospace;">${label}</span>
-                        <i class="${iconClass}" style="font-size:11px;color:${colorClass};"></i>
+                        <span style="font-size:8px;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;font-family:'JetBrains Mono',monospace;">${label}</span>
+                        <div style="width:18px;height:18px;border-radius:6px;background:${iconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="${iconClass}" style="font-size:9px;color:${iconColor};"></i></div>
                     </div>
-                    <div style="font-size:20px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace;margin-top:8px;">${value}</div>
+                    <div style="font-size:16px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace;margin-top:6px;">${value}</div>
                 </div>`;
 
             return `
-                <div id="share-card-inner" style="width:720px;background:#03141f;font-family:'Inter',sans-serif;">
+                <div id="share-card-inner" style="width:680px;background:#03141f;font-family:'Inter',sans-serif;">
                     <!-- Top half: certificate card -->
-                    <div style="background:linear-gradient(135deg, #093054 0%, #061e38 50%, #031b2e 100%);padding:36px 36px 40px;position:relative;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;">
-                            <div style="height:32px;width:32px;border-radius:10px;overflow:hidden;flex-shrink:0;">
+                    <div style="background:linear-gradient(135deg, #093054 0%, #061e38 50%, #031b2e 100%);padding:32px 32px 30px;position:relative;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+                            <div style="height:30px;width:30px;border-radius:9px;overflow:hidden;flex-shrink:0;">
                                 <img src="icons/icon-192.png" style="width:100%;height:100%;object-fit:cover;" />
                             </div>
-                            <span style="font-size:16px;color:#22d3ee;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;">Diver Profile</span>
+                            <span style="font-size:15px;color:#22d3ee;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;">Diver Profile</span>
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:center;text-align:center;">
-                            <div style="height:84px;width:84px;border-radius:50%;border:3px solid #22d3ee;background:#1e293b;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;margin-bottom:14px;">
+                            <div style="height:78px;width:78px;border-radius:50%;border:3px solid #22d3ee;background:#1e293b;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;margin-bottom:12px;">
                                 ${avatarHtml}
                             </div>
-                            <h2 style="font-size:26px;font-weight:800;color:#fff;margin:0;">${name}</h2>
-                            <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
-                                <span style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;background:rgba(255,255,255,0.1);color:#67e8f9;border:1px solid rgba(34,211,238,0.4);font-family:'JetBrains Mono',monospace;">${org}</span>
-                                <span style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;background:#06b6d4;color:#fff;font-family:'JetBrains Mono',monospace;">${level}</span>
+                            <h2 style="font-size:24px;font-weight:800;color:#fff;margin:0;">${name}</h2>
+                            <div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.04em;">
+                                ${buildCredentialLineHtml(org, level, 12)}
                             </div>
                         </div>
                     </div>
 
                     <!-- Bottom half: analytics widgets -->
-                    <div style="padding:28px 32px 32px;">
-                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">Sub-surface Analytics</div>
-                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-                            ${statTile('Total Dives', analytics.totalDives || 0, 'fa-solid fa-list-check', '#60a5fa')}
-                            ${statTile('Total Bottom Time', totalTimeStr, 'fa-solid fa-clock', '#34d399')}
-                            ${statTile('Max Depth', `${(analytics.maxDepth || 0).toFixed(1)} m`, 'fa-solid fa-arrow-down-long', '#f472b6')}
-                            ${statTile('Countries Visited', countriesVisited, 'fa-solid fa-earth-americas', '#22d3ee')}
-                            ${statTile('Avg Depth (Last 20)', analytics.avgDepth20 !== null ? `${analytics.avgDepth20.toFixed(1)} m` : 'N/A', 'fa-solid fa-gauge', '#a78bfa')}
-                            ${statTile('Avg SAC (Last 20)', analytics.avgSAC20 !== null ? `${analytics.avgSAC20.toFixed(1)} L/min` : 'N/A', 'fa-solid fa-lungs', '#fbbf24')}
+                    <div style="padding:24px 28px 26px;">
+                        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-family:'JetBrains Mono',monospace;margin-bottom:10px;">Lifetime Totals</div>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;">
+                            ${statTile('Countries', analytics.countriesVisited || 0, 'fa-solid fa-earth-americas', '#22d3ee', 'rgba(6,182,212,0.12)')}
+                            ${statTile('Dive Sites', analytics.uniqueSites || 0, 'fa-solid fa-location-dot', '#c084fc', 'rgba(168,85,247,0.12)')}
+                            ${statTile('Total Dives', analytics.totalDives || 0, 'fa-solid fa-list-check', '#60a5fa', 'rgba(59,130,246,0.12)')}
+                            ${statTile('Bottom Time', totalTimeStr, 'fa-solid fa-clock', '#34d399', 'rgba(16,185,129,0.12)')}
+                            ${statTile('Cumulative Depth', fmtDepth(analytics.totalCumulativeDepth), 'fa-solid fa-arrow-down-long', '#f472b6', 'rgba(236,72,153,0.12)')}
+                            ${statTile('Marine Life', `${analytics.unlockedCrittersCount || 0}/${analytics.totalCrittersCount || 0}`, 'fa-solid fa-fish-fins', '#fbbf24', 'rgba(245,158,11,0.12)')}
+                            ${statTile('Max Depth', fmtDepth(analytics.maxDepth), 'fa-solid fa-ruler-vertical', '#fb923c', 'rgba(249,115,22,0.12)')}
+                            ${statTile('Max Bottom Time', fmtMinutes(analytics.maxBottomTime), 'fa-solid fa-stopwatch', '#22d3ee', 'rgba(6,182,212,0.12)')}
                         </div>
-                        <div style="margin-top:20px;text-align:center;font-size:10px;color:#475569;font-family:'JetBrains Mono',monospace;">Generated by Abyss &mdash; Personal Dive Log</div>
+
+                        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-family:'JetBrains Mono',monospace;margin-bottom:10px;">Last 20 Dives</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            ${statTile('Avg Depth', analytics.avgDepth20 !== null && analytics.avgDepth20 !== undefined ? `${analytics.avgDepth20.toFixed(1)} m` : 'N/A', 'fa-solid fa-gauge', '#a78bfa', 'rgba(168,85,247,0.12)')}
+                            ${statTile('Avg SAC', analytics.avgSAC20 !== null && analytics.avgSAC20 !== undefined ? `${analytics.avgSAC20.toFixed(1)} L/min` : 'N/A', 'fa-solid fa-lungs', '#fbbf24', 'rgba(245,158,11,0.12)')}
+                        </div>
+
+                        <div style="margin-top:18px;text-align:center;font-size:10px;color:#475569;font-family:'JetBrains Mono',monospace;">Generated by Abyss &mdash; Personal Dive Log</div>
                     </div>
                 </div>`;
         }
@@ -3623,9 +3669,8 @@
                                 <span style="font-size:13px;color:#9fc9e0;">${name}</span>
                                 <div style="width:28px;height:28px;border-radius:50%;background:#1d4e6e;border:1px solid #22d3ee;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${avatarHtml}</div>
                             </div>
-                            <div style="display:flex;gap:6px;font-family:'JetBrains Mono',monospace;">
-                                <span style="padding:2px 8px;border-radius:6px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;background:rgba(255,255,255,0.1);color:#67e8f9;border:1px solid rgba(34,211,238,0.4);">${org}</span>
-                                <span style="padding:2px 8px;border-radius:6px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;background:#06b6d4;color:#fff;">${level}</span>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.03em;">
+                                ${buildCredentialLineHtml(org, level, 10)}
                             </div>
                         </div>
                     </div>
@@ -8063,6 +8108,7 @@
             else if (category === "Corals & Anemones") activeId = "cf-coral";
             else if (category === "Eel") activeId = "cf-eel";
             else if (category === "Turtles") activeId = "cf-turtles";
+            else if (category === "Jellyfish") activeId = "cf-jellyfish";
             else if (category === "Others") activeId = "cf-others";
 
             const activeBtn = document.getElementById(activeId);

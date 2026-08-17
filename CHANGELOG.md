@@ -1,5 +1,13 @@
 # Changelog
 
+## 260724-v35
+
+- **Fixed OneDrive sign-in failing with "block_nested_popups" on mobile Chrome/Safari.** Popup-based sign-in was only being skipped for installed/home-screen PWAs — a plain mobile browser tab still tried to open a popup first, and partway through Microsoft's own login flow (account picker, "stay signed in?", etc.) that popup can try to open a second popup, which mobile browsers refuse to allow. Sign-in, sign-out, and silent token refresh now go straight to full-page redirect on any mobile device, not just installed PWAs, sidestepping the nested-popup failure entirely.
+- **Diver Profile card redesigned.** The mismatched PADI/certification-level pills (which read as lopsided since one badge is much wider than the other) are gone, replaced by a single plain-text credential line under the diver's name. The card now shows every "Lifetime Totals" stat from the Profile page (Countries, Dive Sites, Total Dives, Bottom Time, Cumulative Depth, Marine Life, Max Depth, Max Bottom Time) plus Avg Depth and Avg SAC for the last 20 dives, each with the same colorful icon accents used on the Dashboard widgets.
+- **Dive Log card updated to match** — the same plain-text credential line (no pills) now replaces its org/level badges too, so both cards share one consistent style.
+- **AquaDex: new Jellyfish category**, with a recolored line-art icon and 20 real species (Moon Jellyfish, Lion's Mane, Box Jellyfish, Portuguese Man o' War, Immortal Jellyfish, and more) spanning Common to Ultra-Rare — filterable, searchable, and selectable from the Log a Dive marine life checklist like every other category.
+- Service worker cache bumped (`abyss-shell-v34` → `abyss-shell-v35`) to ship all of the above.
+
 ## 260724-v34
 
 - **UDDF export overhauled** — previously only a handful of fields (dates, depths, temps, pressure, buddy/country stuffed into notes) made it into the exported file. Now every piece of information the app captures for a dive is exported:

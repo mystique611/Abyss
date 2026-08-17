@@ -39,13 +39,33 @@ let activeAccount = null;
  *  moment loginPopup() tries to open the Microsoft sign-in window from
  *  inside a standalone webview, since iOS's window-management model for
  *  installed PWAs doesn't support real child popup windows the way a
- *  normal Safari/Chrome tab does. Detecting this up front and going
- *  straight to a full-page redirect sidesteps the failure entirely instead
- *  of relying on a catch-and-retry after the popup attempt has already
- *  failed. */
+ *  normal Safari/Chrome tab does. */
 function isRunningAsInstalledPWA() {
     return (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) ||
         window.navigator.standalone === true; // iOS Safari-specific flag
+}
+
+/** True on phones/tablets generally — a plain (non-installed) mobile Chrome
+ *  or Safari tab, not just an installed PWA. Popup-based sign-in isn't just
+ *  an installed-PWA problem: partway through Microsoft's own login flow
+ *  (account picker, "stay signed in?", MFA challenges) it can try to open a
+ *  *second* popup from inside the first one, and mobile browsers refuse to
+ *  let a popup spawn another popup — that's exactly what surfaces as MSAL's
+ *  "block_nested_popups" error, even in a completely ordinary mobile
+ *  browser tab. Microsoft's own guidance is to prefer the redirect flow on
+ *  mobile in general, so this is checked independently of standalone mode. */
+function isMobileDevice() {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || navigator.vendor || '';
+    return /Android|iPhone|iPad|iPod|Windows Phone|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+}
+
+/** Whichever of the two conditions above applies — the single check every
+ *  popup-vs-redirect decision below should use, so installed PWA and plain
+ *  mobile browser both sidestep the popup entirely instead of relying on a
+ *  catch-and-retry after the popup attempt has already failed. */
+function shouldUseRedirectFlow() {
+    return isRunningAsInstalledPWA() || isMobileDevice();
 }
 
 function getMsalInstance() {
@@ -97,8 +117,10 @@ function getSignedInUserName() {
     return activeAccount ? (activeAccount.name || activeAccount.username) : null;
 }
 
-/** Opens the Microsoft login popup. Falls back to full-page redirect if the
- *  popup is blocked (common on mobile browsers / iOS Safari). */
+/** Opens the Microsoft login popup on desktop browsers, or goes straight to
+ *  a full-page redirect on an installed PWA or any mobile browser tab (see
+ *  shouldUseRedirectFlow()). On desktop, also falls back to redirect if the
+ *  popup itself fails to open. */
 async function signIn() {
     if (MSAL_CONFIG.auth.clientId === 'REPLACE_WITH_YOUR_AZURE_APP_CLIENT_ID') {
         throw new Error(
@@ -110,11 +132,11 @@ async function signIn() {
 
     const instance = getMsalInstance();
 
-    // Installed/standalone PWA (e.g. added to the home screen on iOS): skip
-    // the popup attempt entirely and go straight to a full-page redirect.
-    // See isRunningAsInstalledPWA() above for why — attempting loginPopup()
-    // here is what produces the "block_nested_popups" failure.
-    if (isRunningAsInstalledPWA()) {
+    // Installed PWA or any mobile browser tab: skip the popup attempt
+    // entirely and go straight to a full-page redirect. See
+    // shouldUseRedirectFlow() above for why — attempting loginPopup() here
+    // is what produces the "block_nested_popups" failure.
+    if (shouldUseRedirectFlow()) {
         await instance.loginRedirect({ scopes: GRAPH_SCOPES });
         return null; // page will reload after redirect; initAuth() picks it up
     }
@@ -149,7 +171,7 @@ async function signIn() {
 async function signOut() {
     const instance = getMsalInstance();
     if (activeAccount) {
-        if (isRunningAsInstalledPWA()) {
+        if (shouldUseRedirectFlow()) {
             // Same popup restriction as sign-in applies here — redirect instead.
             await instance.logoutRedirect({ account: activeAccount }).catch(() => {});
         } else {
@@ -178,12 +200,12 @@ async function getGraphAccessToken() {
         // Silent refresh failed (e.g. token expired + no session) — try an
         // interactive fallback, but never block a UI action on this.
         try {
-            if (isRunningAsInstalledPWA()) {
-                // acquireTokenPopup() hits the same standalone-PWA popup
-                // restriction as loginPopup(). Redirect instead; the page
-                // will reload and initAuth()/acquireTokenSilent() will pick
-                // the refreshed token up from there. Nothing meaningful to
-                // return synchronously in this branch.
+            if (shouldUseRedirectFlow()) {
+                // acquireTokenPopup() hits the same popup restriction as
+                // loginPopup(). Redirect instead; the page will reload and
+                // initAuth()/acquireTokenSilent() will pick the refreshed
+                // token up from there. Nothing meaningful to return
+                // synchronously in this branch.
                 await instance.acquireTokenRedirect({ scopes: GRAPH_SCOPES, account: activeAccount });
                 return null;
             }
