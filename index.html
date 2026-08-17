@@ -2116,7 +2116,10 @@
         <button onclick="closePhotoLightbox()" class="absolute top-4 right-4 text-white/80 hover:text-white transition-colors z-10">
             <i class="fa-solid fa-xmark text-2xl"></i>
         </button>
-        <img id="photo-lightbox-img" src="" class="max-w-full max-h-full rounded-xl object-contain" onclick="event.stopPropagation()">
+        <div class="flex flex-col items-center max-w-full max-h-full" onclick="event.stopPropagation()">
+            <img id="photo-lightbox-img" src="" class="max-w-full max-h-[85vh] rounded-xl object-contain">
+            <p id="photo-lightbox-caption" class="text-white/90 text-sm font-medium mt-3 text-center hidden"></p>
+        </div>
     </div>
 
     <!-- ==================== MODAL: CSV EXPORT OPTIONS ==================== -->
@@ -2476,12 +2479,8 @@
             "moorish_idol": { id: "moorish_idol", name: "Moorish Idol", scientific: "Zanclus cornutus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Warm Coastal Reefs", description: "Distinguished by a long trailing white pennant on its back." },
             "bannerfish": { id: "bannerfish", name: "Bannerfish", scientific: "Heniochus acuminatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Protected Lagoons", description: "Often mistaken for the Moorish Idol, has black-and-white stripes." },
             "napoleon_wrasse": { id: "napoleon_wrasse", name: "Napoleon Wrasse", scientific: "Cheilinus undulatus", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Coral Wall Slopes", description: "Friendly reef giant with a thick bump on its forehead." },
-            "cleaner_wrasse": { id: "cleaner_wrasse", name: "Cleaner Wrasse", scientific: "Labroides dimidiatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Reef Cleaning Stations", description: "Runs 'salons' by eating dead skin and parasites off larger fish." },
             "humphead_parrotfish": { id: "humphead_parrotfish", name: "Humphead Parrotfish", scientific: "Bolbometopon muricatum", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Shallow Outer Reefs", description: "Large parrotfish that rams coral structures with its heavy head." },
-            "bumphead_parrotfish": { id: "bumphead_parrotfish", name: "Bumphead Parrotfish", scientific: "Bolbometopon muricatum", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Outer Coral Slopes", description: "Feeds on algae and live coral polyps, pooping fine white sand." },
             "triggerfish": { id: "triggerfish", name: "Triggerfish", scientific: "Balistidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Reef flats", description: "Uses locking spine mechanisms on its dorsal fin to hide in cracks." },
-            "titan_triggerfish": { id: "titan_triggerfish", name: "Titan Triggerfish", scientific: "Balistoides viridescens", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Mating Flats", description: "Highly territorial fish that will aggressively defend its nest." },
-            "picasso_triggerfish": { id: "picasso_triggerfish", name: "Picasso Triggerfish", scientific: "Rhinecanthus aculeatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shallow Sandy Rubble", description: "Striking, abstract coloration resembling cubist artwork." },
             "pufferfish": { id: "pufferfish", name: "Pufferfish", scientific: "Tetraodontidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Reef Shelves", description: "Inflates with water to look larger, containing lethal tetrodotoxin." },
             "porcupinefish": { id: "porcupinefish", name: "Porcupinefish", scientific: "Diodontidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Lagoon Ledges", description: "Dotted with sharp spikes that lock outward when inflated." },
             "cowfish": { id: "cowfish", name: "Cowfish", scientific: "Lactoria cornuta", rarity: "Common", tag: "Reef Fish", typicalRegion: "Silty Reef Margins", description: "Boxy, hard-shelled fish with long horns above its eyes." },
@@ -2512,6 +2511,9 @@
             "cardinalfish": { id: "cardinalfish", name: "Cardinalfish", scientific: "Apogonidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Reef Cave Thresholds", description: "Mouthbrooding fish that keeps its eggs inside its oral cavity." },
             "filefish": { id: "filefish", name: "Filefish", scientific: "Monacanthidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Seagrass Flats", description: "Rough-skinned fish, closely related to triggerfish." },
             "leatherjackets": { id: "leatherjackets", name: "Leatherjackets", scientific: "Oligoplites saurus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Silty Estuary Drop-offs", description: "Smooth, leathery skin and sharp dorsal spines." },
+            "fusiliers": { id: "fusiliers", name: "Fusiliers", scientific: "Caesionidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Current-Swept Reef Walls", description: "Fast, torpedo-shaped schoolers that hover in the blue picking off drifting plankton." },
+            "wrasse": { id: "wrasse", name: "Wrasse", scientific: "Labridae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Reef Flats", description: "One of the reef's most diverse fish families, recognized by a distinctive rowing swim stroke." },
+            "parrotfish": { id: "parrotfish", name: "Parrotfish", scientific: "Scaridae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shallow Coral Reefs", description: "Grazes algae off coral with a fused, beak-like mouth, grinding it into fine white sand." },
 
             // ==================== CEPHALOPODS ====================
             "common_octopus": { id: "common_octopus", name: "Common Octopus", scientific: "Octopus vulgaris", rarity: "Common", tag: "Cephalopods", typicalRegion: "Rocky Shallow Pools", description: "Brilliant disguise-maker with remarkable spatial intelligence." },
@@ -2571,6 +2573,9 @@
             "collector_urchin": { id: "collector_urchin", name: "Collector Urchin", scientific: "Tripneustes gratilla", rarity: "Common", tag: "Echinoderms", typicalRegion: "Subtropical Seagrass", description: "Decorates its body with loose shell debris and kelp bits." },
             "sea_apples": { id: "sea_apples", name: "Sea Apples", scientific: "Pseudocolochirus violaceus", rarity: "Epic", tag: "Echinoderms", typicalRegion: "Outer Drop-off Walls", description: "Highly colorful sea cucumber with bright purple skins and yellow feelers." },
             "tiger_tail_cucumber": { id: "tiger_tail_cucumber", name: "Tiger Tail Sea Cucumber", scientific: "Holothuria hilla", rarity: "Common", tag: "Echinoderms", typicalRegion: "Lagoon Sand Floors", description: "Spotted worm-like filter feeder that process fine sandbeds." },
+            "starfish_other": { id: "starfish_other", name: "Starfish (Other)", scientific: "Asteroidea", rarity: "Common", tag: "Echinoderms", typicalRegion: "Reef & Sandy Flats", allowCustomName: true, description: "Use this entry for a starfish species not already in the catalog — enter the species name you observed." },
+            "sea_urchin_other": { id: "sea_urchin_other", name: "Sea Urchin (Other)", scientific: "Echinoidea", rarity: "Common", tag: "Echinoderms", typicalRegion: "Reef & Rocky Flats", allowCustomName: true, description: "Use this entry for a sea urchin species not already in the catalog — enter the species name you observed." },
+            "sea_cucumber_other": { id: "sea_cucumber_other", name: "Sea Cucumber (Other)", scientific: "Holothuroidea", rarity: "Common", tag: "Echinoderms", typicalRegion: "Sandy & Rubble Flats", allowCustomName: true, description: "Use this entry for a sea cucumber species not already in the catalog — enter the species name you observed." },
 
             // ==================== CORALS & ANEMONES ====================
             "brain_coral": { id: "brain_coral", name: "Brain Coral", scientific: "Diploria labyrinthiformis", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Shallow Hard Reefs", description: "Symmetrical hard coral resembling complex labyrinth brain folds." },
@@ -2640,7 +2645,7 @@
             "thimble_jellyfish": { id: "thimble_jellyfish", name: "Thimble Jellyfish", scientific: "Linuche unguiculata", rarity: "Common", tag: "Jellyfish", typicalRegion: "Caribbean & Gulf of Mexico", description: "Tiny thimble-sized jelly whose larvae are responsible for the itchy welts known as \"sea lice.\"" },
 
             // ==================== OTHERS (custom / uncatalogued sightings) ====================
-            "others": { id: "others", name: "Others", scientific: "Custom Sighting", rarity: "Common", tag: "Others", typicalRegion: "Anywhere", description: "Use this entry to log a marine life sighting that isn't in the catalog — enter the species name you observed for each sighting." }
+            "others": { id: "others", name: "Others", scientific: "Custom Sighting", rarity: "Common", tag: "Others", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry to log a marine life sighting that isn't in the catalog — enter the species name you observed for each sighting." }
         };
 
         // Static Geographic Coordinates mapping for Leaflet Markers
@@ -5900,74 +5905,136 @@
                 box.id = `form-critter-wrapper-${critter.id}`;
                 box.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <label class="flex items-center space-x-3 cursor-pointer">
-                            <input type="checkbox" id="chk-${critter.id}" onchange="toggleCritterFormRow('${critter.id}')" class="rounded border-slate-300 dark:border-ocean-800 text-cyan-500 focus:ring-cyan-400 focus:ring-opacity-50 h-5.5 w-5.5">
-                            <div class="flex items-center space-x-2">
-                                <div class="bg-cyan-500/10 p-1.5 rounded-lg">
-                                    ${CRITTER_ICONS[critter.tag] || CRITTER_ICONS["Reef Fish"]}
-                                </div>
-                                <div>
-                                    <span class="text-sm font-bold block text-slate-900 dark:text-white">${critter.name}</span>
-                                    <span class="text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase tracking-wide">${critter.rarity} · ${critter.typicalRegion}</span>
-                                </div>
-                            </div>
-                        </label>
-                    </div>
-                    
-                    <div id="critter-detail-row-${critter.id}" class="hidden space-y-3 border-t border-slate-300 dark:border-ocean-850 pt-3">
-                        ${critter.id === 'others' ? `
-                        <div>
-                            <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Species Name <span style="color:#DFAD26">*</span></label>
-                            <input type="text" id="crit-custom-name-${critter.id}" placeholder="e.g. Unidentified goby" class="w-full px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-ocean-900/40 border border-slate-300 dark:border-ocean-800/40 focus:outline-none focus:border-cyan-400 text-xs">
-                        </div>
-                        ` : ''}
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Depth seen (m)</label>
-                                <input type="number" step="0.1" id="crit-depth-${critter.id}" placeholder="e.g. 14.5" class="w-full px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-ocean-900/40 border border-slate-300 dark:border-ocean-800/40 focus:outline-none focus:border-cyan-400 text-xs font-mono-custom">
+                        <div class="flex items-center space-x-2">
+                            <div class="bg-cyan-500/10 p-1.5 rounded-lg">
+                                ${CRITTER_ICONS[critter.tag] || CRITTER_ICONS["Reef Fish"]}
                             </div>
                             <div>
-                                <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Spotting Notes</label>
-                                <input type="text" id="crit-notes-${critter.id}" placeholder="Under ledges, feeding, sleeping..." class="w-full px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-ocean-900/40 border border-slate-300 dark:border-ocean-800/40 focus:outline-none focus:border-cyan-400 text-xs">
+                                <span class="text-sm font-bold block text-slate-900 dark:text-white">${critter.name}</span>
+                                <span class="text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase tracking-wide">${critter.rarity} · ${critter.typicalRegion}</span>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Sighting Discovery Photo</label>
-                            <div class="flex items-center space-x-3">
-                                <label class="cursor-pointer bg-cyan-500/10 dark:bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 font-semibold py-2 px-3 rounded-xl border border-cyan-500/20 flex items-center space-x-2 text-xs transition-colors">
-                                    <i class="fa-solid fa-camera"></i>
-                                    <span>Upload Photo</span>
-                                    <input type="file" id="crit-file-${critter.id}" accept="image/*" onchange="handleCritterImage(this, '${critter.id}')" class="hidden">
-                                </label>
-                                <div id="crit-preview-container-${critter.id}" class="hidden flex items-center space-x-2 bg-slate-100 dark:bg-ocean-900/40 px-2 py-1 rounded-xl">
-                                    <img id="crit-preview-img-${critter.id}" class="w-8 h-8 rounded-lg object-cover" src="">
-                                    <button type="button" onclick="clearCritterImage('${critter.id}')" class="text-rose-400 hover:text-rose-300 text-xs"><i class="fa-solid fa-trash"></i></button>
-                                </div>
-                            </div>
-                        </div>
+                        <button type="button" onclick="addCritterSightingRow('${critter.id}')" class="flex-shrink-0 flex items-center space-x-1.5 text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                            <i class="fa-solid fa-plus text-[10px]"></i>
+                            <span>Add Sighting</span>
+                        </button>
                     </div>
+
+                    <div id="critter-entries-${critter.id}" class="space-y-3"></div>
                 `;
                 container.appendChild(box);
             });
         }
 
-        function toggleCritterFormRow(critterId) {
-            const chk = document.getElementById(`chk-${critterId}`);
-            const row = document.getElementById(`critter-detail-row-${critterId}`);
+        // Running per-species counter so each dynamically-added sighting row
+        // gets a DOM-unique id — critterId is always snake_case (no hyphens),
+        // so "<critterId>-<n>" can never collide with the base id itself.
+        const critterRowSeq = {};
+
+        // Adds one repeatable sighting row (depth/notes/photo, plus a name
+        // field for "others") under a species card, so a diver can log more
+        // than one sighting of the same species — or, for "others", more
+        // than one distinct unidentified species — on a single dive.
+        // `prefill` (optional) is an existing dive.critters entry to restore
+        // when editing a saved dive.
+        function addCritterSightingRow(critterId, prefill) {
+            const entriesContainer = document.getElementById(`critter-entries-${critterId}`);
             const wrapper = document.getElementById(`form-critter-wrapper-${critterId}`);
-            
-            if (chk.checked) {
-                row.classList.remove('hidden');
+            if (!entriesContainer) return null;
+
+            // Catalog entries flagged allowCustomName (e.g. "Others", and the
+            // generic Starfish/Sea Urchin/Sea Cucumber entries) get a name
+            // field so the diver can specify exactly what they saw.
+            const allowCustomName = !!(CRITTER_DATABASE[critterId] && CRITTER_DATABASE[critterId].allowCustomName);
+
+            critterRowSeq[critterId] = (critterRowSeq[critterId] || 0) + 1;
+            const rowId = `${critterId}-${critterRowSeq[critterId]}`;
+
+            const row = document.createElement('div');
+            row.className = "relative border-t border-slate-300 dark:border-ocean-850 pt-3 space-y-3";
+            row.id = `critter-row-${rowId}`;
+            row.innerHTML = `
+                <button type="button" onclick="removeCritterSightingRow('${critterId}', '${rowId}')" class="absolute top-2 right-0 text-slate-400 hover:text-rose-400 text-xs transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                ${allowCustomName ? `
+                <div class="pr-6">
+                    <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Species Name <span style="color:#DFAD26">*</span></label>
+                    <input type="text" id="crit-custom-name-${rowId}" placeholder="e.g. Unidentified goby" class="w-full px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-ocean-900/40 border border-slate-300 dark:border-ocean-800/40 focus:outline-none focus:border-cyan-400 text-xs">
+                </div>
+                ` : ''}
+                <div class="grid grid-cols-2 gap-3 pr-6">
+                    <div>
+                        <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Depth seen (m)</label>
+                        <input type="number" step="0.1" id="crit-depth-${rowId}" placeholder="e.g. 14.5" class="w-full px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-ocean-900/40 border border-slate-300 dark:border-ocean-800/40 focus:outline-none focus:border-cyan-400 text-xs font-mono-custom">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Spotting Notes</label>
+                        <input type="text" id="crit-notes-${rowId}" placeholder="Under ledges, feeding, sleeping..." class="w-full px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-ocean-900/40 border border-slate-300 dark:border-ocean-800/40 focus:outline-none focus:border-cyan-400 text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Sighting Discovery Photo</label>
+                    <div class="flex items-center space-x-3">
+                        <label class="cursor-pointer bg-cyan-500/10 dark:bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 font-semibold py-2 px-3 rounded-xl border border-cyan-500/20 flex items-center space-x-2 text-xs transition-colors">
+                            <i class="fa-solid fa-camera"></i>
+                            <span>Upload Photo</span>
+                            <input type="file" id="crit-file-${rowId}" accept="image/*" onchange="handleCritterImage(this, '${rowId}', '${critterId}')" class="hidden">
+                        </label>
+                        <div id="crit-preview-container-${rowId}" class="hidden flex items-center space-x-2 bg-slate-100 dark:bg-ocean-900/40 px-2 py-1 rounded-xl">
+                            <img id="crit-preview-img-${rowId}" class="w-8 h-8 rounded-lg object-cover" src="">
+                            <button type="button" onclick="clearCritterImage('${rowId}')" class="text-rose-400 hover:text-rose-300 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            entriesContainer.appendChild(row);
+
+            if (wrapper) {
                 wrapper.classList.remove('border-ocean-800/20');
                 wrapper.classList.add('border-cyan-500/30', 'ring-1', 'ring-cyan-500/30');
-            } else {
-                row.classList.add('hidden');
+            }
+
+            if (prefill) {
+                const depthInput = document.getElementById(`crit-depth-${rowId}`);
+                const notesInput = document.getElementById(`crit-notes-${rowId}`);
+                if (depthInput) depthInput.value = (prefill.depth !== undefined && prefill.depth !== null) ? prefill.depth : '';
+                if (notesInput) notesInput.value = prefill.note || '';
+                if (allowCustomName) {
+                    const nameInput = document.getElementById(`crit-custom-name-${rowId}`);
+                    if (nameInput) nameInput.value = prefill.customName || '';
+                }
+                if (prefill.photoId) {
+                    // Keep this dive's existing photo attached unless the
+                    // diver explicitly replaces/removes it — carry its id
+                    // forward so a plain re-save doesn't drop the photo.
+                    tempCritterPhotos[rowId] = { id: prefill.photoId, dataUrl: null };
+                    const previewCont = document.getElementById(`crit-preview-container-${rowId}`);
+                    const previewImg = document.getElementById(`crit-preview-img-${rowId}`);
+                    previewImg.removeAttribute('src');
+                    previewImg.setAttribute('data-photo-id', prefill.photoId);
+                    previewImg.onerror = () => { previewImg.onerror = null; previewCont.classList.add('hidden'); };
+                    previewCont.classList.remove('hidden');
+                }
+            }
+
+            return rowId;
+        }
+
+        function removeCritterSightingRow(critterId, rowId) {
+            delete tempCritterPhotos[rowId];
+            const row = document.getElementById(`critter-row-${rowId}`);
+            if (row) row.remove();
+
+            const entriesContainer = document.getElementById(`critter-entries-${critterId}`);
+            const wrapper = document.getElementById(`form-critter-wrapper-${critterId}`);
+            if (wrapper && entriesContainer && entriesContainer.children.length === 0) {
                 wrapper.classList.add('border-ocean-800/20');
                 wrapper.classList.remove('border-cyan-500/30', 'ring-1', 'ring-cyan-500/30');
             }
         }
 
-        function handleCritterImage(input, critterId) {
+        function handleCritterImage(input, rowId, critterId) {
             const file = input.files[0];
             if (!file) return;
 
@@ -5977,8 +6044,8 @@
 
                 // Show the preview immediately from the local file read —
                 // don't make the diver wait on IndexedDB/OneDrive for that.
-                const container = document.getElementById(`crit-preview-container-${critterId}`);
-                const img = document.getElementById(`crit-preview-img-${critterId}`);
+                const container = document.getElementById(`crit-preview-container-${rowId}`);
+                const img = document.getElementById(`crit-preview-img-${rowId}`);
                 img.src = base64;
                 container.classList.remove('hidden');
 
@@ -5986,22 +6053,22 @@
                 // upload; only its returned id gets saved on the dive
                 // record (see handleFormSubmit), keeping dive_data.json small.
                 const id = await storeNewPhoto(base64);
-                tempCritterPhotos[critterId] = { id, dataUrl: base64 };
-                showToast(`Photo registered for ${CRITTER_DATABASE[critterId].name}`, "info");
+                tempCritterPhotos[rowId] = { id, dataUrl: base64 };
+                showToast(`Photo registered for ${CRITTER_DATABASE[critterId]?.name || 'sighting'}`, "info");
             };
             reader.readAsDataURL(file);
         }
 
-        function clearCritterImage(critterId) {
+        function clearCritterImage(rowId) {
             // Note: if storeNewPhoto() already ran for this slot, its local
             // cache entry and queued OneDrive upload are simply left as an
             // orphan — harmless (a few unreferenced KB), and consistent with
             // how the app doesn't do any other photo garbage collection
             // (e.g. deleting a dive doesn't clean up its photos either).
-            delete tempCritterPhotos[critterId];
-            const fileInput = document.getElementById(`crit-file-${critterId}`);
+            delete tempCritterPhotos[rowId];
+            const fileInput = document.getElementById(`crit-file-${rowId}`);
             if (fileInput) fileInput.value = "";
-            const container = document.getElementById(`crit-preview-container-${critterId}`);
+            const container = document.getElementById(`crit-preview-container-${rowId}`);
             if (container) container.classList.add('hidden');
         }
 
@@ -6017,7 +6084,7 @@
                     // storeNewPhoto() caches locally + queues the OneDrive
                     // upload; only its id gets saved on the dive record.
                     const id = await storeNewPhoto(base64);
-                    tempDivePhotos.push({ id, dataUrl: base64 });
+                    tempDivePhotos.push({ id, dataUrl: base64, caption: '' });
                     renderDivePhotosGrid();
                 };
                 reader.readAsDataURL(file);
@@ -6032,6 +6099,20 @@
             renderDivePhotosGrid();
         }
 
+        // Caption inputs update tempDivePhotos directly (no re-render) so
+        // typing doesn't steal focus out of the field on every keystroke.
+        function updateDivePhotoCaption(index, value) {
+            if (tempDivePhotos[index]) tempDivePhotos[index].caption = value;
+        }
+
+        // Legacy dives saved dive.photos as a plain array of photo id
+        // strings; captions introduced an { id, caption } object per photo.
+        // Normalize either shape to the object form so every reader below
+        // can assume the new shape.
+        function normalizeDivePhotoEntry(p) {
+            return (typeof p === 'string') ? { id: p, caption: '' } : { id: p.id, caption: p.caption || '' };
+        }
+
         function renderDivePhotosGrid() {
             const grid = document.getElementById('form-dive-photos-grid');
             if (!grid) return;
@@ -6044,11 +6125,14 @@
             // dive being edited only have an id until hydratePhotoImages()
             // resolves them below.
             grid.innerHTML = tempDivePhotos.map((photo, i) => `
-                <div class="relative group">
-                    <img ${photo.dataUrl ? `src="${photo.dataUrl}"` : `data-photo-id="${photo.id}"`} class="w-full h-24 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40" onerror="this.closest('.group').style.display='none'">
-                    <button type="button" onclick="removeDivePhoto(${i})" class="absolute top-1 right-1 h-6 w-6 rounded-full bg-rose-500/90 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
+                <div class="space-y-1">
+                    <div class="relative group">
+                        <img ${photo.dataUrl ? `src="${photo.dataUrl}"` : `data-photo-id="${photo.id}"`} class="w-full h-24 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40" onerror="this.closest('.group').style.display='none'">
+                        <button type="button" onclick="removeDivePhoto(${i})" class="absolute top-1 right-1 h-6 w-6 rounded-full bg-rose-500/90 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <input type="text" value="${xmlEscape(photo.caption || '')}" placeholder="Add a caption..." oninput="updateDivePhotoCaption(${i}, this.value)" class="w-full px-2 py-1 rounded-lg bg-slate-100 dark:bg-ocean-900/40 border border-slate-300 dark:border-ocean-800/40 focus:outline-none focus:border-cyan-400 text-[10px]">
                 </div>
             `).join('');
             hydratePhotoImages(grid);
@@ -6151,36 +6235,16 @@
             document.getElementById('form-notes').value = dive.notes || '';
 
             tempCritterPhotos = {};
-            tempDivePhotos = (dive.photos || []).map(id => ({ id, dataUrl: null }));
+            tempDivePhotos = (dive.photos || []).map(p => { const n = normalizeDivePhotoEntry(p); return { id: n.id, dataUrl: null, caption: n.caption }; });
             renderDivePhotosGrid();
             setupFormsAndListeners();
 
             if (dive.critters && dive.critters.length > 0) {
+                // One repeatable row per saved sighting — restores however
+                // many times a given species (or, for "others", however many
+                // distinct unidentified species) were logged on this dive.
                 dive.critters.forEach(sighted => {
-                    const chk = document.getElementById(`chk-${sighted.id}`);
-                    if (chk) {
-                        chk.checked = true;
-                        toggleCritterFormRow(sighted.id);
-
-                        document.getElementById(`crit-depth-${sighted.id}`).value = sighted.depth || '';
-                        document.getElementById(`crit-notes-${sighted.id}`).value = sighted.note || '';
-
-                        const customNameInput = document.getElementById(`crit-custom-name-${sighted.id}`);
-                        if (customNameInput) customNameInput.value = sighted.customName || '';
-
-                        if (sighted.photoId) {
-                            // Keep this dive's existing photo attached unless the
-                            // diver explicitly replaces/removes it — carry its id
-                            // forward so a plain re-save doesn't drop the photo.
-                            tempCritterPhotos[sighted.id] = { id: sighted.photoId, dataUrl: null };
-                            const previewCont = document.getElementById(`crit-preview-container-${sighted.id}`);
-                            const previewImg = document.getElementById(`crit-preview-img-${sighted.id}`);
-                            previewImg.removeAttribute('src');
-                            previewImg.setAttribute('data-photo-id', sighted.photoId);
-                            previewImg.onerror = () => { previewImg.onerror = null; previewCont.classList.add('hidden'); };
-                            previewCont.classList.remove('hidden');
-                        }
-                    }
+                    addCritterSightingRow(sighted.id, sighted);
                 });
                 // Resolve every preview image's data-photo-id -> actual src
                 // now that they're all in the DOM (local cache first, then
@@ -6257,7 +6321,7 @@
             });
 
             const diveTags = DIVE_TAGS.filter(tag => document.getElementById(`form-tag-${tag}`)?.checked);
-            const divePhotos = tempDivePhotos.map(p => p.id);
+            const divePhotos = tempDivePhotos.map(p => ({ id: p.id, caption: (p.caption || '').trim() || null }));
 
             const timeIn = document.getElementById('form-time-in').value || null;
             const timeOut = document.getElementById('form-time-out').value || null;
@@ -6283,19 +6347,25 @@
             const diveCenter = document.getElementById('form-dive-center').value || null;
             const notes = document.getElementById('form-notes').value || '';
 
+            // One dive.critters entry per repeatable sighting row (see
+            // addCritterSightingRow) — a species with 2 rows added produces
+            // 2 separate entries sharing the same catalog id.
             const crittersList = [];
             Object.keys(CRITTER_DATABASE).forEach(critterId => {
-                const checked = document.getElementById(`chk-${critterId}`).checked;
-                if (checked) {
-                    const customNameInput = document.getElementById(`crit-custom-name-${critterId}`);
+                const entriesContainer = document.getElementById(`critter-entries-${critterId}`);
+                if (!entriesContainer) return;
+                Array.from(entriesContainer.children).forEach(rowEl => {
+                    const rowId = rowEl.id.replace(/^critter-row-/, '');
+                    const customNameInput = document.getElementById(`crit-custom-name-${rowId}`);
+                    const allowCustomName = !!(CRITTER_DATABASE[critterId] && CRITTER_DATABASE[critterId].allowCustomName);
                     crittersList.push({
                         id: critterId,
-                        customName: (critterId === 'others' && customNameInput) ? (customNameInput.value.trim() || 'Unidentified species') : null,
-                        depth: parseFloat(document.getElementById(`crit-depth-${critterId}`).value) || maxDepth,
-                        note: document.getElementById(`crit-notes-${critterId}`).value || "Spotted",
-                        photoId: tempCritterPhotos[critterId]?.id || null
+                        customName: (allowCustomName && customNameInput) ? (customNameInput.value.trim() || 'Unidentified species') : null,
+                        depth: parseFloat(document.getElementById(`crit-depth-${rowId}`).value) || maxDepth,
+                        note: document.getElementById(`crit-notes-${rowId}`).value || "Spotted",
+                        photoId: tempCritterPhotos[rowId]?.id || null
                     });
-                }
+                });
             });
 
             if (state.editingLogId) {
@@ -7981,13 +8051,16 @@
             // Each id needs its data URL (local cache, or a OneDrive fetch if
             // this device has never seen it) before it's usable as both the
             // thumbnail src and the "open full size" link target.
-            const resolved = await Promise.all(dive.photos.map(async id => ({ id, dataUrl: await getPhotoDataUrl(id) })));
+            const resolved = await Promise.all(dive.photos.map(normalizeDivePhotoEntry).map(async p => ({ id: p.id, caption: p.caption, dataUrl: await getPhotoDataUrl(p.id) })));
 
             const available = resolved.filter(p => p.dataUrl);
             const missingCount = resolved.length - available.length;
 
             grid.innerHTML = available.map(p => `
-                <img src="${p.dataUrl}" onclick="openPhotoLightbox(this.src)" class="w-full h-32 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40 hover:opacity-80 transition-opacity cursor-pointer">
+                <div>
+                    <img src="${p.dataUrl}" data-caption="${xmlEscape(p.caption || '')}" onclick="openPhotoLightbox(this.src, this.dataset.caption)" class="w-full h-32 object-cover rounded-xl border border-slate-300 dark:border-ocean-800/40 hover:opacity-80 transition-opacity cursor-pointer">
+                    ${p.caption ? `<p class="text-[10px] text-slate-600 dark:text-slate-400 mt-1 truncate">${p.caption}</p>` : ''}
+                </div>
             `).join('') + (missingCount > 0
                 ? `<p class="col-span-full text-xs text-slate-600 dark:text-slate-500 italic text-center py-2">${missingCount} photo${missingCount !== 1 ? 's' : ''} couldn't be loaded right now — try again once you're online and signed in.</p>`
                 : '');
@@ -8035,8 +8108,16 @@
             document.getElementById('marine-sightings-modal').classList.add('hidden');
         }
 
-        function openPhotoLightbox(dataUrl) {
+        function openPhotoLightbox(dataUrl, caption) {
             document.getElementById('photo-lightbox-img').src = dataUrl;
+            const captionEl = document.getElementById('photo-lightbox-caption');
+            if (caption) {
+                captionEl.innerText = caption;
+                captionEl.classList.remove('hidden');
+            } else {
+                captionEl.innerText = '';
+                captionEl.classList.add('hidden');
+            }
             document.getElementById('photo-lightbox-modal').classList.remove('hidden');
         }
 
@@ -8164,8 +8245,12 @@
 
             state.dives.forEach(dive => {
                 if (dive.critters) {
-                    const match = dive.critters.find(c => c.id === critterId);
-                    if (match) {
+                    // .filter(), not .find() — a single dive can carry more
+                    // than one sighting of the same species (e.g. two
+                    // different "others" entries), and every one of them
+                    // should count and show up in the sighting history.
+                    const matches = dive.critters.filter(c => c.id === critterId);
+                    matches.forEach(match => {
                         count++;
                         sightingsList.push({
                             date: dive.date,
@@ -8176,7 +8261,7 @@
                             photoId: match.photoId,
                             customName: match.customName || null
                         });
-                    }
+                    });
                 }
             });
 

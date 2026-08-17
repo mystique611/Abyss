@@ -1,5 +1,14 @@
 # Changelog
 
+## 260724-v36
+
+- **Log a Dive: every marine life checklist entry is now repeatable.** Species cards no longer use a single checkbox — an "Add Sighting" button lets you log a species more than once on the same dive (different depths/notes/photos), and for "Others" specifically, you can now add as many distinct unidentified-species sightings as you like, each with its own name.
+- **Fixed an AquaDex undercounting bug found while building the above**: the sighting counter/history for a species only ever counted the first match per dive, so a dive with two sightings of the same species (most relevant for "Others") only showed one. All matches now count and appear in the sighting history, sorted newest first.
+- **Dive Photos: added optional captions.** Each photo uploaded under Section 07 now has a small caption field; captions show under the thumbnail and in the full-size viewer in the Logbook's "View Dive Photos" gallery.
+- **AquaDex housekeeping — Reef Fish**: added generic catch-all entries for Fusiliers, Wrasse, and Parrotfish (families with dozens of look-alike species, matching how Triggerfish/Snappers/Groupers already work). Removed a handful of common named entries now redundant with those generics (Cleaner Wrasse, Titan Triggerfish, Picasso Triggerfish), and removed Bumphead Parrotfish, which was an exact duplicate of Humphead Parrotfish (same species, `Bolbometopon muricatum`, listed twice).
+- **AquaDex housekeeping — Echinoderms**: added generic "Starfish (Other)", "Sea Urchin (Other)", and "Sea Cucumber (Other)" entries — like "Others", these let you type in the exact subspecies you saw when it isn't in the catalog. (The custom-name field is no longer hardcoded to "Others" specifically — any catalog entry can now opt into it.)
+- Service worker cache bumped (`abyss-shell-v35` → `abyss-shell-v36`) to ship all of the above.
+
 ## 260724-v35
 
 - **Fixed OneDrive sign-in failing with "block_nested_popups" on mobile Chrome/Safari.** Popup-based sign-in was only being skipped for installed/home-screen PWAs — a plain mobile browser tab still tried to open a popup first, and partway through Microsoft's own login flow (account picker, "stay signed in?", etc.) that popup can try to open a second popup, which mobile browsers refuse to allow. Sign-in, sign-out, and silent token refresh now go straight to full-page redirect on any mobile device, not just installed PWAs, sidestepping the nested-popup failure entirely.
