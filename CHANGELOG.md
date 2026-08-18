@@ -1,5 +1,20 @@
 # Changelog
 
+## 260724-v39
+
+- **Fixed the mobile crash on View Marine Sightings / Dive Photos still occurring after the v37 fix.** v37 only compressed newly-uploaded photos — it didn't help older photos already saved at full camera resolution, and didn't address the actual crash mechanism: opening a gallery decoded *every* photo in it at the same time (`Promise.all`), and decoding several multi-megabyte originals simultaneously is what was exhausting mobile Safari/Chrome's memory and repeatedly killing the page. Every photo gallery (Marine Sightings, Dive Photos, AquaDex sighting history, and any other photo-hydrating view) now resolves and downscales photos one at a time instead of all at once, and every displayed photo — old or new — is downscaled on the way to the screen regardless of how it was originally stored. This should fix the crash for existing photos too, not just new uploads.
+- Service worker cache bumped (`abyss-shell-v38` → `abyss-shell-v39`) to ship the above.
+
+## 260724-v38
+
+- **AquaDex: every category now has a generic "(Others)" catch-all** — Marine Mammals, Sharks, Rays, Pelagic Fish, Reef Fish, Cephalopods, Crustaceans, Nudibranchs, Echinoderms, Corals & Anemones, Eels, Turtles, and Jellyfish. Same mechanism as the existing Sea Cucumber (Other)/"Others" entries: pick it when you've spotted something in that category that isn't in the catalog, and type in the species name yourself.
+- **AquaDex housekeeping — duplicate species cleanup:**
+  - Boxer Shrimp and Coral Banded Shrimp were the same species (*Stenopus hispidus*) under two names — kept Coral Banded Shrimp, retired Boxer Shrimp.
+  - Blue Ribbon Eel, Black Ribbon Eel (juvenile), and Yellow Ribbon Eel (female) were the same species (*Rhinomuraena quaesita*) at three different life stages — merged into a single "Ribbon Eel" entry; the juvenile and female color-morph entries are retired.
+  - Checked Blacktip Reef Shark vs. Blacktip Shark — confirmed these are two genuinely distinct species (*Carcharhinus melanopterus* vs. *C. limbatus*), just easily confused by name, so both were kept as-is.
+  - As with the Reef Fish housekeeping in v36, "retired" entries stay in the catalog (not deleted) so any dive that already logged one still displays and counts correctly in AquaDex — they're just hidden from the Log a Dive checklist and AquaDex grid for anyone who's never sighted them.
+- Service worker cache bumped (`abyss-shell-v37` → `abyss-shell-v38`) to ship all of the above.
+
 ## 260724-v37
 
 - **Fixed a mobile crash viewing Marine Sightings or enlarging a photo.** Uploaded photos were stored at full camera resolution with no size limit; opening a gallery with several of them at once (or the full-size viewer) could push mobile Safari's per-tab memory past its limit, which silently reloads the page — it looked like the app "crashing back to the Dashboard," even though nothing actually errored. Every new photo upload (dive photos, marine sighting photos, and the diver avatar) is now downscaled and re-compressed on the way in, so this shouldn't recur for photos added from now on. Already-stored full-size photos aren't retroactively shrunk.
