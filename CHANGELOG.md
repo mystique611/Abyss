@@ -1,5 +1,10 @@
 # Changelog
 
+## 260724-v41
+
+- **Found the actual remaining cause of the iPhone-only enlarge-photo crash.** v40's fix still fully decoded a photo at its original resolution before shrinking it — same underlying problem as before, just via a slightly different API. The real issue: file size doesn't tell you how many actual pixels a photo has. Modern iPhones compress even a 48MP photo down to just 1-2MB, so a small-looking file can still need a ~190MB decode buffer, which is enough to make iOS silently kill and reload the tab. This is also why it was always the exact same photo crashing in both Marine Sightings and AquaDex — they were decoding the identical stored file. The fix now asks the browser to decode a photo directly at a small target size (the same trick native iOS apps use to avoid this exact crash), so the full-resolution buffer is never created in memory at all, regardless of the original's actual pixel count. Falls back to the previous approach on browsers that don't support this.
+- Service worker cache bumped (`abyss-shell-v40` → `abyss-shell-v41`) to ship the above.
+
 ## 260724-v40
 
 - **Further crash hardening for enlarging specific photos.** After v39, crashes were reported as narrowed to specific individual photos when enlarged (Marine Sightings or Dive Photos), rather than happening broadly. Two more targeted fixes:

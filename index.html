@@ -6199,47 +6199,70 @@
         }
 
         // Downscales + recompresses a photo before it's ever stored or
-        // displayed. Phone camera photos can be 5-50MB as raw base64
-        // (modern high-megapixel sensors especially), and decoding even ONE
-        // of those at full resolution can be enough to crash mobile Safari/
-        // Chrome — this is what kept happening on specific photos even
-        // after every gallery was switched to resolve/decode one photo at a
-        // time instead of all at once.
+        // displayed. Phone camera photos can be very high actual pixel
+        // count while still looking small in FILE SIZE — modern iPhones
+        // compress even a 48MP photo down to just 1-2MB — so file size
+        // alone doesn't tell you whether a photo is safe to decode. What
+        // matters for a mobile browser's memory limit is pixel count: a
+        // 48MP photo needs a decoded buffer around 190MB (width x height x
+        // 4 bytes) before it can even be measured or shrunk, and that alone
+        // can be enough to make iOS silently kill and reload the tab —
+        // this is why crashes were narrowing down to *specific* photos
+        // rather than happening for every photo, and why the exact same
+        // photo crashes identically in both the Marine Sightings modal and
+        // AquaDex (they're both decoding the same underlying stored file).
         //
-        // Prefers createImageBitmap() over a plain <img>+canvas: browsers
-        // can decode through a more memory-efficient path for this, and —
-        // importantly — a returned ImageBitmap can be explicitly .close()d
-        // the instant we're done with it, freeing its (potentially huge)
-        // decoded memory immediately instead of waiting on garbage
-        // collection, which on a memory-constrained phone can be too slow
-        // to keep up even when photos are processed one at a time.
+        // The earlier createImageBitmap(blob) call (no size hint) still
+        // fully decoded the original resolution before this function got a
+        // chance to shrink it — same problem as the plain <img> approach,
+        // just a marginally more efficient decoder. The actual fix is to
+        // ask the browser to decode DIRECTLY to a small target size via the
+        // resizeWidth/resizeHeight hints, which supporting browsers honor
+        // with a genuine scaled decode (the same trick native iOS apps use
+        // via ImageIO thumbnailing to avoid this exact OOM pattern) — the
+        // full-resolution pixel buffer is never created in the first place.
+        //
+        // A tiny first pass (resizeWidth: 64) is used only to learn the
+        // photo's true aspect ratio so the real pass below doesn't distort
+        // portrait vs. landscape photos — it's cheap regardless of the
+        // original's real resolution, since it's a scaled decode too.
         async function resizeImageDataUrl(dataUrl, maxDimension = 1600, quality = 0.82) {
             if (typeof createImageBitmap === 'function') {
                 try {
                     const blob = await (await fetch(dataUrl)).blob();
-                    const bitmap = await createImageBitmap(blob);
+
+                    const probe = await createImageBitmap(blob, { resizeWidth: 64 });
+                    const ratio = probe.height / probe.width;
+                    probe.close();
+
+                    let targetW = maxDimension;
+                    let targetH = Math.round(maxDimension * ratio);
+                    if (targetH > maxDimension) {
+                        targetH = maxDimension;
+                        targetW = Math.round(maxDimension / ratio);
+                    }
+
+                    const bitmap = await createImageBitmap(blob, {
+                        resizeWidth: targetW,
+                        resizeHeight: targetH,
+                        resizeQuality: 'high'
+                    });
                     try {
-                        const { width: w0, height: h0 } = bitmap;
-                        if (w0 <= maxDimension && h0 <= maxDimension) return dataUrl;
-
-                        const scale = maxDimension / Math.max(w0, h0);
-                        const width = Math.round(w0 * scale);
-                        const height = Math.round(h0 * scale);
-
                         const canvas = document.createElement('canvas');
-                        canvas.width = width;
-                        canvas.height = height;
+                        canvas.width = targetW;
+                        canvas.height = targetH;
                         const ctx = canvas.getContext('2d');
-                        ctx.drawImage(bitmap, 0, 0, width, height);
+                        ctx.drawImage(bitmap, 0, 0, targetW, targetH);
                         return canvas.toDataURL('image/jpeg', quality);
                     } finally {
                         bitmap.close();
                     }
                 } catch (e) {
                     // Fall through to the <img>-based approach below —
-                    // covers browsers where createImageBitmap can't decode
-                    // this particular image (rare, but happens with some
-                    // malformed/unusual files).
+                    // covers browsers without resizeWidth/resizeHeight
+                    // support, or that fail to decode this particular file
+                    // this way (rare, but happens with some malformed/
+                    // unusual files).
                 }
             }
 
