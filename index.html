@@ -1176,6 +1176,22 @@
                             <input type="text" id="checklist-search" oninput="filterChecklist()" placeholder="Search checklist..." class="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-850 focus:outline-none text-xs">
                         </div>
 
+                        <!-- Pinned to the top so a species card moves here the
+                             moment it gets its first sighting row, and moves
+                             back once its last row is removed — added
+                             sightings are always visible without scrolling
+                             the full alphabetical checklist below. -->
+                        <div id="form-critters-added-section" class="hidden space-y-2">
+                            <div class="flex items-center space-x-2 text-emerald-500 dark:text-emerald-400">
+                                <i class="fa-solid fa-check-circle text-xs"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider">Added to This Dive</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="form-critters-added-grid">
+                                <!-- JS moves added species cards here -->
+                            </div>
+                            <div class="border-b border-slate-200 dark:border-ocean-900/20 pb-2"></div>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[360px] overflow-y-auto pr-1" id="form-critters-grid">
                             <!-- JS Dynamically injects checklist rows -->
                         </div>
@@ -1500,6 +1516,9 @@
                         <p class="text-xs text-slate-600 dark:text-slate-400">Number of dives logged per period</p>
                     </div>
                     <div class="flex items-center bg-slate-100 dark:bg-ocean-900/20 rounded-xl p-1 flex-shrink-0">
+                        <button type="button" id="dives-granularity-btn-month" onclick="setDivesChartGranularity('month')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                            Month
+                        </button>
                         <button type="button" id="dives-granularity-btn-quarter" onclick="setDivesChartGranularity('quarter')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
                             Quarter
                         </button>
@@ -2479,8 +2498,19 @@
             "moorish_idol": { id: "moorish_idol", name: "Moorish Idol", scientific: "Zanclus cornutus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Warm Coastal Reefs", description: "Distinguished by a long trailing white pennant on its back." },
             "bannerfish": { id: "bannerfish", name: "Bannerfish", scientific: "Heniochus acuminatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Protected Lagoons", description: "Often mistaken for the Moorish Idol, has black-and-white stripes." },
             "napoleon_wrasse": { id: "napoleon_wrasse", name: "Napoleon Wrasse", scientific: "Cheilinus undulatus", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Coral Wall Slopes", description: "Friendly reef giant with a thick bump on its forehead." },
+            // Retired (housekeeping pass, 260724-v36) — folded into the generic
+            // "Wrasse" entry below. Kept in the catalog with deprecated:true
+            // rather than deleted outright, so any dive that already logged
+            // one of these keeps showing correctly in AquaDex (sighting
+            // counts, history, unlocked total) instead of the record silently
+            // vanishing. Hidden from the Log a Dive checklist and the AquaDex
+            // grid for anyone who's never sighted it.
+            "cleaner_wrasse": { id: "cleaner_wrasse", name: "Cleaner Wrasse", scientific: "Labroides dimidiatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Reef Cleaning Stations", deprecated: true, description: "Runs 'salons' by eating dead skin and parasites off larger fish." },
             "humphead_parrotfish": { id: "humphead_parrotfish", name: "Humphead Parrotfish", scientific: "Bolbometopon muricatum", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Shallow Outer Reefs", description: "Large parrotfish that rams coral structures with its heavy head." },
+            "bumphead_parrotfish": { id: "bumphead_parrotfish", name: "Bumphead Parrotfish", scientific: "Bolbometopon muricatum", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Outer Coral Slopes", deprecated: true, description: "Feeds on algae and live coral polyps, pooping fine white sand. Same species as Humphead Parrotfish, kept only for dives logged before this was merged." },
             "triggerfish": { id: "triggerfish", name: "Triggerfish", scientific: "Balistidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Reef flats", description: "Uses locking spine mechanisms on its dorsal fin to hide in cracks." },
+            "titan_triggerfish": { id: "titan_triggerfish", name: "Titan Triggerfish", scientific: "Balistoides viridescens", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Mating Flats", deprecated: true, description: "Highly territorial fish that will aggressively defend its nest." },
+            "picasso_triggerfish": { id: "picasso_triggerfish", name: "Picasso Triggerfish", scientific: "Rhinecanthus aculeatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shallow Sandy Rubble", deprecated: true, description: "Striking, abstract coloration resembling cubist artwork." },
             "pufferfish": { id: "pufferfish", name: "Pufferfish", scientific: "Tetraodontidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Reef Shelves", description: "Inflates with water to look larger, containing lethal tetrodotoxin." },
             "porcupinefish": { id: "porcupinefish", name: "Porcupinefish", scientific: "Diodontidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Lagoon Ledges", description: "Dotted with sharp spikes that lock outward when inflated." },
             "cowfish": { id: "cowfish", name: "Cowfish", scientific: "Lactoria cornuta", rarity: "Common", tag: "Reef Fish", typicalRegion: "Silty Reef Margins", description: "Boxy, hard-shelled fish with long horns above its eyes." },
@@ -3448,8 +3478,14 @@
 
             const analytics = computeDiveAnalytics();
 
+            // A background-image div, not an <img> with object-fit — html2canvas
+            // (the library that rasterizes this off-screen card into a PNG)
+            // doesn't reliably support object-fit:cover on <img> tags and
+            // instead stretches the image to fill the box, which is what was
+            // squeezing/distorting non-square avatar photos. background-size:
+            // cover renders correctly through html2canvas.
             const avatarHtml = avatar
-                ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;" />`
+                ? `<div style="width:100%;height:100%;background-image:url('${avatar}');background-size:cover;background-position:center;"></div>`
                 : `<i class="fa-solid fa-user-astronaut" style="font-size:28px;color:#67e8f9;"></i>`;
 
             const totalMins = analytics.totalMins || 0;
@@ -3652,8 +3688,12 @@
             const org = profile.org || 'PADI';
             const level = profile.level || 'Open Water Diver';
             const avatar = profile.avatar || null;
+            // See the identical comment in buildShareCardMarkup() — html2canvas
+            // doesn't reliably honor object-fit:cover on <img>, so this uses
+            // a background-image div instead to avoid squeezing/stretching
+            // non-square avatar photos.
             const avatarHtml = avatar
-                ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;" />`
+                ? `<div style="width:100%;height:100%;background-image:url('${avatar}');background-size:cover;background-position:center;"></div>`
                 : `<i class="fa-solid fa-user-astronaut" style="font-size:12px;color:#67e8f9;"></i>`;
 
             const profilePts = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : synthDepthProfile(dive.maxDepth, dive.bottomTime);
@@ -5874,14 +5914,30 @@
             if (!container) return;
             container.innerHTML = '';
 
+            // Rebuilding the whole checklist from scratch — the "Added to
+            // This Dive" pinned section and its position-memory get reset
+            // along with it. addCritterSightingRow() re-populates it below
+            // (either interactively, or via startEditDiveLog()'s restore).
+            const addedGrid = document.getElementById('form-critters-added-grid');
+            const addedSection = document.getElementById('form-critters-added-section');
+            if (addedGrid) addedGrid.innerHTML = '';
+            if (addedSection) addedSection.classList.add('hidden');
+            critterCardOriginalPosition = {};
+
             // Group species by category (tag), sorted alphabetically by category,
             // then alphabetically by name within each category — mirrors how
-            // Critterdex organizes species.
-            const speciesList = Object.values(CRITTER_DATABASE).slice().sort((a, b) => {
-                const tagCompare = a.tag.localeCompare(b.tag);
-                if (tagCompare !== 0) return tagCompare;
-                return a.name.localeCompare(b.name);
-            });
+            // Critterdex organizes species. Retired (deprecated:true) entries
+            // are hidden here unless a past dive already sighted them — this
+            // keeps them off the checklist for new sightings while still
+            // letting an old dive's sighting render/save correctly on edit
+            // instead of silently disappearing.
+            const speciesList = Object.values(CRITTER_DATABASE)
+                .filter(critter => !critter.deprecated || checkSighting(critter.id).count > 0)
+                .sort((a, b) => {
+                    const tagCompare = a.tag.localeCompare(b.tag);
+                    if (tagCompare !== 0) return tagCompare;
+                    return a.name.localeCompare(b.name);
+                });
 
             let lastTag = null;
             speciesList.forEach(critter => {
@@ -5914,10 +5970,17 @@
                                 <span class="text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase tracking-wide">${critter.rarity} · ${critter.typicalRegion}</span>
                             </div>
                         </div>
+                        ${critter.deprecated ? `
+                        <span class="flex-shrink-0 flex items-center space-x-1.5 text-slate-500 bg-slate-500/10 px-2.5 py-1.5 rounded-lg text-xs font-semibold" title="Retired from the catalog — kept only so this dive's existing sighting still displays correctly.">
+                            <i class="fa-solid fa-box-archive text-[10px]"></i>
+                            <span>Retired</span>
+                        </span>
+                        ` : `
                         <button type="button" onclick="addCritterSightingRow('${critter.id}')" class="flex-shrink-0 flex items-center space-x-1.5 text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors">
                             <i class="fa-solid fa-plus text-[10px]"></i>
                             <span>Add Sighting</span>
                         </button>
+                        `}
                     </div>
 
                     <div id="critter-entries-${critter.id}" class="space-y-3"></div>
@@ -5930,6 +5993,52 @@
         // gets a DOM-unique id — critterId is always snake_case (no hyphens),
         // so "<critterId>-<n>" can never collide with the base id itself.
         const critterRowSeq = {};
+
+        // Remembers where a species card lived in the main alphabetical grid
+        // before it got moved up into the "Added to This Dive" pinned
+        // section, so it can be moved back to the exact same spot once its
+        // last sighting row is removed. Reset every renderCritterChecklist().
+        let critterCardOriginalPosition = {};
+
+        // Moves a species' checklist card into the pinned "Added to This
+        // Dive" section (if it isn't already there) — called the moment its
+        // sighting-entries list goes from empty to non-empty.
+        function moveCritterCardToAdded(critterId) {
+            const wrapper = document.getElementById(`form-critter-wrapper-${critterId}`);
+            const addedGrid = document.getElementById('form-critters-added-grid');
+            const addedSection = document.getElementById('form-critters-added-section');
+            if (!wrapper || !addedGrid || !addedSection) return;
+            if (wrapper.parentElement === addedGrid) return; // already there
+
+            critterCardOriginalPosition[critterId] = {
+                parent: wrapper.parentElement,
+                nextSibling: wrapper.nextElementSibling
+            };
+            addedGrid.appendChild(wrapper);
+            addedSection.classList.remove('hidden');
+        }
+
+        // Moves a species' card back to its original spot in the main
+        // checklist — called once its sighting-entries list goes back to
+        // empty (its last row was removed).
+        function moveCritterCardBack(critterId) {
+            const wrapper = document.getElementById(`form-critter-wrapper-${critterId}`);
+            const addedGrid = document.getElementById('form-critters-added-grid');
+            const original = critterCardOriginalPosition[critterId];
+            if (!wrapper || !addedGrid || wrapper.parentElement !== addedGrid) return;
+
+            if (original && original.parent) {
+                original.parent.insertBefore(wrapper, original.nextSibling || null);
+            } else {
+                // Shouldn't normally happen, but don't strand the card if it does.
+                document.getElementById('form-critters-grid')?.appendChild(wrapper);
+            }
+            delete critterCardOriginalPosition[critterId];
+
+            if (addedGrid.children.length === 0) {
+                document.getElementById('form-critters-added-section')?.classList.add('hidden');
+            }
+        }
 
         // Adds one repeatable sighting row (depth/notes/photo, plus a name
         // field for "others") under a species card, so a diver can log more
@@ -5995,6 +6104,12 @@
                 wrapper.classList.add('border-cyan-500/30', 'ring-1', 'ring-cyan-500/30');
             }
 
+            // First sighting row for this species — float its card up into
+            // the pinned "Added to This Dive" section.
+            if (entriesContainer.children.length === 1) {
+                moveCritterCardToAdded(critterId);
+            }
+
             if (prefill) {
                 const depthInput = document.getElementById(`crit-depth-${rowId}`);
                 const notesInput = document.getElementById(`crit-notes-${rowId}`);
@@ -6031,7 +6146,46 @@
             if (wrapper && entriesContainer && entriesContainer.children.length === 0) {
                 wrapper.classList.add('border-ocean-800/20');
                 wrapper.classList.remove('border-cyan-500/30', 'ring-1', 'ring-cyan-500/30');
+                // Last sighting row for this species just got removed — move
+                // its card back out of the pinned "Added" section.
+                moveCritterCardBack(critterId);
             }
+        }
+
+        // Downscales + recompresses an uploaded photo before it's ever stored
+        // or displayed. Phone camera photos can be 5-15MB as raw base64, and
+        // rendering several of them at once (e.g. the Marine Sightings or
+        // Dive Photos gallery, or the full-size lightbox) pushes mobile
+        // Safari's per-tab memory limit far enough that it silently kills
+        // and reloads the page — which looks like the app "crashing back to
+        // the Dashboard" even though nothing actually errored. Capping the
+        // longest edge and re-encoding as JPEG keeps every stored photo
+        // small regardless of the original camera resolution.
+        function resizeImageDataUrl(dataUrl, maxDimension = 1600, quality = 0.82) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    let { width, height } = img;
+                    if (width <= maxDimension && height <= maxDimension) {
+                        resolve(dataUrl);
+                        return;
+                    }
+                    const scale = maxDimension / Math.max(width, height);
+                    width = Math.round(width * scale);
+                    height = Math.round(height * scale);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                // Fall back to the original rather than lose the photo if
+                // the browser can't decode it into an <img> for some reason.
+                img.onerror = () => resolve(dataUrl);
+                img.src = dataUrl;
+            });
         }
 
         function handleCritterImage(input, rowId, critterId) {
@@ -6040,7 +6194,7 @@
 
             const reader = new FileReader();
             reader.onload = async function(e) {
-                const base64 = e.target.result;
+                const base64 = await resizeImageDataUrl(e.target.result);
 
                 // Show the preview immediately from the local file read —
                 // don't make the diver wait on IndexedDB/OneDrive for that.
@@ -6080,7 +6234,7 @@
             files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = async (e) => {
-                    const base64 = e.target.result;
+                    const base64 = await resizeImageDataUrl(e.target.result);
                     // storeNewPhoto() caches locally + queues the OneDrive
                     // upload; only its id gets saved on the dive record.
                     const id = await storeNewPhoto(base64);
@@ -6358,11 +6512,18 @@
                     const rowId = rowEl.id.replace(/^critter-row-/, '');
                     const customNameInput = document.getElementById(`crit-custom-name-${rowId}`);
                     const allowCustomName = !!(CRITTER_DATABASE[critterId] && CRITTER_DATABASE[critterId].allowCustomName);
+                    // Depth and notes are left as whatever the diver actually
+                    // entered — no more silently backfilling a blank depth
+                    // with the dive's max depth (misrepresents where the
+                    // critter was actually seen) or a blank note with
+                    // "Spotted" (implies detail that was never given).
+                    const rawDepth = document.getElementById(`crit-depth-${rowId}`).value;
+                    const rawNote = document.getElementById(`crit-notes-${rowId}`).value.trim();
                     crittersList.push({
                         id: critterId,
                         customName: (allowCustomName && customNameInput) ? (customNameInput.value.trim() || 'Unidentified species') : null,
-                        depth: parseFloat(document.getElementById(`crit-depth-${rowId}`).value) || maxDepth,
-                        note: document.getElementById(`crit-notes-${rowId}`).value || "Spotted",
+                        depth: rawDepth !== '' && !isNaN(parseFloat(rawDepth)) ? parseFloat(rawDepth) : null,
+                        note: rawNote || null,
                         photoId: tempCritterPhotos[rowId]?.id || null
                     });
                 });
@@ -6915,8 +7076,14 @@
         // where ATA = (depth / 10) + 1. Returns null if there isn't enough
         // data on the dive to compute a rate.
         function computeSingleDiveSAC(dive) {
-            const depthVal = (dive.avgDepth !== undefined && dive.avgDepth !== null && !isNaN(dive.avgDepth)) ? dive.avgDepth
-                : (dive.maxDepth !== undefined && dive.maxDepth !== null && !isNaN(dive.maxDepth)) ? dive.maxDepth : null;
+            // SAC must be computed from average depth specifically — it's
+            // what the formula's ATA term actually means (mean ambient
+            // pressure over the dive). Max depth is a materially different,
+            // larger number that would understate SAC (make the diver look
+            // more air-efficient than they are), so if avg depth wasn't
+            // recorded, don't fall back to max depth — just don't show a SAC
+            // for this dive at all.
+            const depthVal = (dive.avgDepth !== undefined && dive.avgDepth !== null && dive.avgDepth !== '' && !isNaN(dive.avgDepth)) ? parseFloat(dive.avgDepth) : null;
             if (!(dive.gasStart && dive.gasEnd && dive.bottomTime && depthVal)) return null;
 
             let startP = dive.gasStart;
@@ -6971,7 +7138,10 @@
             const countriesVisited = new Set(dives.map(d => d.country).filter(Boolean)).size;
             const uniqueSites = new Set(dives.map(d => d.site).filter(Boolean)).size;
             const unlockedCrittersCount = getUnlockedSpeciesCount();
-            const totalCrittersCount = Object.keys(CRITTER_DATABASE).length;
+            // Excludes retired (deprecated:true) entries with no sightings —
+            // keeps this denominator matching exactly what's actually
+            // visible/loggable in AquaDex (see renderCritterdex()).
+            const totalCrittersCount = Object.values(CRITTER_DATABASE).filter(c => !c.deprecated || checkSighting(c.id).count > 0).length;
 
             // ---- Section 2 (last 20) / Section 3 (all-time) averages ----
             const avgDepth20 = avgOf(collect(last20Dives, diveDepth));
@@ -7080,6 +7250,7 @@
             // line — those were removed).
             const sacByMonthAll = bucketAverages(monthKeys, monthKey, diveSAC, dives);
             const weightByMonthAll = bucketAverages(monthKeys, monthKey, d => d.weight, dives);
+            const divesByMonth = monthKeys.map(k => dives.filter(d => monthKey(d.date) === k).length);
             const divesByQuarter = quarterKeys.map(k => dives.filter(d => quarterKey(d.date) === k).length);
             const divesByYear = yearKeys.map(k => dives.filter(d => yearKey(d.date) === k).length);
 
@@ -7090,7 +7261,7 @@
                 avgSAC20, avgSACAll, sacStdDev20, sacStdDevAll, avgWeight20, avgWeightAll,
                 minWeight20, maxWeight20, minWeightAll, maxWeightAll,
                 monthLabels: monthKeys.map(monthLabel),
-                sacByMonthAll, weightByMonthAll,
+                sacByMonthAll, weightByMonthAll, divesByMonth,
                 quarterLabels: quarterKeys.map(quarterLabel), divesByQuarter,
                 yearLabels: yearKeys, divesByYear,
                 gasMixLabels, gasMixData,
@@ -7276,9 +7447,11 @@
         function updateDivesGranularityButtonStyles() {
             const activeClass = "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-cyan-500 text-white";
             const inactiveClass = "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200";
+            const monthBtn = document.getElementById('dives-granularity-btn-month');
             const quarterBtn = document.getElementById('dives-granularity-btn-quarter');
             const yearBtn = document.getElementById('dives-granularity-btn-year');
-            if (!quarterBtn || !yearBtn) return;
+            if (!monthBtn || !quarterBtn || !yearBtn) return;
+            monthBtn.className = divesChartGranularity === 'month' ? activeClass : inactiveClass;
             quarterBtn.className = divesChartGranularity === 'quarter' ? activeClass : inactiveClass;
             yearBtn.className = divesChartGranularity === 'year' ? activeClass : inactiveClass;
         }
@@ -7304,8 +7477,12 @@
             const divesCtx = document.getElementById('chart-dives-total');
             if (!divesCtx) return;
 
-            const labels = divesChartGranularity === 'year' ? analytics.yearLabels : analytics.quarterLabels;
-            const data = divesChartGranularity === 'year' ? analytics.divesByYear : analytics.divesByQuarter;
+            const labels = divesChartGranularity === 'year' ? analytics.yearLabels
+                : divesChartGranularity === 'month' ? analytics.monthLabels
+                : analytics.quarterLabels;
+            const data = divesChartGranularity === 'year' ? analytics.divesByYear
+                : divesChartGranularity === 'month' ? analytics.divesByMonth
+                : analytics.divesByQuarter;
 
             if (profileCharts.dives) {
                 // Chart.js handles the labels/data array changing length fine
@@ -7540,8 +7717,10 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
-                tempProfileAvatar = e.target.result;
+            reader.onload = async function(e) {
+                // Avatar only ever renders small (a circular thumbnail) —
+                // cap it tighter than dive/sighting photos.
+                tempProfileAvatar = await resizeImageDataUrl(e.target.result, 800, 0.85);
                 const container = document.getElementById('prof-avatar-preview-container');
                 const img = document.getElementById('prof-avatar-preview-img');
                 img.src = tempProfileAvatar;
@@ -8312,7 +8491,7 @@
                     // OneDrive fetch) once every card is in the DOM. Its
                     // onerror mirrors the "couldn't resolve" fallback.
                     const imageBlock = sight.photoId
-                        ? `<img class="w-full h-full object-cover" data-photo-id="${sight.photoId}" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-slate-500 text-xs font-mono-custom uppercase tracking-wider\\'>No Photo</div>'">
+                        ? `<img class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity" data-photo-id="${sight.photoId}" data-caption="${xmlEscape(sight.customName || species.name)}" onclick="openPhotoLightbox(this.src, this.dataset.caption)" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-slate-500 text-xs font-mono-custom uppercase tracking-wider\\'>No Photo</div>'">
                            <div class="absolute top-2 right-2">
                                <span class="bg-emerald-500 text-white px-2 py-0.5 rounded text-[8px] font-mono-custom font-bold uppercase tracking-wider">Your Photo</span>
                            </div>`
@@ -8344,9 +8523,11 @@
                                 <span class="text-slate-600 dark:text-slate-400 flex-shrink-0">Location:</span>
                                 <span class="font-semibold text-right truncate pl-2 text-slate-900 dark:text-white">${sight.site}, ${sight.country}</span>
                             </div>
+                            ${sight.note ? `
                             <div class="bg-slate-100 dark:bg-ocean-900/30 p-2 rounded-lg text-[11px] italic text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-ocean-800/10 mt-1">
                                 "${sight.note}"
                             </div>
+                            ` : ''}
                         </div>
                     `;
                     galleryContainer.appendChild(card);
@@ -8367,9 +8548,13 @@
 
             grid.innerHTML = '';
 
-            // Filter species by current active category tab and rarity filter
+            // Filter species by current active category tab and rarity filter.
+            // Retired (deprecated:true) catalog entries only show up here if
+            // they've actually been sighted — otherwise they'd appear as a
+            // permanently-locked card for a species nobody can ever log.
             const searchQuery = (state.critterSearchQuery || '').toLowerCase();
             const filteredSpecies = Object.values(CRITTER_DATABASE).filter(species => {
+                if (species.deprecated && checkSighting(species.id).count === 0) return false;
                 const matchesCategory = state.critterFilter === 'all' || species.tag === state.critterFilter;
                 const matchesRarity = state.critterRarityFilter === 'all' || species.rarity === state.critterRarityFilter;
                 const matchesSearch = !searchQuery || species.name.toLowerCase().includes(searchQuery) || (species.scientific || '').toLowerCase().includes(searchQuery);

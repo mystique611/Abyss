@@ -1,5 +1,17 @@
 # Changelog
 
+## 260724-v37
+
+- **Fixed a mobile crash viewing Marine Sightings or enlarging a photo.** Uploaded photos were stored at full camera resolution with no size limit; opening a gallery with several of them at once (or the full-size viewer) could push mobile Safari's per-tab memory past its limit, which silently reloads the page — it looked like the app "crashing back to the Dashboard," even though nothing actually errored. Every new photo upload (dive photos, marine sighting photos, and the diver avatar) is now downscaled and re-compressed on the way in, so this shouldn't recur for photos added from now on. Already-stored full-size photos aren't retroactively shrunk.
+- **AquaDex: sighting photos are now clickable to enlarge**, matching the Logbook's dive photo viewer.
+- **Fixed a loophole where a logged marine sighting could vanish from AquaDex.** The Reef Fish housekeeping in the last update deleted 4 species outright (Cleaner Wrasse, Titan Triggerfish, Picasso Triggerfish, and the duplicate Bumphead Parrotfish) — any dive that had already logged one of those lost its entry from AquaDex entirely, since the grid only ever looks up species that still exist in the catalog. Those 4 are back in the catalog as "retired" entries: hidden from the Log a Dive checklist and AquaDex grid for anyone who's never sighted them, but still fully counted, shown, and editable for dives that already have them.
+- **Fixed squeezed profile photos** on the generated Diver Profile share card and Dive Log card — the image-rendering library used to generate these as PNGs doesn't reliably support the CSS that was supposed to crop non-square avatar photos into a circle, and was stretching them instead. Avatars now render correctly regardless of their original aspect ratio.
+- **Fixed SAC rate using max depth when average depth was missing.** SAC must be calculated from average depth — using max depth instead understates it (makes air consumption look better than it is). If a dive is saved without an average depth, its SAC rate no longer shows a (wrong) calculated value at all, matching what the live preview in Log a Dive already did correctly.
+- **Marine life sightings no longer auto-fill depth or notes.** Leaving the depth or spotting-notes field blank when logging a sighting now saves it blank, instead of silently backfilling depth with the dive's max depth or notes with the word "Spotted."
+- **Log a Dive: added sightings now float to the top.** Any species with a sighting added moves into a pinned "Added to This Dive" section at the top of the marine life checklist, so you don't have to scroll the full alphabetical list to find what you've already logged. Moves back down once its last sighting is removed.
+- **Total Dives chart: added a Month option**, alongside the existing Quarter and Year views.
+- Service worker cache bumped (`abyss-shell-v36` → `abyss-shell-v37`) to ship all of the above.
+
 ## 260724-v36
 
 - **Log a Dive: every marine life checklist entry is now repeatable.** Species cards no longer use a single checkbox — an "Add Sighting" button lets you log a species more than once on the same dive (different depths/notes/photos), and for "Others" specifically, you can now add as many distinct unidentified-species sightings as you like, each with its own name.
