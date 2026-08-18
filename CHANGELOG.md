@@ -1,5 +1,13 @@
 # Changelog
 
+## 260724-v40
+
+- **Further crash hardening for enlarging specific photos.** After v39, crashes were reported as narrowed to specific individual photos when enlarged (Marine Sightings or Dive Photos), rather than happening broadly. Two more targeted fixes:
+  - `resizeImageDataUrl()` (used to downscale every photo before display) now decodes via `createImageBitmap()` instead of a plain `<img>` element where the browser supports it — this is a more memory-efficient decode path on most platforms, and the resulting bitmap is explicitly released with `.close()` the moment resizing is done, rather than waiting on garbage collection to eventually free it. Falls back to the original `<img>`-based approach if unsupported or if it fails on a given file.
+  - The in-memory photo cache (`photoCache`) no longer grows unbounded across a session — it's now capped at the 10 most recently viewed full-resolution photos, with older ones evicted first. Previously every photo you viewed in a session stayed cached at full size indefinitely, which could quietly add to memory pressure over the course of using the app.
+  - Note: this targets a single very large original photo pushing the decode step itself over a mobile browser's memory limit, which is the most likely remaining cause given the symptom is now isolated to specific photos. If a crash still happens on a particular photo after this update, it'd help to know more about that photo (e.g. unusually high resolution, panorama, or large file size) to narrow it down further.
+- Service worker cache bumped (`abyss-shell-v39` → `abyss-shell-v40`) to ship the above.
+
 ## 260724-v39
 
 - **Fixed the mobile crash on View Marine Sightings / Dive Photos still occurring after the v37 fix.** v37 only compressed newly-uploaded photos — it didn't help older photos already saved at full camera resolution, and didn't address the actual crash mechanism: opening a gallery decoded *every* photo in it at the same time (`Promise.all`), and decoding several multi-megabyte originals simultaneously is what was exhausting mobile Safari/Chrome's memory and repeatedly killing the page. Every photo gallery (Marine Sightings, Dive Photos, AquaDex sighting history, and any other photo-hydrating view) now resolves and downscales photos one at a time instead of all at once, and every displayed photo — old or new — is downscaled on the way to the screen regardless of how it was originally stored. This should fix the crash for existing photos too, not just new uploads.

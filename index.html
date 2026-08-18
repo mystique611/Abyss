@@ -3051,6 +3051,26 @@
            in one session never re-hits IndexedDB. */
         const photoCache = {};
 
+        // Caps how many full-resolution photos photoCache holds in memory
+        // at once. Photos added before the compression fix (and anything
+        // fetched fresh from OneDrive) are cached here at their ORIGINAL
+        // size — viewing several dives' worth of photos across one session
+        // used to let this grow unbounded, which on a memory-constrained
+        // phone could be the difference between "fine" and "tab killed"
+        // even with everything else downscaled for display. Simple FIFO
+        // eviction once the cap is hit.
+        const PHOTO_CACHE_MAX_ENTRIES = 10;
+        const photoCacheOrder = [];
+        function setPhotoCache(id, dataUrl) {
+            if (!(id in photoCache)) {
+                photoCacheOrder.push(id);
+                if (photoCacheOrder.length > PHOTO_CACHE_MAX_ENTRIES) {
+                    delete photoCache[photoCacheOrder.shift()];
+                }
+            }
+            photoCache[id] = dataUrl;
+        }
+
         function generatePhotoId() {
             return 'photo-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
         }
@@ -3062,7 +3082,7 @@
         // exactly how the diver avatar photo already gets queued elsewhere.
         async function storeNewPhoto(dataUrl) {
             const id = generatePhotoId();
-            photoCache[id] = dataUrl;
+            setPhotoCache(id, dataUrl);
             await window.AbyssDB.putPhoto(id, dataUrl);
             await window.AbyssDB.enqueueSync('photo-pending', { id, dataUrl });
             return id;
@@ -3081,13 +3101,13 @@
 
             const cached = await window.AbyssDB.getPhoto(photoId);
             if (cached) {
-                photoCache[photoId] = cached;
+                setPhotoCache(photoId, cached);
                 return cached;
             }
 
             const remote = await window.AbyssSync.fetchPhotoFromOneDrive(photoId);
             if (remote) {
-                photoCache[photoId] = remote;
+                setPhotoCache(photoId, remote);
                 await window.AbyssDB.putPhoto(photoId, remote);
                 return remote;
             }
@@ -6178,16 +6198,51 @@
             }
         }
 
-        // Downscales + recompresses an uploaded photo before it's ever stored
-        // or displayed. Phone camera photos can be 5-15MB as raw base64, and
-        // rendering several of them at once (e.g. the Marine Sightings or
-        // Dive Photos gallery, or the full-size lightbox) pushes mobile
-        // Safari's per-tab memory limit far enough that it silently kills
-        // and reloads the page — which looks like the app "crashing back to
-        // the Dashboard" even though nothing actually errored. Capping the
-        // longest edge and re-encoding as JPEG keeps every stored photo
-        // small regardless of the original camera resolution.
-        function resizeImageDataUrl(dataUrl, maxDimension = 1600, quality = 0.82) {
+        // Downscales + recompresses a photo before it's ever stored or
+        // displayed. Phone camera photos can be 5-50MB as raw base64
+        // (modern high-megapixel sensors especially), and decoding even ONE
+        // of those at full resolution can be enough to crash mobile Safari/
+        // Chrome — this is what kept happening on specific photos even
+        // after every gallery was switched to resolve/decode one photo at a
+        // time instead of all at once.
+        //
+        // Prefers createImageBitmap() over a plain <img>+canvas: browsers
+        // can decode through a more memory-efficient path for this, and —
+        // importantly — a returned ImageBitmap can be explicitly .close()d
+        // the instant we're done with it, freeing its (potentially huge)
+        // decoded memory immediately instead of waiting on garbage
+        // collection, which on a memory-constrained phone can be too slow
+        // to keep up even when photos are processed one at a time.
+        async function resizeImageDataUrl(dataUrl, maxDimension = 1600, quality = 0.82) {
+            if (typeof createImageBitmap === 'function') {
+                try {
+                    const blob = await (await fetch(dataUrl)).blob();
+                    const bitmap = await createImageBitmap(blob);
+                    try {
+                        const { width: w0, height: h0 } = bitmap;
+                        if (w0 <= maxDimension && h0 <= maxDimension) return dataUrl;
+
+                        const scale = maxDimension / Math.max(w0, h0);
+                        const width = Math.round(w0 * scale);
+                        const height = Math.round(h0 * scale);
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(bitmap, 0, 0, width, height);
+                        return canvas.toDataURL('image/jpeg', quality);
+                    } finally {
+                        bitmap.close();
+                    }
+                } catch (e) {
+                    // Fall through to the <img>-based approach below —
+                    // covers browsers where createImageBitmap can't decode
+                    // this particular image (rare, but happens with some
+                    // malformed/unusual files).
+                }
+            }
+
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
@@ -6206,6 +6261,9 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     resolve(canvas.toDataURL('image/jpeg', quality));
+                    // Encourage GC to reclaim the decoded original sooner
+                    // rather than later.
+                    img.src = '';
                 };
                 // Fall back to the original rather than lose the photo if
                 // the browser can't decode it into an <img> for some reason.
