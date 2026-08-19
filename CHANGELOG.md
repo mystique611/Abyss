@@ -1,5 +1,18 @@
 # Changelog
 
+## 260820-v48
+
+- **Added Specialty Certifications** — a new, separate way to log scuba specialty courses (Wreck, Nitrox, Deep, Night, Navigation, and dozens more, sourced from PADI/SSI/SDI/NAUI's real course catalogs) alongside your main certification history. Unlike a main certification, specialties are purely additive: there's no "current" one, and you can log as many as you've earned from any organisation.
+  - New **"Add Specialty Certification"** button in Diver Details, in its own section underneath your main Certification History, with the same required (Organisation, Specialty, Certification Number, Date) and optional (Dive Center, Instructor) fields as the main certification form.
+  - Specialty certifications now show as indigo pills underneath your main certification badge — on the Dashboard's Diver Credentials widget, on the Diver Details credential card, and on your shareable Diver Profile card.
+  - Specialty certifications are now a selectable option when exporting to **PDF** (checkboxes alongside your main certification selection), **CSV** (a new "Specialty Certifications" column), and **UDDF** (a new pre-export dialog to choose which to include, only shown if you have any).
+- Service worker cache bumped (`abyss-shell-v47` → `abyss-shell-v48`) to ship the above.
+
+## 260820-v47
+
+- **Global Exploration Footprint map: added a "View Full Log Details" button** to each dive's popup bubble, so you can jump straight to that dive's full details from the map instead of finding it in the Logbook first.
+- Service worker cache bumped (`abyss-shell-v46` → `abyss-shell-v47`) to ship the above.
+
 ## 260819-v46
 
 - **Fixed dive photo captions still getting cut off mid-word in the Dive Diary.** The previous fix addressed the collapsed-height bug, but captions still used `text-overflow:ellipsis` to truncate long text — which html2canvas clips without ever drawing the "…" dots, so it just looked like the text abruptly stopped. Captions now wrap onto multiple lines instead of truncating, so the full caption always shows.

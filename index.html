@@ -414,6 +414,7 @@
                             <div id="card-cert-level-badge" class="inline-block mt-1 px-2 py-0.5 rounded-md text-[9px] font-mono-custom font-extrabold uppercase tracking-wider bg-cyan-500 text-white">
                                 OPEN WATER DIVER
                             </div>
+                            <div id="card-specialty-pills" class="flex flex-wrap gap-1 mt-1"></div>
                         </div>
                     </div>
 
@@ -537,7 +538,7 @@
                             <i class="fa-solid fa-chevron-down text-[10px]"></i>
                         </button>
                         <div id="export-menu" class="hidden absolute right-0 mt-2 w-52 rounded-xl glass-panel border border-slate-300 dark:border-ocean-800/40 shadow-2xl z-30 overflow-hidden">
-                            <button type="button" onclick="exportDivesToUDDF(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors">
+                            <button type="button" onclick="openUddfExportModal(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors">
                                 <i class="fa-solid fa-file-code text-cyan-400 w-4"></i>
                                 <span>Export to UDDF</span>
                             </button>
@@ -1350,6 +1351,7 @@
                             <div>
                                 <h3 id="prof-detail-name" class="text-xl font-bold">Explorer</h3>
                                 <span id="prof-detail-cert-level" class="text-xs font-mono-custom bg-cyan-500 text-white px-2 py-0.5 rounded uppercase font-bold">OPEN WATER DIVER</span>
+                                <div id="prof-detail-specialty-pills" class="flex flex-wrap gap-1 mt-1.5"></div>
                             </div>
                         </div>
 
@@ -1384,6 +1386,29 @@
                     </div>
                     <div id="certifications-empty-state" class="hidden py-10 text-center text-sm text-slate-600 dark:text-slate-400">
                         No certifications added yet — tap "Add Certification" to log your first one.
+                    </div>
+
+                    <!-- Specialty Certifications — visually separated from the main
+                         certification list above, since specialties are additive
+                         (no "current" concept) rather than a progression. -->
+                    <div class="pt-4 border-t border-slate-200 dark:border-ocean-900/20">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-3">
+                            <div>
+                                <h4 class="text-sm font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wide">Specialty Certifications</h4>
+                                <p class="text-xs text-slate-600 dark:text-slate-400">Additional specialty courses you've completed</p>
+                            </div>
+                            <button onclick="openSpecialtyCertificationModal(null)" class="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold flex items-center space-x-2 shadow-md flex-shrink-0">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Add Specialty Certification</span>
+                            </button>
+                        </div>
+
+                        <div id="specialty-certifications-list-container" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                            <!-- JS renders specialty certification entries here -->
+                        </div>
+                        <div id="specialty-certifications-empty-state" class="hidden py-8 text-center text-sm text-slate-600 dark:text-slate-400">
+                            No specialty certifications added yet — tap "Add Specialty Certification" to log your first one.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1854,6 +1879,90 @@
         </div>
     </div>
 
+    <!-- ==================== MODAL: ADD / EDIT SPECIALTY CERTIFICATION ==================== -->
+    <div id="specialty-certification-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeSpecialtyCertificationModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="flex items-center space-x-3 text-indigo-400">
+                <i class="fa-solid fa-star text-xl"></i>
+                <h3 id="specialty-certification-modal-title" class="text-base font-bold uppercase tracking-wider">Add Specialty Certification</h3>
+            </div>
+
+            <form id="specialty-certification-form" onsubmit="saveSpecialtyCertification(event)" class="space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Organisation*</label>
+                    <select id="specialty-cert-org" required onchange="updateSpecialtyCertOptions()" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                        <option value="PADI">PADI</option>
+                        <option value="SSI">SSI</option>
+                        <option value="SDI">SDI</option>
+                        <option value="NAUI">NAUI</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Specialty Certification*</label>
+                    <select id="specialty-cert-name" required onchange="toggleSpecialtyCertCustomNameField()" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                        <!-- JS populates options dynamically based on chosen Certification Organisation -->
+                    </select>
+                </div>
+
+                <div id="specialty-cert-custom-name-wrap" class="hidden">
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Specialty Name*</label>
+                    <input type="text" id="specialty-cert-custom-name" placeholder="e.g., Shark Conservation Diver" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Number*</label>
+                    <input type="text" id="specialty-cert-no" placeholder="e.g., DIV-102948" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Date of Certification*</label>
+                    <input type="date" id="specialty-cert-date" required class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                </div>
+
+                <div class="pt-2 border-t border-slate-200 dark:border-ocean-900/20">
+                    <p class="text-[10px] font-mono-custom text-slate-600 dark:text-slate-500 uppercase tracking-wider mb-3">Additional details</p>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Dive Center Name</label>
+                            <input type="text" id="specialty-cert-dive-center" placeholder="e.g., Blue Corner Dive Resort" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Dive Center Location</label>
+                            <input type="text" id="specialty-cert-dive-center-location" placeholder="e.g., Nusa Penida, Indonesia" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Instructor Name</label>
+                            <input type="text" id="specialty-cert-instructor-name" placeholder="e.g., Jacques Cousteau" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Instructor Certification Number</label>
+                            <input type="text" id="specialty-cert-instructor-certno" placeholder="e.g., INS-55213" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between space-x-3 pt-3 border-t border-slate-200 dark:border-ocean-900/20">
+                    <button type="button" id="specialty-certification-delete-btn" onclick="deleteSpecialtyCertificationFromModal()" class="hidden px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-semibold">
+                        Delete
+                    </button>
+                    <div class="flex items-center space-x-3 ml-auto">
+                        <button type="button" onclick="closeSpecialtyCertificationModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-850 hover:bg-slate-100 dark:hover:bg-ocean-900/10 text-xs font-semibold">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold shadow-md">
+                            Save Specialty Certification
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ==================== MODAL: MY GEAR (ADD/EDIT REUSABLE PERSONAL EQUIPMENT) ==================== -->
     <div id="my-gear-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
         <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -2177,6 +2286,36 @@
         </div>
     </div>
 
+    <!-- ==================== MODAL: UDDF EXPORT OPTIONS ==================== -->
+    <!-- Only shown when the diver has at least one specialty certification —
+         UDDF export has no other selectable options today, so a diver with
+         none just exports immediately (same single-click behavior as
+         before this feature existed). -->
+    <div id="uddf-export-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
+            <button onclick="closeUddfExportModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="border-b border-slate-200 dark:border-ocean-900/30 pb-4 flex-shrink-0 pr-8">
+                <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Export to UDDF</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Choose which specialty certifications to include</p>
+            </div>
+
+            <div class="overflow-y-auto my-4 space-y-1.5 pr-1 flex-1 text-sm" id="uddf-specialty-cert-list">
+                <!-- JS populates one checkbox per specialty certification entry -->
+            </div>
+
+            <div class="border-t border-slate-200 dark:border-ocean-900/30 pt-4 flex justify-end gap-3 flex-shrink-0">
+                <button onclick="closeUddfExportModal()" class="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
+                    Cancel
+                </button>
+                <button onclick="confirmUddfExport()" class="px-6 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-file-export"></i> Export
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== MODAL: PDF EXPORT OPTIONS ==================== -->
     <div id="pdf-export-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
         <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
@@ -2204,6 +2343,13 @@
                     <div class="mt-3 p-3 rounded-xl border border-dashed border-slate-300 dark:border-ocean-800/50 bg-slate-50 dark:bg-ocean-950/40">
                         <span class="block text-[9px] font-mono-custom text-slate-500 uppercase tracking-wider mb-1.5">Preview — top of exported page</span>
                         <div id="pdf-cert-preview" class="text-[11px] leading-snug text-slate-700 dark:text-slate-300 font-mono-custom"></div>
+                    </div>
+                </div>
+
+                <div id="pdf-specialty-cert-section" class="hidden">
+                    <span class="block text-xs font-mono-custom text-indigo-500 dark:text-indigo-400 uppercase mb-2">Specialty certifications to include</span>
+                    <div id="pdf-specialty-cert-list" class="space-y-1.5">
+                        <!-- JS populates one checkbox per specialty certification entry -->
                     </div>
                 </div>
 
@@ -2340,7 +2486,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '260819-v46';
+        const APP_VERSION = '260820-v48';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -2980,6 +3126,46 @@
             ]
         };
 
+        // Real specialty diver course catalogs for each organisation,
+        // compiled from each org's official course listings (padi.com,
+        // divessi.com, tdisdi.com/extremesportsscuba.com, nauisa.org) —
+        // covers each org's standard specialty courses, not every
+        // dive-shop-specific "distinctive specialty" variant (PADI alone
+        // has 70+ of those). "Other" is always last, and reveals a free-text
+        // name field in the modal for anything not in the list.
+        const SPECIALTY_CERTIFICATIONS = {
+            "PADI": [
+                "Peak Performance Buoyancy", "Wreck Diver", "Digital Underwater Photographer",
+                "Dive Against Debris Specialist", "Boat Diver", "Night Diver", "Deep Diver",
+                "Dry Suit Diver", "Enriched Air Diver", "Underwater Navigator", "Full Face Mask Diver",
+                "Self-Reliant Diver", "Drift Diver", "Search and Recovery Diver", "Sidemount Rec Diver",
+                "Diver Propulsion Vehicle (DPV) Diver", "Equipment Specialist", "Project AWARE Specialist",
+                "Coral Reef Conservation", "Emergency Oxygen Provider", "Other"
+            ],
+            "SSI": [
+                "Full Face Mask Diving", "DPV Diving", "Invasive Species Management", "Photo & Video",
+                "Recreational Sidemount Diving", "Science of Diving", "Decompression Diving",
+                "Perfect Buoyancy", "Boat Diving", "Wreck Diving", "Deep Diving",
+                "Waves, Tides & Currents", "Search & Recovery", "Navigation",
+                "Night Diving and Limited Visibility", "Equipment Techniques", "Enriched Air Nitrox",
+                "Dry Suit Diving", "Stress & Rescue", "Computer Diving", "Gas Blender Nitrox/Trimix", "Other"
+            ],
+            "SDI": [
+                "Advanced Buoyancy Control", "Boat Diver", "Computer Nitrox Diver", "Deep Diver",
+                "DPV Diver", "Drift Diver", "Dry Suit Diver", "Full Face Mask Diver",
+                "Night/Limited Visibility Diver", "Search and Recovery Diver", "Sidemount Diver",
+                "Underwater Navigation", "Underwater Photographer", "Underwater Videographer",
+                "Wreck Diver", "Solo Diver", "Other"
+            ],
+            "NAUI": [
+                "Night Diver", "Underwater Environment", "Underwater Photographer",
+                "Search and Recovery Diver", "Hunter and Collector", "Wreck Diver (External Survey)",
+                "Ice Diver", "Deep Diver", "EANx (Nitrox) Diver", "Underwater Archeologist",
+                "Underwater Ecologist: Kelp Forest", "Underwater Ecologist: Coral Reef", "Dry Suit Diver",
+                "Boat Diver", "Marine Naturalist", "Shark Ecology", "Other"
+            ]
+        };
+
         // Rebuilds the Certification Level <select> options to match whichever
         // Certification Organisation is currently chosen. If preferredLevel is
         // still valid for the new organisation it stays selected; otherwise the
@@ -2996,6 +3182,47 @@
 
             if (preferredLevel && levels.includes(preferredLevel)) {
                 levelSelect.value = preferredLevel;
+            }
+        }
+
+        // Rebuilds the Specialty Certification <select> options to match
+        // whichever Certification Organisation is currently chosen in the
+        // specialty modal — mirrors updateCertLevelOptions() above. Also
+        // refreshes the conditional "Specialty Name" custom text field,
+        // since switching org can change whether "Other" is selected.
+        function updateSpecialtyCertOptions(preferredSpecialty) {
+            const orgSelect = document.getElementById('specialty-cert-org');
+            const nameSelect = document.getElementById('specialty-cert-name');
+            if (!orgSelect || !nameSelect) return;
+
+            const org = orgSelect.value || "PADI";
+            const specialties = SPECIALTY_CERTIFICATIONS[org] || SPECIALTY_CERTIFICATIONS["PADI"];
+
+            nameSelect.innerHTML = specialties.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            if (preferredSpecialty && specialties.includes(preferredSpecialty)) {
+                nameSelect.value = preferredSpecialty;
+            }
+
+            toggleSpecialtyCertCustomNameField();
+        }
+
+        // Shows/hides the free-text "Specialty Name" field — only relevant
+        // when "Other" is selected, since every other option is already a
+        // real course name from the catalog.
+        function toggleSpecialtyCertCustomNameField() {
+            const nameSelect = document.getElementById('specialty-cert-name');
+            const wrap = document.getElementById('specialty-cert-custom-name-wrap');
+            const customInput = document.getElementById('specialty-cert-custom-name');
+            if (!nameSelect || !wrap || !customInput) return;
+
+            const isOther = nameSelect.value === 'Other';
+            wrap.classList.toggle('hidden', !isOther);
+            if (isOther) {
+                customInput.setAttribute('required', 'required');
+            } else {
+                customInput.removeAttribute('required');
+                customInput.value = '';
             }
         }
 
@@ -3192,10 +3419,10 @@
         // body's scroll for as long as at least one modal is open.
         function initModalScrollLock() {
             const modalIds = [
-                'diver-profile-modal', 'diver-info-preview-modal', 'certification-modal', 'my-gear-modal',
+                'diver-profile-modal', 'diver-info-preview-modal', 'certification-modal', 'specialty-certification-modal', 'my-gear-modal',
                 'critter-detail-modal', 'share-profile-modal', 'dive-log-card-modal', 'log-detail-modal',
                 'dive-photos-modal', 'marine-sightings-modal', 'photo-lightbox-modal', 'csv-export-modal', 'pdf-export-modal',
-                'uddf-dive-select-modal', 'login-prompt-modal', 'confirm-modal'
+                'uddf-dive-select-modal', 'uddf-export-modal', 'login-prompt-modal', 'confirm-modal'
             ];
             const modals = modalIds.map(id => document.getElementById(id)).filter(Boolean);
 
@@ -3268,6 +3495,7 @@
             state.dives.sort((a, b) => b.diveNo - a.diveNo);
             if (remoteSnapshot.diverProfile) state.diverProfile = remoteSnapshot.diverProfile;
             migrateDiverProfileCertifications();
+            migrateDiverProfileSpecialtyCertifications();
             migrateDiverProfileMyGear();
             updateUI();
             showToast("Synced latest data from OneDrive", "info");
@@ -3302,6 +3530,7 @@
             const profile = await window.AbyssDB.getMeta('diverProfile', null);
             if (profile) state.diverProfile = profile;
             migrateDiverProfileCertifications();
+            migrateDiverProfileSpecialtyCertifications();
             migrateDiverProfileMyGear();
 
             // Restore the saved theme (falls back to dark for anyone who
@@ -3529,6 +3758,19 @@
                 <span style="color:#e6f1fb;font-weight:700;text-transform:uppercase;">${level}</span>`;
         }
 
+        // Renders the specialty certifications line on the shareable Diver
+        // Profile card — wraps into a compact pill row underneath the main
+        // credential line, indigo-accented to match the specialty pills
+        // shown elsewhere in the app. Returns '' when there are none, so
+        // the layout doesn't leave an empty gap.
+        function buildSpecialtyLineHtml() {
+            const specialties = state.diverProfile.specialtyCertifications || [];
+            if (specialties.length === 0) return '';
+            const sorted = [...specialties].sort(sortCertificationsByDateDesc);
+            const pills = sorted.map(cert => `<span style="display:inline-block;background:rgba(99,102,241,0.18);border:1px solid rgba(129,140,248,0.4);color:#a5adf0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 8px;border-radius:6px;margin:2px 3px;">${getSpecialtyCertificationDisplayName(cert)}</span>`).join('');
+            return `<div style="margin-top:8px;">${pills}</div>`;
+        }
+
         function buildShareCardMarkup() {
             const profile = state.diverProfile || {};
             const name = profile.name || 'Explorer';
@@ -3581,6 +3823,7 @@
                             <div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.04em;">
                                 ${buildCredentialLineHtml(org, level, 12)}
                             </div>
+                            ${buildSpecialtyLineHtml()}
                         </div>
                     </div>
 
@@ -4090,7 +4333,12 @@
             { key: 'buddyNo', label: 'Certification Number', group: 'Dive Buddy & Journal', def: false, get: d => d.buddyNo },
             { key: 'diveCenter', label: 'Dive Center', group: 'Dive Buddy & Journal', def: false, get: d => d.diveCenter },
             { key: 'critters', label: 'Marine Life Sightings', group: 'Dive Buddy & Journal', def: true, get: d => (d.critters || []).map(c => { const t = CRITTER_DATABASE[c.id]; return c.customName || (t ? t.name : 'Unknown species'); }).join('; ') },
-            { key: 'notes', label: 'Notes', group: 'Dive Buddy & Journal', def: false, get: d => d.notes }
+            { key: 'notes', label: 'Notes', group: 'Dive Buddy & Journal', def: false, get: d => d.notes },
+
+            // Diver-level (not per-dive) data — the same value repeats on
+            // every exported row, same pattern as any other CSV export that
+            // carries a constant header field alongside per-record data.
+            { key: 'specialtyCertifications', label: 'Specialty Certifications', group: 'Dive Buddy & Journal', def: false, get: d => (state.diverProfile.specialtyCertifications || []).map(c => getSpecialtyCertificationDisplayName(c)).join('; ') }
         ];
 
         function openCsvExportModal() {
@@ -4285,6 +4533,23 @@
                     <span class="text-xs text-slate-700 dark:text-slate-300">${c.label || 'Untitled certification'}</span>
                 </label>
             `).join('');
+
+            const specialtyOptions = getSpecialtyCertificationOptions();
+            const specialtySection = document.getElementById('pdf-specialty-cert-section');
+            const specialtyList = document.getElementById('pdf-specialty-cert-list');
+            if (specialtyOptions.length > 0) {
+                specialtySection.classList.remove('hidden');
+                specialtyList.innerHTML = specialtyOptions.map(c => `
+                    <label class="flex items-center space-x-2.5 cursor-pointer">
+                        <input type="checkbox" data-pdf-specialty-cert="${c.index}" checked onchange="updatePdfCertPreview()" class="accent-indigo-500">
+                        <span class="text-xs text-slate-700 dark:text-slate-300">${c.label || 'Untitled specialty certification'}</span>
+                    </label>
+                `).join('');
+            } else {
+                specialtySection.classList.add('hidden');
+                specialtyList.innerHTML = '';
+            }
+
             updatePdfCertPreview();
 
             const groupsEl = document.getElementById('pdf-field-groups');
@@ -4327,12 +4592,23 @@
                 .filter(Boolean)
                 .map(c => c.label || 'Untitled certification');
 
+            const specialtyOptions = getSpecialtyCertificationOptions();
+            const checkedSpecialtyIndexes = Array.from(document.querySelectorAll('[data-pdf-specialty-cert]:checked'))
+                .map(c => parseInt(c.getAttribute('data-pdf-specialty-cert')));
+            const specialtyLines = checkedSpecialtyIndexes
+                .map(i => specialtyOptions.find(c => c.index === i))
+                .filter(Boolean)
+                .map(c => c.label || 'Untitled specialty certification');
+
             const nameLine = `<div class="font-bold text-slate-900 dark:text-white">Abyss Dive Log — ${profile.name || 'Diver'}</div>`;
             const certLinesHtml = lines.length
                 ? lines.map(l => `<div class="text-slate-500 dark:text-slate-400">${l}</div>`).join('')
                 : `<div class="italic text-slate-500 dark:text-slate-500">No certifications selected</div>`;
+            const specialtyLinesHtml = specialtyLines.length
+                ? specialtyLines.map(l => `<div class="text-indigo-500 dark:text-indigo-400">${l}</div>`).join('')
+                : '';
 
-            previewEl.innerHTML = nameLine + certLinesHtml;
+            previewEl.innerHTML = nameLine + certLinesHtml + specialtyLinesHtml;
         }
 
         function closePdfExportModal() {
@@ -4348,6 +4624,7 @@
 
         function confirmPdfExport() {
             const certIndexes = Array.from(document.querySelectorAll('[data-pdf-cert]:checked')).map(c => parseInt(c.getAttribute('data-pdf-cert')));
+            const specialtyCertIndexes = Array.from(document.querySelectorAll('[data-pdf-specialty-cert]:checked')).map(c => parseInt(c.getAttribute('data-pdf-specialty-cert')));
             const fieldKeys = Array.from(document.querySelectorAll('[data-pdf-field]:checked')).map(c => c.getAttribute('data-pdf-field'));
 
             if (fieldKeys.length === 0) {
@@ -4356,10 +4633,10 @@
             }
 
             closePdfExportModal();
-            exportDivesToPDF(certIndexes, fieldKeys);
+            exportDivesToPDF(certIndexes, fieldKeys, specialtyCertIndexes);
         }
 
-        function exportDivesToPDF(certIndexes, fieldKeys) {
+        function exportDivesToPDF(certIndexes, fieldKeys, specialtyCertIndexes) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
@@ -4378,12 +4655,19 @@
                 .filter(Boolean)
                 .map(c => c.label || 'Untitled certification');
 
+            const specialtyOptions = getSpecialtyCertificationOptions();
+            const specialtyLines = (specialtyCertIndexes || [])
+                .map(i => specialtyOptions.find(c => c.index === i))
+                .filter(Boolean)
+                .map(c => c.label || 'Untitled specialty certification');
+
             doc.setFontSize(13);
             doc.text(`Abyss Dive Log — ${profile.name || 'Diver'}`, 8, 9);
             doc.setFontSize(8);
             doc.setTextColor(100);
             let y = 14;
             certLines.forEach(line => { doc.text(line, 8, y); y += 4.5; });
+            specialtyLines.forEach(line => { doc.text(line, 8, y); y += 4.5; });
             doc.text(`Exported ${formatDateDMY(new Date().toISOString().split('T')[0])} · ${sortedDives.length} dive${sortedDives.length !== 1 ? 's' : ''}`, 8, y);
             doc.setTextColor(0);
 
@@ -4433,7 +4717,44 @@
             return (unit === 'PSI' ? v / 14.50377 : v).toFixed(2);
         }
 
-        function exportDivesToUDDF() {
+        // UDDF has no other selectable export options today (unlike PDF/CSV),
+        // so this modal only exists to let the diver pick which specialty
+        // certifications to include — if there are none, skip straight to
+        // export so the one-click UX for everyone else is unchanged.
+        function openUddfExportModal() {
+            if (!state.dives || state.dives.length === 0) {
+                showToast("No dive logs to export yet", "info");
+                return;
+            }
+
+            const specialtyOptions = getSpecialtyCertificationOptions();
+            if (specialtyOptions.length === 0) {
+                exportDivesToUDDF([]);
+                return;
+            }
+
+            const listEl = document.getElementById('uddf-specialty-cert-list');
+            listEl.innerHTML = specialtyOptions.map(c => `
+                <label class="flex items-center space-x-2.5 cursor-pointer py-0.5">
+                    <input type="checkbox" data-uddf-specialty-cert="${c.index}" checked class="accent-indigo-500">
+                    <span class="text-xs text-slate-700 dark:text-slate-300">${c.label || 'Untitled specialty certification'}</span>
+                </label>
+            `).join('');
+
+            document.getElementById('uddf-export-modal').classList.remove('hidden');
+        }
+
+        function closeUddfExportModal() {
+            document.getElementById('uddf-export-modal').classList.add('hidden');
+        }
+
+        function confirmUddfExport() {
+            const specialtyCertIndexes = Array.from(document.querySelectorAll('[data-uddf-specialty-cert]:checked')).map(c => parseInt(c.getAttribute('data-uddf-specialty-cert')));
+            closeUddfExportModal();
+            exportDivesToUDDF(specialtyCertIndexes);
+        }
+
+        function exportDivesToUDDF(specialtyCertIndexes) {
             if (!state.dives || state.dives.length === 0) {
                 showToast("No dive logs to export yet", "info");
                 return;
@@ -4620,6 +4941,22 @@
     <gasdefinitions>${mixBlocks.join('')}
     </gasdefinitions>` : '';
 
+            // UDDF 3.2.1 has no standard element for specialty certifications,
+            // so — same approach as the rest of this exporter takes for
+            // anything outside the spec's scope — they're written as a
+            // readable XML comment rather than omitted entirely. Only the
+            // certifications the diver checked in the export modal are
+            // included (see openUddfExportModal/confirmUddfExport above).
+            const specialtyOptionsForExport = getSpecialtyCertificationOptions();
+            const selectedSpecialtyLines = (specialtyCertIndexes || [])
+                .map(i => specialtyOptionsForExport.find(c => c.index === i))
+                .filter(Boolean)
+                .map(c => `${c.org} — ${c.specialty}${c.certNo ? ` (# ${c.certNo})` : ''}`);
+            const specialtyCertXml = selectedSpecialtyLines.length ? `
+    <!-- Specialty Certifications:
+${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
+    -->` : '';
+
             const uddfXml = `<?xml version="1.0" encoding="UTF-8"?>
 <uddf version="3.2.1" xmlns="http://www.streit.cc/uddf/3.2/">
     <generator>
@@ -4636,7 +4973,7 @@
                 <lastname>${xmlEscape(lastName)}</lastname>
             </personal>
         </owner>
-    </diver>${divesiteXml}${gasDefinitionsXml}
+    </diver>${specialtyCertXml}${divesiteXml}${gasDefinitionsXml}
     <profiledata>
         <repetitiongroup id="rg1">${diveBlocks}
         </repetitiongroup>
@@ -5339,6 +5676,9 @@
                             <h4 class="font-bold text-cyan-600 dark:text-cyan-400 text-xs">Dive #${dive.diveNo}</h4>
                             <p class="text-[11px] font-bold text-slate-900 dark:text-white block truncate leading-tight">${dive.site}</p>
                             <p class="text-[10px] text-slate-600 dark:text-slate-400 flex items-center leading-none"><i class="fa-solid fa-location-dot mr-1"></i>${dive.country}</p>
+                            <button onclick="openLogDetailModal('${dive.id}')" class="mt-1.5 w-full px-2 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-[10px] font-semibold flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> View Full Log Details
+                            </button>
                         </div>
                     `;
 
@@ -6999,6 +7339,7 @@
                 renderProfileAnalytics(computeDiveAnalytics());
                 renderMilestonesGrid(totalDives);
                 renderCertificationsList();
+                renderSpecialtyCertificationsList();
             }
         }
 
@@ -7103,6 +7444,17 @@
             // current certification after this upgrade.
             ensureExactlyOneCurrentCertification();
             syncCurrentCertificationMirror();
+        }
+
+        // Safety net for profiles saved before specialty certifications
+        // existed — ensures state.diverProfile.specialtyCertifications is
+        // always an array. Unlike main certifications, there's no legacy
+        // single-field data to fold in here (this is a brand new record
+        // type), so this is purely a presence guard.
+        function migrateDiverProfileSpecialtyCertifications() {
+            if (!state.diverProfile.specialtyCertifications) {
+                state.diverProfile.specialtyCertifications = [];
+            }
         }
 
         // Safety net for profiles saved before the My Gear library existed —
@@ -7391,6 +7743,187 @@
                     </div>
                 </div>`;
             }).join('');
+        }
+
+        /* ---------------- Specialty certifications ---------------- */
+        // Specialty certifications are deliberately additive — there is no
+        // "current" concept (a diver can hold any number of them from any
+        // org, all simultaneously relevant), so this section is simpler
+        // than the main certification one above: no current-flag toggling,
+        // no ensureExactlyOneCurrent-style normalization.
+
+        let editingSpecialtyCertificationId = null;
+
+        function getSpecialtyCertificationDisplayName(cert) {
+            if (!cert) return 'Unknown Specialty';
+            if (cert.specialty === 'Other') return cert.customSpecialtyName || 'Other Specialty';
+            return cert.specialty || 'Unknown Specialty';
+        }
+
+        function openSpecialtyCertificationModal(specialtyCertId) {
+            editingSpecialtyCertificationId = specialtyCertId || null;
+            const form = document.getElementById('specialty-certification-form');
+            form.reset();
+
+            if (editingSpecialtyCertificationId) {
+                const cert = (state.diverProfile.specialtyCertifications || []).find(c => c.id === editingSpecialtyCertificationId);
+                if (!cert) return;
+                document.getElementById('specialty-certification-modal-title').innerText = "Edit Specialty Certification";
+                document.getElementById('specialty-cert-org').value = cert.org || "PADI";
+                updateSpecialtyCertOptions(cert.specialty || "");
+                if (cert.specialty === 'Other') {
+                    document.getElementById('specialty-cert-custom-name').value = cert.customSpecialtyName || "";
+                }
+                document.getElementById('specialty-cert-no').value = cert.certNo || "";
+                document.getElementById('specialty-cert-date').value = cert.date || "";
+                document.getElementById('specialty-cert-dive-center').value = cert.diveCenter || "";
+                document.getElementById('specialty-cert-dive-center-location').value = cert.diveCenterLocation || "";
+                document.getElementById('specialty-cert-instructor-name').value = cert.instructorName || "";
+                document.getElementById('specialty-cert-instructor-certno').value = cert.instructorCertNo || "";
+                document.getElementById('specialty-certification-delete-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('specialty-certification-modal-title').innerText = "Add Specialty Certification";
+                document.getElementById('specialty-cert-org').value = "PADI";
+                updateSpecialtyCertOptions();
+                document.getElementById('specialty-certification-delete-btn').classList.add('hidden');
+            }
+
+            document.getElementById('specialty-certification-modal').classList.remove('hidden');
+        }
+
+        function closeSpecialtyCertificationModal() {
+            document.getElementById('specialty-certification-modal').classList.add('hidden');
+            editingSpecialtyCertificationId = null;
+        }
+
+        function saveSpecialtyCertification(event) {
+            event.preventDefault();
+
+            const specialtyValue = document.getElementById('specialty-cert-name').value;
+            const certData = {
+                org: document.getElementById('specialty-cert-org').value,
+                specialty: specialtyValue,
+                customSpecialtyName: specialtyValue === 'Other' ? document.getElementById('specialty-cert-custom-name').value.trim() : "",
+                certNo: document.getElementById('specialty-cert-no').value,
+                date: document.getElementById('specialty-cert-date').value,
+                // Optional details — kept as empty strings rather than
+                // undefined so the shape stays consistent across entries.
+                diveCenter: document.getElementById('specialty-cert-dive-center').value.trim(),
+                diveCenterLocation: document.getElementById('specialty-cert-dive-center-location').value.trim(),
+                instructorName: document.getElementById('specialty-cert-instructor-name').value.trim(),
+                instructorCertNo: document.getElementById('specialty-cert-instructor-certno').value.trim()
+            };
+
+            if (!state.diverProfile.specialtyCertifications) state.diverProfile.specialtyCertifications = [];
+
+            if (editingSpecialtyCertificationId) {
+                const idx = state.diverProfile.specialtyCertifications.findIndex(c => c.id === editingSpecialtyCertificationId);
+                if (idx !== -1) {
+                    state.diverProfile.specialtyCertifications[idx] = { ...state.diverProfile.specialtyCertifications[idx], ...certData };
+                }
+            } else {
+                state.diverProfile.specialtyCertifications.push({
+                    id: `specialty-cert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    ...certData
+                });
+            }
+
+            persistDiverProfile();
+
+            showToast(editingSpecialtyCertificationId ? "Specialty certification updated" : "Specialty certification added", "success");
+            closeSpecialtyCertificationModal();
+            renderDiverProfileCard();
+            renderSpecialtyCertificationsList();
+        }
+
+        function requestDeleteSpecialtyCertification(specialtyCertId) {
+            const cert = (state.diverProfile.specialtyCertifications || []).find(c => c.id === specialtyCertId);
+            if (!cert) return;
+            const displayName = getSpecialtyCertificationDisplayName(cert);
+            openConfirmModal(
+                "Delete Specialty Certification?",
+                `This will permanently remove ${displayName} (${cert.org || ''}) from your specialty certification history. This cannot be undone.`,
+                "Delete",
+                () => {
+                    state.diverProfile.specialtyCertifications = (state.diverProfile.specialtyCertifications || []).filter(c => c.id !== specialtyCertId);
+                    persistDiverProfile();
+                    showToast("Specialty certification deleted", "info");
+                    renderDiverProfileCard();
+                    renderSpecialtyCertificationsList();
+                }
+            );
+        }
+
+        function deleteSpecialtyCertificationFromModal() {
+            if (!editingSpecialtyCertificationId) return;
+            const id = editingSpecialtyCertificationId;
+            closeSpecialtyCertificationModal();
+            requestDeleteSpecialtyCertification(id);
+        }
+
+        function renderSpecialtyCertificationsList() {
+            const container = document.getElementById('specialty-certifications-list-container');
+            const emptyState = document.getElementById('specialty-certifications-empty-state');
+            if (!container) return;
+
+            const certs = state.diverProfile.specialtyCertifications || [];
+            if (certs.length === 0) {
+                container.innerHTML = "";
+                if (emptyState) emptyState.classList.remove('hidden');
+                return;
+            }
+            if (emptyState) emptyState.classList.add('hidden');
+
+            const sorted = [...certs].sort(sortCertificationsByDateDesc);
+
+            container.innerHTML = sorted.map(cert => {
+                const displayName = getSpecialtyCertificationDisplayName(cert);
+                const dateStr = cert.date ? formatDateDMY(cert.date) : "Date not set";
+                const extraLines = [];
+                if (cert.diveCenter) {
+                    extraLines.push(`<div><i class="fa-solid fa-shop text-[10px] mr-1.5 text-slate-600 dark:text-slate-500"></i>${cert.diveCenter}${cert.diveCenterLocation ? ` — ${cert.diveCenterLocation}` : ''}</div>`);
+                }
+                if (cert.instructorName) {
+                    extraLines.push(`<div><i class="fa-solid fa-user-graduate text-[10px] mr-1.5 text-slate-600 dark:text-slate-500"></i>${cert.instructorName}${cert.instructorCertNo ? ` (# ${cert.instructorCertNo})` : ''}</div>`);
+                }
+
+                return `
+                <div class="bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center flex-wrap gap-2">
+                            <span class="font-bold text-sm">${displayName}</span>
+                            <span class="text-[10px] font-mono-custom text-indigo-500 dark:text-indigo-400 uppercase">${cert.org || ''}</span>
+                        </div>
+                        <div class="text-xs text-slate-600 dark:text-slate-400 mt-1"># ${cert.certNo || 'N/A'} &middot; ${dateStr}</div>
+                        ${extraLines.length ? `<div class="text-[11px] text-slate-600 dark:text-slate-500 mt-1.5 space-y-0.5">${extraLines.join('')}</div>` : ''}
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0 self-end sm:self-center">
+                        <button onclick="openSpecialtyCertificationModal('${cert.id}')" class="p-2 rounded-lg bg-slate-100 dark:bg-ocean-900/20 hover:bg-slate-100 dark:hover:bg-ocean-900/40 text-indigo-400 text-xs transition-colors" title="Edit Specialty Certification">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="requestDeleteSpecialtyCertification('${cert.id}')" class="p-2 rounded-lg bg-slate-100 dark:bg-ocean-900/20 hover:bg-rose-500/20 text-rose-400 text-xs transition-colors" title="Delete Specialty Certification">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Flat list of every specialty certification, for the PDF/UDDF
+        // export option checklists — no "current" concept here (see note
+        // above renderSpecialtyCertificationsList), so unlike
+        // getCertificationOptions() nothing is pre-selected as default;
+        // callers decide the default-checked state themselves.
+        function getSpecialtyCertificationOptions() {
+            const list = state.diverProfile.specialtyCertifications || [];
+            return list.map((c, i) => ({
+                index: i,
+                id: c.id,
+                org: c.org || '',
+                specialty: getSpecialtyCertificationDisplayName(c),
+                certNo: c.certNo || '',
+                label: [c.org, getSpecialtyCertificationDisplayName(c)].filter(Boolean).join(' ') + (c.certNo ? ` — #${c.certNo}` : '')
+            }));
         }
 
         /* ---------------- Diver profile analytics (Sections 1-4) ---------------- */
@@ -7870,6 +8403,16 @@
             }
         }
 
+        // Specialty pills use a distinct indigo/violet hue (vs. the cyan main
+        // certification pill) so they read as "additive extras" rather than
+        // competing progression levels — matches the approved mockup.
+        function buildSpecialtyPillsHtml() {
+            const specialties = state.diverProfile.specialtyCertifications || [];
+            if (specialties.length === 0) return '';
+            const sorted = [...specialties].sort(sortCertificationsByDateDesc);
+            return sorted.map(cert => `<span class="text-[8px] font-mono-custom font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500 text-white">${getSpecialtyCertificationDisplayName(cert)}</span>`).join('');
+        }
+
         function renderDiverProfileCard() {
             document.getElementById('card-diver-name').innerText = state.diverProfile.name || "Explorer";
 
@@ -7877,14 +8420,21 @@
             const badge = document.getElementById('card-cert-level-badge');
             badge.innerText = (state.diverProfile.level || "Open Water Diver").toUpperCase();
             document.getElementById('card-cert-no').innerText = `# ${state.diverProfile.certNo || 'PENDING'}`;
-            
+
+            const specialtyPillsHtml = buildSpecialtyPillsHtml();
+            const cardSpecialtyPills = document.getElementById('card-specialty-pills');
+            if (cardSpecialtyPills) cardSpecialtyPills.innerHTML = specialtyPillsHtml;
+
             // Re-render in diver detail page too
             document.getElementById('prof-detail-name').innerText = state.diverProfile.name || "Explorer";
             const detailBadge = document.getElementById('prof-detail-cert-level');
             detailBadge.innerText = (state.diverProfile.level || "Open Water Diver").toUpperCase();
             document.getElementById('prof-detail-cert-no').innerText = state.diverProfile.certNo || "PENDING";
-            
-            const issueDateStr = state.diverProfile.date 
+
+            const detailSpecialtyPills = document.getElementById('prof-detail-specialty-pills');
+            if (detailSpecialtyPills) detailSpecialtyPills.innerHTML = specialtyPillsHtml;
+
+            const issueDateStr = state.diverProfile.date
                 ? formatDateDMY(state.diverProfile.date)
                 : "-- / -- / ----";
             document.getElementById('prof-detail-cert-date').innerText = issueDateStr;
