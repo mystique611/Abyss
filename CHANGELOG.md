@@ -1,5 +1,13 @@
 # Changelog
 
+## 260724-v43
+
+- **Fixed dive photo captions being blocked/hidden in the Dive Diary.** The photo and marine-life grid cells used CSS `aspect-ratio` to size themselves, which the image renderer (html2canvas) doesn't support — it was collapsing those cells to zero height, hiding captions behind the photo above. Cells now use fixed pixel heights instead.
+- **Marine life sighted without a photo no longer show an empty circle.** Species with a logged photo still get a thumbnail; species without one are now listed as plain text underneath instead.
+- **Improved Dive Diary photo resolution** — both dive photos and marine life thumbnails are now sourced at a higher resolution before being placed on the page, so they look sharper rather than soft/blurry.
+- **Dashboard now shows the app's version number**, bottom-left, in the same format as the versioned snapshot folders (e.g. `260724-v43`) — handy for confirming which build you're actually running.
+- Service worker cache bumped (`abyss-shell-v42` → `abyss-shell-v43`) to ship the above.
+
 ## 260724-v42
 
 - **"Dive Log Card" is now a full "Dive Diary" — a one-page shareable image with everything about the dive, not just the stats snapshot.** Same button in the Logbook, same Share/Download flow, but the generated image now also includes: every dive photo (with captions) in a grid, and every species of marine life sighted (deduped — logging the same species twice only shows it once) with a thumbnail and name. The page grows to fit however many photos/sightings a dive has rather than cropping anything.

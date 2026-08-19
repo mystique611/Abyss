@@ -472,6 +472,8 @@
                     </div>
                 </div>
             </div>
+
+            <p class="text-[10px] font-mono-custom text-slate-400 dark:text-slate-600" id="app-version-label"></p>
         </section>
 
         <!-- ==================== LOGBOOK VIEW ==================== -->
@@ -2331,6 +2333,11 @@
     </div>
 
     <script>
+        // Matches the versioned snapshot folder name this build shipped in
+        // (see CHANGELOG.md) — bump this alongside CACHE_VERSION in
+        // service-worker.js whenever a new version is shipped.
+        const APP_VERSION = '260724-v43';
+
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
             "Marine Mammals": `<img src="icons/critters/marine-mammals.png" class="w-10 h-10" alt="Marine Mammals">`,
@@ -3202,6 +3209,9 @@
 
         // Initialize State on Launch
         window.addEventListener('DOMContentLoaded', async () => {
+            const versionLabelEl = document.getElementById('app-version-label');
+            if (versionLabelEl) versionLabelEl.textContent = APP_VERSION;
+
             await loadState();
             await migrateLegacyPhotosToStore();
             updateThemeToggleIcon();
@@ -3742,7 +3752,10 @@
             if (dive.photos && dive.photos.length) {
                 for (const p of dive.photos.map(normalizeDivePhotoEntry)) {
                     const raw = await getPhotoDataUrl(p.id);
-                    const dataUrl = raw ? await resizeImageDataUrl(raw, 500, 0.75) : null;
+                    // Displayed at ~108px in the card but exported at 2x
+                    // scale (~216px actual pixels) — sized well above that
+                    // so photos stay crisp rather than upscaled/blurry.
+                    const dataUrl = raw ? await resizeImageDataUrl(raw, 900, 0.88) : null;
                     photos.push({ caption: p.caption, dataUrl });
                 }
             }
@@ -3763,7 +3776,7 @@
                 });
                 for (const { name, photoId } of seen.values()) {
                     const raw = photoId ? await getPhotoDataUrl(photoId) : null;
-                    const dataUrl = raw ? await resizeImageDataUrl(raw, 300, 0.75) : null;
+                    const dataUrl = raw ? await resizeImageDataUrl(raw, 700, 0.88) : null;
                     sightings.push({ name, dataUrl });
                 }
             }
@@ -3798,27 +3811,44 @@
 
             const escapeHtml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+            // Fixed pixel sizes, not CSS aspect-ratio — html2canvas doesn't
+            // support the aspect-ratio property, which was collapsing these
+            // cells to 0 height and blocking/overlapping the caption text
+            // below each photo. Sizes below match the card's fixed 380px
+            // width minus its 22px padding on each side.
+            const PHOTO_CELL_SIZE = 108;   // (380 - 44 - 2*6) / 3, 3-column grid
+            const SIGHTING_CELL_SIZE = 78; // (380 - 44 - 3*8) / 4, 4-column grid
+
             const photosSectionHtml = photos.length ? `
                     <p style="font-size:10px;letter-spacing:0.06em;color:#7fb8d6;margin:18px 0 8px;font-family:'JetBrains Mono',monospace;border-top:1px solid #163b52;padding-top:14px;">DIVE PHOTOS</p>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
                         ${photos.map(p => `
                             <div>
-                                <div style="width:100%;aspect-ratio:1;border-radius:4px;background:#123449;${p.dataUrl ? `background-image:url('${p.dataUrl}');background-size:cover;background-position:center;` : ''}"></div>
+                                <div style="width:100%;height:${PHOTO_CELL_SIZE}px;border-radius:4px;background:#123449;${p.dataUrl ? `background-image:url('${p.dataUrl}');background-size:cover;background-position:center;` : ''}"></div>
                                 ${p.caption ? `<p style="font-size:9px;color:#7fb8d6;margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.caption)}</p>` : ''}
                             </div>
                         `).join('')}
                     </div>` : '';
 
+            // Species with a logged photo get a thumbnail card; species
+            // without one are listed as plain text instead of showing an
+            // empty placeholder circle.
+            const sightingsWithPhoto = sightings.filter(s => s.dataUrl);
+            const sightingsWithoutPhoto = sightings.filter(s => !s.dataUrl);
+
             const sightingsSectionHtml = sightings.length ? `
                     <p style="font-size:10px;letter-spacing:0.06em;color:#7fb8d6;margin:18px 0 8px;font-family:'JetBrains Mono',monospace;border-top:1px solid #163b52;padding-top:14px;">MARINE LIFE SIGHTED</p>
-                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-                        ${sightings.map(s => `
+                    ${sightingsWithPhoto.length ? `
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;${sightingsWithoutPhoto.length ? 'margin-bottom:10px;' : ''}">
+                        ${sightingsWithPhoto.map(s => `
                             <div>
-                                <div style="width:100%;aspect-ratio:1;border-radius:50%;background:#123449;${s.dataUrl ? `background-image:url('${s.dataUrl}');background-size:cover;background-position:center;` : ''}"></div>
+                                <div style="width:100%;height:${SIGHTING_CELL_SIZE}px;border-radius:50%;background-image:url('${s.dataUrl}');background-size:cover;background-position:center;"></div>
                                 <p style="font-size:9px;text-align:center;margin:4px 0 0;color:#c7e1f0;">${escapeHtml(s.name)}</p>
                             </div>
                         `).join('')}
-                    </div>` : '';
+                    </div>` : ''}
+                    ${sightingsWithoutPhoto.length ? `
+                    <p style="font-size:11px;color:#c7e1f0;line-height:1.7;margin:0;">${sightingsWithoutPhoto.map(s => escapeHtml(s.name)).join(' &middot; ')}</p>` : ''}` : '';
 
             return `
                 <div id="dive-log-card-inner" style="width:380px;background:#0a1f30;font-family:'Inter',sans-serif;padding:22px;color:#e6f1fb;">
