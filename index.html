@@ -2340,7 +2340,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '260819-v45';
+        const APP_VERSION = '260819-v46';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -3840,7 +3840,7 @@
                                 ${p.dataUrl
                                     ? `<img src="${p.dataUrl}" width="${PHOTO_CELL_SIZE}" height="${PHOTO_CELL_SIZE}" style="display:block;width:${PHOTO_CELL_SIZE}px;height:${PHOTO_CELL_SIZE}px;border-radius:4px;" />`
                                     : `<div style="width:${PHOTO_CELL_SIZE}px;height:${PHOTO_CELL_SIZE}px;border-radius:4px;background:#123449;"></div>`}
-                                ${p.caption ? `<p style="font-size:9px;color:#7fb8d6;margin:3px 0 0;width:${PHOTO_CELL_SIZE}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.caption)}</p>` : ''}
+                                ${p.caption ? `<p style="font-size:9px;color:#7fb8d6;margin:3px 0 0;width:${PHOTO_CELL_SIZE}px;line-height:1.4;word-wrap:break-word;">${escapeHtml(p.caption)}</p>` : ''}
                             </div>
                         `).join('')}
                     </div>` : '';

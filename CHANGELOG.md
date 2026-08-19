@@ -1,17 +1,22 @@
 # Changelog
 
+## 260819-v46
+
+- **Fixed dive photo captions still getting cut off mid-word in the Dive Diary.** The previous fix addressed the collapsed-height bug, but captions still used `text-overflow:ellipsis` to truncate long text — which html2canvas clips without ever drawing the "…" dots, so it just looked like the text abruptly stopped. Captions now wrap onto multiple lines instead of truncating, so the full caption always shows.
+- Service worker cache bumped (`abyss-shell-v45` → `abyss-shell-v46`) to ship the above.
+
 ## 260819-v45
 
 - **Found the actual cause of the still-cropped Dive Diary photo: EXIF rotation was being ignored during decode.** Phones often store a photo's pixel data in one orientation plus a rotation tag telling viewers how to display it; `<img>` tags respect that tag automatically, but `createImageBitmap()` — used by the photo-resizing code — ignores it unless explicitly told to. That mismatch meant a rotated photo's dimensions and crop were computed against its raw, un-rotated pixel data, which is what was squashing it. Every decode now explicitly requests `imageOrientation: 'from-image'` to match how photos actually display everywhere else.
 - **Version numbering now uses the real date it was shipped.** The app version shown on the Dashboard and the versioned snapshot folder name had been reusing a stale, fixed date prefix (`260724`) for every version regardless of when it actually shipped. From this version on, the date prefix reflects the actual ship date (format `YYMMDD-vNN`) — this version is `260819-v45`. Earlier versions weren't relabeled, since their original folder names are historical record.
 - Service worker cache bumped (`abyss-shell-v44` → `abyss-shell-v45`) to ship the above.
 
-## 260724-v44
+## 260819-v44
 
 - **Fixed Dive Diary photos still rendering narrow/cropped wrong.** The previous fix addressed the collapsed caption issue but the photo/thumbnail images themselves were still being sized via CSS `background-size:cover`, which the image renderer (html2canvas) also doesn't handle reliably — it was measuring against the wrong box in some cases and squeezing photos into a thin sliver. Photos are now pre-cropped to an exact square in the image data itself before being placed on the page, then rendered as plain fixed-size images with no CSS cropping trick left for the renderer to get wrong.
 - Service worker cache bumped (`abyss-shell-v43` → `abyss-shell-v44`) to ship the above.
 
-## 260724-v43
+## 260819-v43
 
 - **Fixed dive photo captions being blocked/hidden in the Dive Diary.** The photo and marine-life grid cells used CSS `aspect-ratio` to size themselves, which the image renderer (html2canvas) doesn't support — it was collapsing those cells to zero height, hiding captions behind the photo above. Cells now use fixed pixel heights instead.
 - **Marine life sighted without a photo no longer show an empty circle.** Species with a logged photo still get a thumbnail; species without one are now listed as plain text underneath instead.
@@ -19,17 +24,17 @@
 - **Dashboard now shows the app's version number**, bottom-left, in the same format as the versioned snapshot folders (e.g. `260724-v43`) — handy for confirming which build you're actually running.
 - Service worker cache bumped (`abyss-shell-v42` → `abyss-shell-v43`) to ship the above.
 
-## 260724-v42
+## 260819-v42
 
 - **"Dive Log Card" is now a full "Dive Diary" — a one-page shareable image with everything about the dive, not just the stats snapshot.** Same button in the Logbook, same Share/Download flow, but the generated image now also includes: every dive photo (with captions) in a grid, and every species of marine life sighted (deduped — logging the same species twice only shows it once) with a thumbnail and name. The page grows to fit however many photos/sightings a dive has rather than cropping anything.
 - Service worker cache bumped (`abyss-shell-v41` → `abyss-shell-v42`) to ship the above.
 
-## 260724-v41
+## 260818-v41
 
 - **Found the actual remaining cause of the iPhone-only enlarge-photo crash.** v40's fix still fully decoded a photo at its original resolution before shrinking it — same underlying problem as before, just via a slightly different API. The real issue: file size doesn't tell you how many actual pixels a photo has. Modern iPhones compress even a 48MP photo down to just 1-2MB, so a small-looking file can still need a ~190MB decode buffer, which is enough to make iOS silently kill and reload the tab. This is also why it was always the exact same photo crashing in both Marine Sightings and AquaDex — they were decoding the identical stored file. The fix now asks the browser to decode a photo directly at a small target size (the same trick native iOS apps use to avoid this exact crash), so the full-resolution buffer is never created in memory at all, regardless of the original's actual pixel count. Falls back to the previous approach on browsers that don't support this.
 - Service worker cache bumped (`abyss-shell-v40` → `abyss-shell-v41`) to ship the above.
 
-## 260724-v40
+## 260818-v40
 
 - **Further crash hardening for enlarging specific photos.** After v39, crashes were reported as narrowed to specific individual photos when enlarged (Marine Sightings or Dive Photos), rather than happening broadly. Two more targeted fixes:
   - `resizeImageDataUrl()` (used to downscale every photo before display) now decodes via `createImageBitmap()` instead of a plain `<img>` element where the browser supports it — this is a more memory-efficient decode path on most platforms, and the resulting bitmap is explicitly released with `.close()` the moment resizing is done, rather than waiting on garbage collection to eventually free it. Falls back to the original `<img>`-based approach if unsupported or if it fails on a given file.
@@ -37,12 +42,12 @@
   - Note: this targets a single very large original photo pushing the decode step itself over a mobile browser's memory limit, which is the most likely remaining cause given the symptom is now isolated to specific photos. If a crash still happens on a particular photo after this update, it'd help to know more about that photo (e.g. unusually high resolution, panorama, or large file size) to narrow it down further.
 - Service worker cache bumped (`abyss-shell-v39` → `abyss-shell-v40`) to ship the above.
 
-## 260724-v39
+## 260818-v39
 
 - **Fixed the mobile crash on View Marine Sightings / Dive Photos still occurring after the v37 fix.** v37 only compressed newly-uploaded photos — it didn't help older photos already saved at full camera resolution, and didn't address the actual crash mechanism: opening a gallery decoded *every* photo in it at the same time (`Promise.all`), and decoding several multi-megabyte originals simultaneously is what was exhausting mobile Safari/Chrome's memory and repeatedly killing the page. Every photo gallery (Marine Sightings, Dive Photos, AquaDex sighting history, and any other photo-hydrating view) now resolves and downscales photos one at a time instead of all at once, and every displayed photo — old or new — is downscaled on the way to the screen regardless of how it was originally stored. This should fix the crash for existing photos too, not just new uploads.
 - Service worker cache bumped (`abyss-shell-v38` → `abyss-shell-v39`) to ship the above.
 
-## 260724-v38
+## 260818-v38
 
 - **AquaDex: every category now has a generic "(Others)" catch-all** — Marine Mammals, Sharks, Rays, Pelagic Fish, Reef Fish, Cephalopods, Crustaceans, Nudibranchs, Echinoderms, Corals & Anemones, Eels, Turtles, and Jellyfish. Same mechanism as the existing Sea Cucumber (Other)/"Others" entries: pick it when you've spotted something in that category that isn't in the catalog, and type in the species name yourself.
 - **AquaDex housekeeping — duplicate species cleanup:**
@@ -52,7 +57,7 @@
   - As with the Reef Fish housekeeping in v36, "retired" entries stay in the catalog (not deleted) so any dive that already logged one still displays and counts correctly in AquaDex — they're just hidden from the Log a Dive checklist and AquaDex grid for anyone who's never sighted them.
 - Service worker cache bumped (`abyss-shell-v37` → `abyss-shell-v38`) to ship all of the above.
 
-## 260724-v37
+## 260818-v37
 
 - **Fixed a mobile crash viewing Marine Sightings or enlarging a photo.** Uploaded photos were stored at full camera resolution with no size limit; opening a gallery with several of them at once (or the full-size viewer) could push mobile Safari's per-tab memory past its limit, which silently reloads the page — it looked like the app "crashing back to the Dashboard," even though nothing actually errored. Every new photo upload (dive photos, marine sighting photos, and the diver avatar) is now downscaled and re-compressed on the way in, so this shouldn't recur for photos added from now on. Already-stored full-size photos aren't retroactively shrunk.
 - **AquaDex: sighting photos are now clickable to enlarge**, matching the Logbook's dive photo viewer.
@@ -64,7 +69,7 @@
 - **Total Dives chart: added a Month option**, alongside the existing Quarter and Year views.
 - Service worker cache bumped (`abyss-shell-v36` → `abyss-shell-v37`) to ship all of the above.
 
-## 260724-v36
+## 260817-v36
 
 - **Log a Dive: every marine life checklist entry is now repeatable.** Species cards no longer use a single checkbox — an "Add Sighting" button lets you log a species more than once on the same dive (different depths/notes/photos), and for "Others" specifically, you can now add as many distinct unidentified-species sightings as you like, each with its own name.
 - **Fixed an AquaDex undercounting bug found while building the above**: the sighting counter/history for a species only ever counted the first match per dive, so a dive with two sightings of the same species (most relevant for "Others") only showed one. All matches now count and appear in the sighting history, sorted newest first.
@@ -73,7 +78,7 @@
 - **AquaDex housekeeping — Echinoderms**: added generic "Starfish (Other)", "Sea Urchin (Other)", and "Sea Cucumber (Other)" entries — like "Others", these let you type in the exact subspecies you saw when it isn't in the catalog. (The custom-name field is no longer hardcoded to "Others" specifically — any catalog entry can now opt into it.)
 - Service worker cache bumped (`abyss-shell-v35` → `abyss-shell-v36`) to ship all of the above.
 
-## 260724-v35
+## 260817-v35
 
 - **Fixed OneDrive sign-in failing with "block_nested_popups" on mobile Chrome/Safari.** Popup-based sign-in was only being skipped for installed/home-screen PWAs — a plain mobile browser tab still tried to open a popup first, and partway through Microsoft's own login flow (account picker, "stay signed in?", etc.) that popup can try to open a second popup, which mobile browsers refuse to allow. Sign-in, sign-out, and silent token refresh now go straight to full-page redirect on any mobile device, not just installed PWAs, sidestepping the nested-popup failure entirely.
 - **Diver Profile card redesigned.** The mismatched PADI/certification-level pills (which read as lopsided since one badge is much wider than the other) are gone, replaced by a single plain-text credential line under the diver's name. The card now shows every "Lifetime Totals" stat from the Profile page (Countries, Dive Sites, Total Dives, Bottom Time, Cumulative Depth, Marine Life, Max Depth, Max Bottom Time) plus Avg Depth and Avg SAC for the last 20 dives, each with the same colorful icon accents used on the Dashboard widgets.
@@ -81,7 +86,7 @@
 - **AquaDex: new Jellyfish category**, with a recolored line-art icon and 20 real species (Moon Jellyfish, Lion's Mane, Box Jellyfish, Portuguese Man o' War, Immortal Jellyfish, and more) spanning Common to Ultra-Rare — filterable, searchable, and selectable from the Log a Dive marine life checklist like every other category.
 - Service worker cache bumped (`abyss-shell-v34` → `abyss-shell-v35`) to ship all of the above.
 
-## 260724-v34
+## 260813-v34
 
 - **UDDF export overhauled** — previously only a handful of fields (dates, depths, temps, pressure, buddy/country stuffed into notes) made it into the exported file. Now every piece of information the app captures for a dive is exported:
   - Dive site name and exact GPS pin now export as a proper `<divesite><site>` catalog entry with `<geography>`, cross-referenced from each dive via a spec-correct `<link ref="...">` (deduplicated — dives at the same site share one entry).
@@ -91,7 +96,7 @@
   - Fixed the tank pressure unit bug found alongside this: pressures are now correctly written in Pascal (UDDF's spec unit) instead of bar, and tank data now lives in its own `<tankdata>` block rather than incorrectly nested inside `<informationafterdive>`.
 - Service worker cache bumped (`abyss-shell-v33` → `abyss-shell-v34`) to ship the above.
 
-## 260724-v33
+## 260813-v33
 
 - **UDDF import — GPS pin actually fixed**: the previous fix addressed a real but secondary map-sizing issue; the actual root cause was that the site cross-reference inside a dive is `<link ref="...">` per the UDDF spec, not `<site ref="...">` as the parser assumed, so a dive site's coordinates (and, for spec-compliant files, its name) were never being looked up. Both `<link>` (spec-correct) and `<site ref="...">` (a small number of non-standard exporters) are now checked.
 - **CSV export defaults now match PDF export**: the field-selection modal's pre-checked fields for CSV export are aligned with PDF export's defaults (e.g. Air/Surface Temp, Weather, Additional Gear, Gas % breakdown, Dive Buddy, Dive Center, and Notes now start unchecked in both, matching what PDF already used).
@@ -99,7 +104,7 @@
 - **Cancel button** on Log a Dive and Edit Dive now returns to the Logbook instead of the Dashboard, matching where Save already goes.
 - Service worker cache bumped (`abyss-shell-v32` → `abyss-shell-v33`) to ship all of the above.
 
-## 260724-v32
+## 260812-v32
 
 - **AquaDex**: added a search box + button that filters species by common or scientific name, on top of the existing category and rarity filters.
 - **UDDF import — tank pressure fixed**: start/end pressure is now correctly converted from Pascal (the UDDF spec's unit) to bar when prefilling the form; previously the raw Pascal value was plugged in unconverted.
@@ -108,7 +113,7 @@
 - **UDDF import — gas mix prefilled**: if the file ties a dive to a gas blend via `<gasdefinitions>`, the Gas Mixture dropdown and O₂/N₂/He fields are now prefilled (Air/EANX32/36/40 when it matches a known blend, otherwise Enriched or Trimix with the file's exact percentages).
 - Service worker cache bumped (`abyss-shell-v31` → `abyss-shell-v32`) to ship all of the above.
 
-## 260724-v31
+## 260812-v31
 
 - **Dashboard**: added two new widgets, Unique Dive Sites and Total Cumulative Depth, and reordered the row to Countries → Unique Dive Sites → Total Dives → Total Bottom Time → Cumulative Depth → Marine Life.
 - **Profile "Lifetime Totals"** now mirrors every dashboard widget (Countries, Unique Dive Sites, Total Dives, Total Bottom Time, Cumulative Depth, Marine Life), alongside the existing Maximum Depth and Max Bottom Time stats, all driven from one shared analytics source.
@@ -118,12 +123,12 @@
 - **UDDF import improvements**: dive site GPS coordinates from the file now automatically pre-pin the location on the map; dive site name resolution was hardened with fallbacks (dive name, site text content) for files that don't reference a full `<site>` catalog entry; imported average and max depth now round to the nearest 0.1m; confirmed average depth already prefers the file's own value over a manual calculation when both are available.
 - Service worker cache bumped (`abyss-shell-v30` → `abyss-shell-v31`) to ship all of the above.
 
-## 260724-v30
+## 260727-v30
 
 - **Fixed modal scrolling.** Popups like "Update Diver Info" and "Full Log Details" could scroll the page behind them instead of scrolling their own content. Fixed two causes: the Update Diver Info popup (and a couple of others) had no height cap or internal scrollbar at all, and no popup locked background scroll while open. Every modal now caps its height with its own scrollbar, and the page behind is locked from scrolling for as long as any popup is open.
 - Service worker cache bumped (`abyss-shell-v29` → `abyss-shell-v30`) to ship the above.
 
-## 260724-v29
+## 260727-v29
 
 - **Mobile bottom nav resized**: icons reduced 20% and labels reduced 50% from the previous enlargement, while keeping the taller tap-target bar itself unchanged.
 - **Log a Dive**: added a "Clear All" button beside "Import UDDF" that resets every field in the form, including any depth/time profile imported from a UDDF file (with a confirmation prompt first).
@@ -133,7 +138,7 @@
 - Verified: Log a Dive and Edit Dive already redirect to the Logbook after saving (from the earlier v25 change) — no regression found.
 - Service worker cache bumped (`abyss-shell-v28` → `abyss-shell-v29`) to ship all of the above.
 
-## 260724-v28
+## 260725-v28
 
 - **Dive Log Card**: now shows Certification Organisation and Certificate Level badges under the diver name, matching the credential info already on the Share Diver Profile card.
 - **Logbook**: removed the "View Full Log Details" button from the expanded dive card (the full details view is still reachable via the eye icon on the collapsed card header).
@@ -143,13 +148,13 @@
 - **App icon replaced app-wide**: the favicon, PWA home-screen icons, and every in-app brand mark (header logo, Share Diver Profile card, Dive Log Card) now use the new wave icon design, so the browser tab icon and the in-app logo are identical everywhere.
 - Service worker cache bumped (`abyss-shell-v27` → `abyss-shell-v28`) to ship all of the above.
 
-## 260724-v27
+## 260725-v27
 
 - **Dive Log Card redesigned**: the depth-over-time graph is now the exact same Chart.js chart used in the Logbook's expanded preview (depth increasing downward, gridlines, axis titles), with a depth value labeled every 2m. Card enlarged so nothing overlaps, the "ABYSS" wordmark was dropped from the header (logo mark only), extra breathing room was added between the site/date line and the graph, and a "Generated by Abyss — Personal Dive Log" footer was added to match the Share Diver Profile card.
 - **Share Diver Profile card refreshed**: header now reads "Diver Profile" only (dropped the separate "ABYSS" wordmark) in larger text; avatar, name, and the PADI/certification-level badges are now centered with more breathing room at the bottom instead of being cramped against the edge. Fonts are now consistent between this card and the Dive Log Card (Inter for names, JetBrains Mono for labels/stats/footer on both).
 - Service worker cache bumped (`abyss-shell-v26` → `abyss-shell-v27`) to ship the above.
 
-## 260724-v26
+## 260725-v26
 
 - **Fixed missing favicon.** The app had no `<link rel="icon">` at all, so Chrome/browser tabs fell back to a generic default icon instead of the Abyss brand mark — even though the header and PWA home-screen icons were already consistent with each other. Added explicit `rel="icon"` links pointing at the same icon files.
 - **Log a Dive now returns to the Logbook after saving** (both a brand-new entry and an edit to an existing one), instead of the Dashboard.
@@ -185,7 +190,7 @@
 - **Log a Dive wording**: Dive Photos section helper text shortened from "Add photos from this dive. They're only viewable via the "View Dive Photos" button in the Logbook — never shown inline in previews." to "Add photos from this dive. They're viewable via the "View Dive Photos" in Logbook".
 - Service worker cache bumped (`abyss-shell-v23` → `abyss-shell-v24`) to ship all of the above.
 
-## 260723-v23
+## 260724-v23
 
 - **PDF export is now configurable.** "Export to PDF" opens an options dialog instead of exporting immediately:
   - **Certifications to include** — every entry in your certification history, each showing organization, level, and number, as independent checkboxes. None are forced; by default only your most recent certification (by date) is checked. Each one you select gets its own line under your name on the exported page.
@@ -195,7 +200,7 @@
   - Removed the "marine life sightings excluded" note from the exported page's subtitle line.
 - Service worker cache bumped (`abyss-shell-v22` → `abyss-shell-v23`) to ship the above.
 
-## 260723-v22
+## 260724-v22
 
 - **Critter sighting photos and dive photos no longer get embedded as base64 inside the synced dive_data.json.** Each photo is now uploaded as its own file to OneDrive (`/Apps/AbyssDiveLog/photos/<id>.jpg` — the same path the diver avatar already used), and the dive/critter record just holds a small id reference instead. This keeps the main sync snapshot lightweight regardless of how many photos are attached, and avoids re-uploading every photo on every sync.
   - New local IndexedDB `photos` store acts as a cache of actual image bytes; a fresh in-memory cache backs that for the current page load. Displaying a photo not yet cached locally (e.g. one added on another device) transparently fetches it from OneDrive and caches it going forward.
