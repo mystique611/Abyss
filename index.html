@@ -2026,15 +2026,15 @@
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
             <div>
-                <h3 class="text-lg font-extrabold text-slate-900 dark:text-white">Dive Log Card</h3>
-                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">A shareable snapshot of this dive</p>
+                <h3 class="text-lg font-extrabold text-slate-900 dark:text-white">Dive Diary</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">A shareable one-page summary — stats, photos, and marine life sighted</p>
             </div>
 
             <div id="dive-log-card-preview-container" class="rounded-2xl overflow-hidden border border-slate-300 dark:border-ocean-800/50 flex items-center justify-center bg-slate-50 dark:bg-ocean-950/50 min-h-[220px]">
                 <p class="text-xs text-slate-600 dark:text-slate-400 p-6 text-center" id="dive-log-card-preview-loading">
-                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Rendering your dive log card&hellip;
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Rendering your dive diary&hellip;
                 </p>
-                <img id="dive-log-card-preview-img" class="w-full hidden" src="" alt="Dive log card share preview">
+                <img id="dive-log-card-preview-img" class="w-full hidden" src="" alt="Dive diary preview">
             </div>
 
             <div class="flex gap-3">
@@ -3726,7 +3726,52 @@
             return cfg;
         }
 
-        function buildDiveLogCardMarkup(diveId) {
+        // Resolves every photo a Dive Diary page needs (dive photos + one
+        // representative photo per distinct marine species sighted) into
+        // actual small-thumbnail data URLs, sequentially — same pattern as
+        // openDivePhotosModal/openMarineSightingsModal — before the diary
+        // markup is built, since building the HTML string needs real image
+        // data up front rather than photoId references.
+        //
+        // Sightings are deduped to one entry per species (matching two
+        // sightings of the same catalog species, or two custom-named
+        // "Others"-style sightings with the same typed name, into a single
+        // card) rather than one per individual sighting.
+        async function resolveDiveDiaryPhotos(dive) {
+            const photos = [];
+            if (dive.photos && dive.photos.length) {
+                for (const p of dive.photos.map(normalizeDivePhotoEntry)) {
+                    const raw = await getPhotoDataUrl(p.id);
+                    const dataUrl = raw ? await resizeImageDataUrl(raw, 500, 0.75) : null;
+                    photos.push({ caption: p.caption, dataUrl });
+                }
+            }
+
+            const sightings = [];
+            if (dive.critters && dive.critters.length) {
+                const seen = new Map();
+                dive.critters.forEach(c => {
+                    const template = CRITTER_DATABASE[c.id];
+                    const name = c.customName || (template ? template.name : 'Unknown species');
+                    const key = c.customName ? `custom:${c.customName.trim().toLowerCase()}` : c.id;
+                    const existing = seen.get(key);
+                    if (!existing) {
+                        seen.set(key, { name, photoId: c.photoId || null });
+                    } else if (!existing.photoId && c.photoId) {
+                        existing.photoId = c.photoId;
+                    }
+                });
+                for (const { name, photoId } of seen.values()) {
+                    const raw = photoId ? await getPhotoDataUrl(photoId) : null;
+                    const dataUrl = raw ? await resizeImageDataUrl(raw, 300, 0.75) : null;
+                    sightings.push({ name, dataUrl });
+                }
+            }
+
+            return { photos, sightings };
+        }
+
+        function buildDiveLogCardMarkup(diveId, diaryData) {
             const dive = state.dives.find(d => d.id === diveId);
             if (!dive) return '';
             const profile = state.diverProfile || {};
@@ -3734,6 +3779,8 @@
             const org = profile.org || 'PADI';
             const level = profile.level || 'Open Water Diver';
             const avatar = profile.avatar || null;
+            const photos = (diaryData && diaryData.photos) || [];
+            const sightings = (diaryData && diaryData.sightings) || [];
             // See the identical comment in buildShareCardMarkup() — html2canvas
             // doesn't reliably honor object-fit:cover on <img>, so this uses
             // a background-image div instead to avoid squeezing/stretching
@@ -3748,6 +3795,30 @@
                 : `<div style="height:190px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7fb8d6;margin-bottom:4px;">No depth profile recorded</div>`;
 
             const fmtStat = (val, suffix) => (val !== null && val !== undefined && val !== '' && !isNaN(val)) ? `${val}${suffix}` : '--';
+
+            const escapeHtml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+            const photosSectionHtml = photos.length ? `
+                    <p style="font-size:10px;letter-spacing:0.06em;color:#7fb8d6;margin:18px 0 8px;font-family:'JetBrains Mono',monospace;border-top:1px solid #163b52;padding-top:14px;">DIVE PHOTOS</p>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                        ${photos.map(p => `
+                            <div>
+                                <div style="width:100%;aspect-ratio:1;border-radius:4px;background:#123449;${p.dataUrl ? `background-image:url('${p.dataUrl}');background-size:cover;background-position:center;` : ''}"></div>
+                                ${p.caption ? `<p style="font-size:9px;color:#7fb8d6;margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.caption)}</p>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>` : '';
+
+            const sightingsSectionHtml = sightings.length ? `
+                    <p style="font-size:10px;letter-spacing:0.06em;color:#7fb8d6;margin:18px 0 8px;font-family:'JetBrains Mono',monospace;border-top:1px solid #163b52;padding-top:14px;">MARINE LIFE SIGHTED</p>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                        ${sightings.map(s => `
+                            <div>
+                                <div style="width:100%;aspect-ratio:1;border-radius:50%;background:#123449;${s.dataUrl ? `background-image:url('${s.dataUrl}');background-size:cover;background-position:center;` : ''}"></div>
+                                <p style="font-size:9px;text-align:center;margin:4px 0 0;color:#c7e1f0;">${escapeHtml(s.name)}</p>
+                            </div>
+                        `).join('')}
+                    </div>` : '';
 
             return `
                 <div id="dive-log-card-inner" style="width:380px;background:#0a1f30;font-family:'Inter',sans-serif;padding:22px;color:#e6f1fb;">
@@ -3774,7 +3845,9 @@
                         <div><p style="font-size:10px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">AVG DEPTH</p><p style="font-size:16px;font-weight:700;margin:3px 0 0;">${fmtStat(dive.avgDepth, 'm')}</p></div>
                         <div><p style="font-size:10px;color:#7fb8d6;margin:0;letter-spacing:0.04em;">MAX DEPTH</p><p style="font-size:16px;font-weight:700;margin:3px 0 0;">${fmtStat(dive.maxDepth, 'm')}</p></div>
                     </div>
-                    <div style="margin-top:16px;text-align:center;font-size:11px;color:#475569;font-family:'JetBrains Mono',monospace;">Generated by Abyss &mdash; Personal Dive Log</div>
+                    ${photosSectionHtml}
+                    ${sightingsSectionHtml}
+                    <div style="margin-top:18px;text-align:center;font-size:11px;color:#475569;font-family:'JetBrains Mono',monospace;">Generated by Abyss &mdash; Personal Dive Log</div>
                 </div>`;
         }
 
@@ -3810,11 +3883,24 @@
                 return;
             }
 
+            const dive = state.dives.find(d => d.id === diveId);
+            if (!dive) {
+                showToast("Couldn't find that dive to render a diary page for.", "error");
+                closeDiveLogCardModal();
+                return;
+            }
+
+            // Resolve every dive/sighting photo to an actual thumbnail data
+            // URL before building the markup — the diary page now includes
+            // all of them, so this can't be deferred like the single avatar
+            // background-image below.
+            const diaryData = await resolveDiveDiaryPhotos(dive);
+
             const host = document.getElementById('dive-log-card-render-host');
-            host.innerHTML = buildDiveLogCardMarkup(diveId);
+            host.innerHTML = buildDiveLogCardMarkup(diveId, diaryData);
             const cardEl = document.getElementById('dive-log-card-inner');
             if (!cardEl) {
-                showToast("Couldn't find that dive to render a card for.", "error");
+                showToast("Couldn't find that dive to render a diary page for.", "error");
                 closeDiveLogCardModal();
                 return;
             }
@@ -3822,8 +3908,7 @@
             // Instantiate the depth graph as a real Chart.js chart (same style as
             // the Logbook's expanded preview) on the off-screen canvas before
             // html2canvas captures it.
-            const dive = state.dives.find(d => d.id === diveId);
-            const profilePts = dive ? ((dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : synthDepthProfile(dive.maxDepth, dive.bottomTime)) : null;
+            const profilePts = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : synthDepthProfile(dive.maxDepth, dive.bottomTime);
             const chartCanvasEl = document.getElementById('dive-log-card-chart-canvas');
             if (diveLogCardChartInstance) {
                 diveLogCardChartInstance.destroy();
@@ -3841,7 +3926,7 @@
                 const canvas = await html2canvas(cardEl, { backgroundColor: '#0a1f30', scale: 2, useCORS: true });
                 canvas.toBlob(blob => {
                     if (!blob) {
-                        showToast("Couldn't render the dive log card image. Please try again.", "error");
+                        showToast("Couldn't render the dive diary image. Please try again.", "error");
                         return;
                     }
                     diveLogCardBlob = blob;
@@ -3856,8 +3941,8 @@
                     document.getElementById('dive-log-card-download-btn').disabled = false;
                 }, 'image/png');
             } catch (err) {
-                console.error('Failed to render dive log card:', err);
-                showToast("Couldn't render the dive log card image. Please try again.", "error");
+                console.error('Failed to render dive diary:', err);
+                showToast("Couldn't render the dive diary image. Please try again.", "error");
                 closeDiveLogCardModal();
             } finally {
                 if (diveLogCardChartInstance) {
@@ -3870,7 +3955,7 @@
         function diveLogCardFilename() {
             const dive = state.dives.find(d => d.id === currentDiveLogCardDiveId);
             const siteSlug = dive ? sanitizeFilenamePart(dive.site || 'dive') : 'dive';
-            return `abyss-dive-log-card-${siteSlug}.png`;
+            return `abyss-dive-diary-${siteSlug}.png`;
         }
 
         async function shareDiveLogCardNow() {
@@ -3881,7 +3966,7 @@
                 try {
                     const file = new File([diveLogCardBlob], filename, { type: 'image/png' });
                     if (navigator.canShare({ files: [file] })) {
-                        await navigator.share({ files: [file], title: 'My Abyss Dive Log Card' });
+                        await navigator.share({ files: [file], title: 'My Abyss Dive Diary' });
                         return;
                     }
                 } catch (err) {
@@ -8119,8 +8204,8 @@
                                     <span>View Dive Photos</span>
                                 </button>` : ''}
                                 <button onclick="openDiveLogCardModal('${dive.id}')" class="px-4 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-semibold flex items-center space-x-2 transition-colors">
-                                    <i class="fa-solid fa-id-badge"></i>
-                                    <span>Create Dive Log Card</span>
+                                    <i class="fa-solid fa-book-open"></i>
+                                    <span>Create Dive Diary</span>
                                 </button>
                             </div>
                         </div>

@@ -1,5 +1,10 @@
 # Changelog
 
+## 260724-v42
+
+- **"Dive Log Card" is now a full "Dive Diary" — a one-page shareable image with everything about the dive, not just the stats snapshot.** Same button in the Logbook, same Share/Download flow, but the generated image now also includes: every dive photo (with captions) in a grid, and every species of marine life sighted (deduped — logging the same species twice only shows it once) with a thumbnail and name. The page grows to fit however many photos/sightings a dive has rather than cropping anything.
+- Service worker cache bumped (`abyss-shell-v41` → `abyss-shell-v42`) to ship the above.
+
 ## 260724-v41
 
 - **Found the actual remaining cause of the iPhone-only enlarge-photo crash.** v40's fix still fully decoded a photo at its original resolution before shrinking it — same underlying problem as before, just via a slightly different API. The real issue: file size doesn't tell you how many actual pixels a photo has. Modern iPhones compress even a 48MP photo down to just 1-2MB, so a small-looking file can still need a ~190MB decode buffer, which is enough to make iOS silently kill and reload the tab. This is also why it was always the exact same photo crashing in both Marine Sightings and AquaDex — they were decoding the identical stored file. The fix now asks the browser to decode a photo directly at a small target size (the same trick native iOS apps use to avoid this exact crash), so the full-resolution buffer is never created in memory at all, regardless of the original's actual pixel count. Falls back to the previous approach on browsers that don't support this.
