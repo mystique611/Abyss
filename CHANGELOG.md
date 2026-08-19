@@ -1,5 +1,10 @@
 # Changelog
 
+## 260724-v44
+
+- **Fixed Dive Diary photos still rendering narrow/cropped wrong.** The previous fix addressed the collapsed caption issue but the photo/thumbnail images themselves were still being sized via CSS `background-size:cover`, which the image renderer (html2canvas) also doesn't handle reliably — it was measuring against the wrong box in some cases and squeezing photos into a thin sliver. Photos are now pre-cropped to an exact square in the image data itself before being placed on the page, then rendered as plain fixed-size images with no CSS cropping trick left for the renderer to get wrong.
+- Service worker cache bumped (`abyss-shell-v43` → `abyss-shell-v44`) to ship the above.
+
 ## 260724-v43
 
 - **Fixed dive photo captions being blocked/hidden in the Dive Diary.** The photo and marine-life grid cells used CSS `aspect-ratio` to size themselves, which the image renderer (html2canvas) doesn't support — it was collapsing those cells to zero height, hiding captions behind the photo above. Cells now use fixed pixel heights instead.

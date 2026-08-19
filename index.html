@@ -2336,7 +2336,7 @@
         // Matches the versioned snapshot folder name this build shipped in
         // (see CHANGELOG.md) — bump this alongside CACHE_VERSION in
         // service-worker.js whenever a new version is shipped.
-        const APP_VERSION = '260724-v43';
+        const APP_VERSION = '260724-v44';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -3752,10 +3752,11 @@
             if (dive.photos && dive.photos.length) {
                 for (const p of dive.photos.map(normalizeDivePhotoEntry)) {
                     const raw = await getPhotoDataUrl(p.id);
-                    // Displayed at ~108px in the card but exported at 2x
-                    // scale (~216px actual pixels) — sized well above that
-                    // so photos stay crisp rather than upscaled/blurry.
-                    const dataUrl = raw ? await resizeImageDataUrl(raw, 900, 0.88) : null;
+                    // Pre-cropped to an exact square (see comment on
+                    // resizeImageDataUrlSquareCrop) — displayed at 108px in
+                    // the card but exported at 2x scale, so 260px leaves
+                    // headroom to stay crisp.
+                    const dataUrl = raw ? await resizeImageDataUrlSquareCrop(raw, 260, 0.88) : null;
                     photos.push({ caption: p.caption, dataUrl });
                 }
             }
@@ -3776,7 +3777,9 @@
                 });
                 for (const { name, photoId } of seen.values()) {
                     const raw = photoId ? await getPhotoDataUrl(photoId) : null;
-                    const dataUrl = raw ? await resizeImageDataUrl(raw, 700, 0.88) : null;
+                    // Displayed at 78px in the card; 190px leaves headroom
+                    // at 2x export scale.
+                    const dataUrl = raw ? await resizeImageDataUrlSquareCrop(raw, 190, 0.88) : null;
                     sightings.push({ name, dataUrl });
                 }
             }
@@ -3819,13 +3822,21 @@
             const PHOTO_CELL_SIZE = 108;   // (380 - 44 - 2*6) / 3, 3-column grid
             const SIGHTING_CELL_SIZE = 78; // (380 - 44 - 3*8) / 4, 4-column grid
 
+            // Photos/thumbnails are pre-cropped to an exact square by
+            // resizeImageDataUrlSquareCrop() before they ever get here, so
+            // they're rendered as plain <img> tags at their exact fixed
+            // pixel size — no CSS background-size:cover or object-fit:cover
+            // involved, since html2canvas renders both of those
+            // unreliably (was producing narrow/wrongly-cropped photos).
             const photosSectionHtml = photos.length ? `
                     <p style="font-size:10px;letter-spacing:0.06em;color:#7fb8d6;margin:18px 0 8px;font-family:'JetBrains Mono',monospace;border-top:1px solid #163b52;padding-top:14px;">DIVE PHOTOS</p>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
                         ${photos.map(p => `
                             <div>
-                                <div style="width:100%;height:${PHOTO_CELL_SIZE}px;border-radius:4px;background:#123449;${p.dataUrl ? `background-image:url('${p.dataUrl}');background-size:cover;background-position:center;` : ''}"></div>
-                                ${p.caption ? `<p style="font-size:9px;color:#7fb8d6;margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.caption)}</p>` : ''}
+                                ${p.dataUrl
+                                    ? `<img src="${p.dataUrl}" width="${PHOTO_CELL_SIZE}" height="${PHOTO_CELL_SIZE}" style="display:block;width:${PHOTO_CELL_SIZE}px;height:${PHOTO_CELL_SIZE}px;border-radius:4px;" />`
+                                    : `<div style="width:${PHOTO_CELL_SIZE}px;height:${PHOTO_CELL_SIZE}px;border-radius:4px;background:#123449;"></div>`}
+                                ${p.caption ? `<p style="font-size:9px;color:#7fb8d6;margin:3px 0 0;width:${PHOTO_CELL_SIZE}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.caption)}</p>` : ''}
                             </div>
                         `).join('')}
                     </div>` : '';
@@ -3842,7 +3853,7 @@
                     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;${sightingsWithoutPhoto.length ? 'margin-bottom:10px;' : ''}">
                         ${sightingsWithPhoto.map(s => `
                             <div>
-                                <div style="width:100%;height:${SIGHTING_CELL_SIZE}px;border-radius:50%;background-image:url('${s.dataUrl}');background-size:cover;background-position:center;"></div>
+                                <img src="${s.dataUrl}" width="${SIGHTING_CELL_SIZE}" height="${SIGHTING_CELL_SIZE}" style="display:block;width:${SIGHTING_CELL_SIZE}px;height:${SIGHTING_CELL_SIZE}px;border-radius:50%;" />
                                 <p style="font-size:9px;text-align:center;margin:4px 0 0;color:#c7e1f0;">${escapeHtml(s.name)}</p>
                             </div>
                         `).join('')}
@@ -6405,6 +6416,83 @@
                 };
                 // Fall back to the original rather than lose the photo if
                 // the browser can't decode it into an <img> for some reason.
+                img.onerror = () => resolve(dataUrl);
+                img.src = dataUrl;
+            });
+        }
+
+        // Produces a perfectly square, pre-cropped (center-crop) thumbnail
+        // data URL at exactly size x size pixels. Used anywhere a photo
+        // needs to fill a fixed square/circle slot (Dive Diary photo grid
+        // and marine-life thumbnails) — deliberately NOT done via CSS
+        // background-size:cover or object-fit:cover, both of which
+        // html2canvas renders unreliably (cover was measuring against the
+        // wrong box in some cases, producing narrow/cropped-wrong photos).
+        // Doing the crop into the image data itself means html2canvas just
+        // has to paint an already-square image with no fitting logic of
+        // its own to get wrong.
+        async function resizeImageDataUrlSquareCrop(dataUrl, size = 220, quality = 0.85) {
+            if (typeof createImageBitmap === 'function') {
+                try {
+                    const blob = await (await fetch(dataUrl)).blob();
+
+                    const probe = await createImageBitmap(blob, { resizeWidth: 64 });
+                    const ratio = probe.height / probe.width;
+                    probe.close();
+
+                    // Decode so the SHORTER edge is a bit larger than the
+                    // final square, giving the center-crop enough source
+                    // pixels to stay sharp — still a scaled decode, not the
+                    // full original resolution.
+                    const shortEdge = Math.round(size * 1.4);
+                    let decodeW, decodeH;
+                    if (ratio >= 1) {
+                        decodeW = shortEdge;
+                        decodeH = Math.round(shortEdge * ratio);
+                    } else {
+                        decodeH = shortEdge;
+                        decodeW = Math.round(shortEdge / ratio);
+                    }
+
+                    const bitmap = await createImageBitmap(blob, {
+                        resizeWidth: decodeW,
+                        resizeHeight: decodeH,
+                        resizeQuality: 'high'
+                    });
+                    try {
+                        const side = Math.min(bitmap.width, bitmap.height);
+                        const sx = Math.round((bitmap.width - side) / 2);
+                        const sy = Math.round((bitmap.height - side) / 2);
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = size;
+                        canvas.height = size;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+                        return canvas.toDataURL('image/jpeg', quality);
+                    } finally {
+                        bitmap.close();
+                    }
+                } catch (e) {
+                    // Fall through to the <img>-based approach below.
+                }
+            }
+
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const side = Math.min(img.naturalWidth, img.naturalHeight);
+                    const sx = Math.round((img.naturalWidth - side) / 2);
+                    const sy = Math.round((img.naturalHeight - side) / 2);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                    img.src = '';
+                };
                 img.onerror = () => resolve(dataUrl);
                 img.src = dataUrl;
             });
