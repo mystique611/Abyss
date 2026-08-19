@@ -1,5 +1,11 @@
 # Changelog
 
+## 260819-v45
+
+- **Found the actual cause of the still-cropped Dive Diary photo: EXIF rotation was being ignored during decode.** Phones often store a photo's pixel data in one orientation plus a rotation tag telling viewers how to display it; `<img>` tags respect that tag automatically, but `createImageBitmap()` — used by the photo-resizing code — ignores it unless explicitly told to. That mismatch meant a rotated photo's dimensions and crop were computed against its raw, un-rotated pixel data, which is what was squashing it. Every decode now explicitly requests `imageOrientation: 'from-image'` to match how photos actually display everywhere else.
+- **Version numbering now uses the real date it was shipped.** The app version shown on the Dashboard and the versioned snapshot folder name had been reusing a stale, fixed date prefix (`260724`) for every version regardless of when it actually shipped. From this version on, the date prefix reflects the actual ship date (format `YYMMDD-vNN`) — this version is `260819-v45`. Earlier versions weren't relabeled, since their original folder names are historical record.
+- Service worker cache bumped (`abyss-shell-v44` → `abyss-shell-v45`) to ship the above.
+
 ## 260724-v44
 
 - **Fixed Dive Diary photos still rendering narrow/cropped wrong.** The previous fix addressed the collapsed caption issue but the photo/thumbnail images themselves were still being sized via CSS `background-size:cover`, which the image renderer (html2canvas) also doesn't handle reliably — it was measuring against the wrong box in some cases and squeezing photos into a thin sliver. Photos are now pre-cropped to an exact square in the image data itself before being placed on the page, then rendered as plain fixed-size images with no CSS cropping trick left for the renderer to get wrong.

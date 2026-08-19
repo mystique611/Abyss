@@ -2335,8 +2335,12 @@
     <script>
         // Matches the versioned snapshot folder name this build shipped in
         // (see CHANGELOG.md) — bump this alongside CACHE_VERSION in
-        // service-worker.js whenever a new version is shipped.
-        const APP_VERSION = '260724-v44';
+        // service-worker.js whenever a new version is shipped. Format is
+        // YYMMDD-vNN, where YYMMDD is the actual date that snapshot was
+        // created (not a fixed date — earlier versions in this project
+        // mistakenly reused a static "260724" prefix for every version;
+        // going forward this reflects the real ship date).
+        const APP_VERSION = '260819-v45';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -6357,7 +6361,15 @@
                 try {
                     const blob = await (await fetch(dataUrl)).blob();
 
-                    const probe = await createImageBitmap(blob, { resizeWidth: 64 });
+                    // imageOrientation:'from-image' matters here — without
+                    // it, createImageBitmap ignores EXIF rotation (unlike
+                    // <img>, which auto-rotates by default), so a phone
+                    // photo taken in portrait but stored with a rotate-90
+                    // EXIF tag would get measured/cropped using its raw,
+                    // unrotated pixel dimensions — producing a squashed or
+                    // wrongly-cropped result that looked fine in terms of
+                    // "no errors" but was visibly wrong.
+                    const probe = await createImageBitmap(blob, { resizeWidth: 64, imageOrientation: 'from-image' });
                     const ratio = probe.height / probe.width;
                     probe.close();
 
@@ -6371,7 +6383,8 @@
                     const bitmap = await createImageBitmap(blob, {
                         resizeWidth: targetW,
                         resizeHeight: targetH,
-                        resizeQuality: 'high'
+                        resizeQuality: 'high',
+                        imageOrientation: 'from-image'
                     });
                     try {
                         const canvas = document.createElement('canvas');
@@ -6436,7 +6449,11 @@
                 try {
                     const blob = await (await fetch(dataUrl)).blob();
 
-                    const probe = await createImageBitmap(blob, { resizeWidth: 64 });
+                    // See the identical imageOrientation comment in
+                    // resizeImageDataUrl() above — without it, EXIF-rotated
+                    // photos get measured/cropped using their raw,
+                    // unrotated pixel dimensions.
+                    const probe = await createImageBitmap(blob, { resizeWidth: 64, imageOrientation: 'from-image' });
                     const ratio = probe.height / probe.width;
                     probe.close();
 
@@ -6457,7 +6474,8 @@
                     const bitmap = await createImageBitmap(blob, {
                         resizeWidth: decodeW,
                         resizeHeight: decodeH,
-                        resizeQuality: 'high'
+                        resizeQuality: 'high',
+                        imageOrientation: 'from-image'
                     });
                     try {
                         const side = Math.min(bitmap.width, bitmap.height);
