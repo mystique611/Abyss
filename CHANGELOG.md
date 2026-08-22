@@ -1,5 +1,10 @@
 # Changelog
 
+## 260822-v51
+
+- **Certifications and Specialty Certifications now support an optional Certification Card Photo.** Add or edit either kind of certification and you can attach a photo of the actual e-card or physical card — useful for keeping the real card on hand alongside the typed-in details. Entries with a card photo attached show a "View Certification Card" button in their history list. Uses the same photo storage/sync pipeline as dive and avatar photos, so it's cached locally and synced to OneDrive automatically.
+- Service worker cache bumped (`abyss-shell-v50` → `abyss-shell-v51`) to ship the above.
+
 ## 260822-v50
 
 - **Export to UDDF now lets you choose which dives to include.** Tapping "Export to UDDF" opens a checklist of your logbook (every dive checked by default) instead of always exporting everything — handy for sharing just one trip's dives rather than your whole history.

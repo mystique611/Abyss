@@ -1859,6 +1859,20 @@
                             <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Instructor Certification Number</label>
                             <input type="text" id="cert-instructor-certno" placeholder="e.g., INS-55213" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                         </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Card Photo</label>
+                            <div class="flex items-center space-x-3 mt-1">
+                                <label class="cursor-pointer bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 font-semibold py-2 px-3 rounded-xl border border-cyan-500/20 flex items-center space-x-2 text-xs transition-colors">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <span>Upload Card Photo</span>
+                                    <input type="file" id="cert-card-photo-file" accept="image/*" onchange="handleCertCardPhotoUpload(this)" class="hidden">
+                                </label>
+                                <div id="cert-card-photo-preview-container" class="hidden flex items-center space-x-2 bg-slate-100 dark:bg-ocean-900/40 px-2 py-1 rounded-xl">
+                                    <img id="cert-card-photo-preview-img" class="w-10 h-8 rounded-lg object-cover" src="">
+                                    <button type="button" onclick="clearCertCardPhoto()" class="text-rose-400 hover:text-rose-300 text-xs"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1942,6 +1956,20 @@
                         <div>
                             <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Instructor Certification Number</label>
                             <input type="text" id="specialty-cert-instructor-certno" placeholder="e.g., INS-55213" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-indigo-400 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Certification Card Photo</label>
+                            <div class="flex items-center space-x-3 mt-1">
+                                <label class="cursor-pointer bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-semibold py-2 px-3 rounded-xl border border-indigo-500/20 flex items-center space-x-2 text-xs transition-colors">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <span>Upload Card Photo</span>
+                                    <input type="file" id="specialty-cert-card-photo-file" accept="image/*" onchange="handleSpecialtyCertCardPhotoUpload(this)" class="hidden">
+                                </label>
+                                <div id="specialty-cert-card-photo-preview-container" class="hidden flex items-center space-x-2 bg-slate-100 dark:bg-ocean-900/40 px-2 py-1 rounded-xl">
+                                    <img id="specialty-cert-card-photo-preview-img" class="w-10 h-8 rounded-lg object-cover" src="">
+                                    <button type="button" onclick="clearSpecialtyCertCardPhoto()" class="text-rose-400 hover:text-rose-300 text-xs"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2489,7 +2517,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '260822-v50';
+        const APP_VERSION = '260822-v51';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -7634,10 +7662,46 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
         // until Save is actually clicked.
         let pendingCertIsCurrent = false;
 
+        // Certification Card Photo (optional) — a photo of the physical or
+        // e-card itself. Reuses the exact same storeNewPhoto/getPhotoDataUrl
+        // pipeline already used for dive/critter photos, so it gets local
+        // caching + OneDrive sync for free without any new storage plumbing.
+        // tempCertCardPhoto holds a newly picked file's (resized) data URL
+        // until Save is clicked; tempCertCardPhotoRemoved tracks an explicit
+        // "remove the existing photo" action separately from "nothing
+        // changed", since those two need different save behavior on edit.
+        let tempCertCardPhoto = null;
+        let tempCertCardPhotoRemoved = false;
+
+        function handleCertCardPhotoUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                tempCertCardPhoto = await resizeImageDataUrl(e.target.result, 1400, 0.85);
+                tempCertCardPhotoRemoved = false;
+                document.getElementById('cert-card-photo-preview-img').src = tempCertCardPhoto;
+                document.getElementById('cert-card-photo-preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearCertCardPhoto() {
+            tempCertCardPhoto = null;
+            tempCertCardPhotoRemoved = true;
+            document.getElementById('cert-card-photo-file').value = '';
+            document.getElementById('cert-card-photo-preview-container').classList.add('hidden');
+        }
+
         function openCertificationModal(certId) {
             editingCertificationId = certId || null;
             const form = document.getElementById('certification-form');
             form.reset();
+
+            tempCertCardPhoto = null;
+            tempCertCardPhotoRemoved = false;
+            document.getElementById('cert-card-photo-file').value = '';
+            document.getElementById('cert-card-photo-preview-container').classList.add('hidden');
 
             if (editingCertificationId) {
                 const cert = (state.diverProfile.certifications || []).find(c => c.id === editingCertificationId);
@@ -7653,6 +7717,13 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 document.getElementById('cert-instructor-certno').value = cert.instructorCertNo || "";
                 document.getElementById('certification-delete-btn').classList.remove('hidden');
                 pendingCertIsCurrent = cert.isCurrent === true;
+                if (cert.cardPhotoId) {
+                    getPhotoDataUrl(cert.cardPhotoId).then(dataUrl => {
+                        if (!dataUrl) return;
+                        document.getElementById('cert-card-photo-preview-img').src = dataUrl;
+                        document.getElementById('cert-card-photo-preview-container').classList.remove('hidden');
+                    });
+                }
             } else {
                 document.getElementById('certification-modal-title').innerText = "Add Certification";
                 document.getElementById('cert-org').value = "PADI";
@@ -7720,7 +7791,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             }
         }
 
-        function saveCertification(event) {
+        async function saveCertification(event) {
             event.preventDefault();
 
             const certData = {
@@ -7736,6 +7807,17 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 instructorCertNo: document.getElementById('cert-instructor-certno').value.trim(),
                 isCurrent: pendingCertIsCurrent
             };
+
+            // Only touch cardPhotoId when something actually changed — a new
+            // upload replaces it, an explicit removal clears it, and leaving
+            // it out of certData entirely (the "nothing changed" case)
+            // preserves whatever the existing entry already had via the
+            // {...existing, ...certData} merge below.
+            if (tempCertCardPhoto) {
+                certData.cardPhotoId = await storeNewPhoto(tempCertCardPhoto);
+            } else if (tempCertCardPhotoRemoved) {
+                certData.cardPhotoId = null;
+            }
 
             if (!state.diverProfile.certifications) state.diverProfile.certifications = [];
 
@@ -7838,6 +7920,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                         ${extraLines.length ? `<div class="text-[11px] text-slate-600 dark:text-slate-500 mt-1.5 space-y-0.5">${extraLines.join('')}</div>` : ''}
                     </div>
                     <div class="flex items-center space-x-2 flex-shrink-0 self-end sm:self-center">
+                        ${cert.cardPhotoId ? `<button onclick="viewCertCardPhoto('${cert.cardPhotoId}', '${escapeForJsString((cert.org || '') + ' ' + (cert.level || ''))}')" class="p-2 rounded-lg bg-slate-100 dark:bg-ocean-900/20 hover:bg-slate-100 dark:hover:bg-ocean-900/40 text-cyan-400 text-xs transition-colors" title="View Certification Card">
+                            <i class="fa-solid fa-id-card"></i>
+                        </button>` : ''}
                         <button onclick="openCertificationModal('${cert.id}')" class="p-2 rounded-lg bg-slate-100 dark:bg-ocean-900/20 hover:bg-slate-100 dark:hover:bg-ocean-900/40 text-cyan-400 text-xs transition-colors" title="Edit Certification">
                             <i class="fa-solid fa-pen"></i>
                         </button>
@@ -7847,6 +7932,22 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                     </div>
                 </div>`;
             }).join('');
+        }
+
+        // Shared by both certification lists — resolves the photo (from
+        // local cache or OneDrive) and reuses the existing photo lightbox
+        // rather than building a separate viewer just for cert cards.
+        function escapeForJsString(str) {
+            return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
+        async function viewCertCardPhoto(photoId, caption) {
+            const dataUrl = await getPhotoDataUrl(photoId);
+            if (!dataUrl) {
+                showToast("Couldn't load that certification card photo.", "error");
+                return;
+            }
+            openPhotoLightbox(dataUrl, caption);
         }
 
         /* ---------------- Specialty certifications ---------------- */
@@ -7864,10 +7965,40 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             return cert.specialty || 'Unknown Specialty';
         }
 
+        // Certification Card Photo (optional) — same pattern as the main
+        // certification modal's version above (see the comment there).
+        let tempSpecialtyCertCardPhoto = null;
+        let tempSpecialtyCertCardPhotoRemoved = false;
+
+        function handleSpecialtyCertCardPhotoUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                tempSpecialtyCertCardPhoto = await resizeImageDataUrl(e.target.result, 1400, 0.85);
+                tempSpecialtyCertCardPhotoRemoved = false;
+                document.getElementById('specialty-cert-card-photo-preview-img').src = tempSpecialtyCertCardPhoto;
+                document.getElementById('specialty-cert-card-photo-preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearSpecialtyCertCardPhoto() {
+            tempSpecialtyCertCardPhoto = null;
+            tempSpecialtyCertCardPhotoRemoved = true;
+            document.getElementById('specialty-cert-card-photo-file').value = '';
+            document.getElementById('specialty-cert-card-photo-preview-container').classList.add('hidden');
+        }
+
         function openSpecialtyCertificationModal(specialtyCertId) {
             editingSpecialtyCertificationId = specialtyCertId || null;
             const form = document.getElementById('specialty-certification-form');
             form.reset();
+
+            tempSpecialtyCertCardPhoto = null;
+            tempSpecialtyCertCardPhotoRemoved = false;
+            document.getElementById('specialty-cert-card-photo-file').value = '';
+            document.getElementById('specialty-cert-card-photo-preview-container').classList.add('hidden');
 
             if (editingSpecialtyCertificationId) {
                 const cert = (state.diverProfile.specialtyCertifications || []).find(c => c.id === editingSpecialtyCertificationId);
@@ -7885,6 +8016,13 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 document.getElementById('specialty-cert-instructor-name').value = cert.instructorName || "";
                 document.getElementById('specialty-cert-instructor-certno').value = cert.instructorCertNo || "";
                 document.getElementById('specialty-certification-delete-btn').classList.remove('hidden');
+                if (cert.cardPhotoId) {
+                    getPhotoDataUrl(cert.cardPhotoId).then(dataUrl => {
+                        if (!dataUrl) return;
+                        document.getElementById('specialty-cert-card-photo-preview-img').src = dataUrl;
+                        document.getElementById('specialty-cert-card-photo-preview-container').classList.remove('hidden');
+                    });
+                }
             } else {
                 document.getElementById('specialty-certification-modal-title').innerText = "Add Specialty Certification";
                 document.getElementById('specialty-cert-org').value = "PADI";
@@ -7900,7 +8038,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             editingSpecialtyCertificationId = null;
         }
 
-        function saveSpecialtyCertification(event) {
+        async function saveSpecialtyCertification(event) {
             event.preventDefault();
 
             const specialtyValue = document.getElementById('specialty-cert-name').value;
@@ -7917,6 +8055,14 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 instructorName: document.getElementById('specialty-cert-instructor-name').value.trim(),
                 instructorCertNo: document.getElementById('specialty-cert-instructor-certno').value.trim()
             };
+
+            // See the equivalent comment in saveCertification() — same
+            // "only touch cardPhotoId when something actually changed" logic.
+            if (tempSpecialtyCertCardPhoto) {
+                certData.cardPhotoId = await storeNewPhoto(tempSpecialtyCertCardPhoto);
+            } else if (tempSpecialtyCertCardPhotoRemoved) {
+                certData.cardPhotoId = null;
+            }
 
             if (!state.diverProfile.specialtyCertifications) state.diverProfile.specialtyCertifications = [];
 
@@ -8002,6 +8148,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                         ${extraLines.length ? `<div class="text-[11px] text-slate-600 dark:text-slate-500 mt-1.5 space-y-0.5">${extraLines.join('')}</div>` : ''}
                     </div>
                     <div class="flex items-center space-x-2 flex-shrink-0 self-end sm:self-center">
+                        ${cert.cardPhotoId ? `<button onclick="viewCertCardPhoto('${cert.cardPhotoId}', '${escapeForJsString((cert.org || '') + ' ' + displayName)}')" class="p-2 rounded-lg bg-slate-100 dark:bg-ocean-900/20 hover:bg-slate-100 dark:hover:bg-ocean-900/40 text-indigo-400 text-xs transition-colors" title="View Certification Card">
+                            <i class="fa-solid fa-id-card"></i>
+                        </button>` : ''}
                         <button onclick="openSpecialtyCertificationModal('${cert.id}')" class="p-2 rounded-lg bg-slate-100 dark:bg-ocean-900/20 hover:bg-slate-100 dark:hover:bg-ocean-900/40 text-indigo-400 text-xs transition-colors" title="Edit Specialty Certification">
                             <i class="fa-solid fa-pen"></i>
                         </button>
