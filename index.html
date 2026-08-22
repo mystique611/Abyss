@@ -538,7 +538,7 @@
                             <i class="fa-solid fa-chevron-down text-[10px]"></i>
                         </button>
                         <div id="export-menu" class="hidden absolute right-0 mt-2 w-52 rounded-xl glass-panel border border-slate-300 dark:border-ocean-800/40 shadow-2xl z-30 overflow-hidden">
-                            <button type="button" onclick="exportDivesToUDDF(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors">
+                            <button type="button" onclick="openUddfExportSelectModal(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors">
                                 <i class="fa-solid fa-file-code text-cyan-400 w-4"></i>
                                 <span>Export to UDDF</span>
                             </button>
@@ -2366,6 +2366,39 @@
         </div>
     </div>
 
+    <!-- ==================== MODAL: UDDF EXPORT — CHOOSE DIVES ==================== -->
+    <div id="uddf-export-select-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="glass-panel w-full max-w-lg rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
+            <button onclick="closeUddfExportSelectModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="border-b border-slate-200 dark:border-ocean-900/30 pb-4 flex-shrink-0 pr-8">
+                <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Export to UDDF</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Choose which dives to include</p>
+            </div>
+
+            <div class="flex items-center justify-between flex-shrink-0 mb-2">
+                <span class="text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase">Dives</span>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="setUddfExportDiveSelection(true)" class="text-xs font-semibold text-cyan-500 dark:text-cyan-400 hover:underline">Select all</button>
+                    <button type="button" onclick="setUddfExportDiveSelection(false)" class="text-xs font-semibold text-cyan-500 dark:text-cyan-400 hover:underline">Deselect all</button>
+                </div>
+            </div>
+            <div id="uddf-export-dive-list" class="overflow-y-auto mb-4 space-y-1.5 pr-1 flex-1 text-sm">
+                <!-- JS populates one checkbox per dive -->
+            </div>
+
+            <div class="border-t border-slate-200 dark:border-ocean-900/30 pt-4 flex justify-end gap-3 flex-shrink-0">
+                <button onclick="closeUddfExportSelectModal()" class="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
+                    Cancel
+                </button>
+                <button onclick="confirmUddfExportSelection()" class="px-6 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-file-export"></i> Export
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== MODAL: FIRST-VISIT LOGIN PROMPT (OPTIONAL/DISMISSIBLE) ==================== -->
     <div id="login-prompt-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm hidden">
         <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-5 shadow-2xl relative">
@@ -2456,7 +2489,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '260822-v49';
+        const APP_VERSION = '260822-v50';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -3392,7 +3425,7 @@
                 'diver-profile-modal', 'diver-info-preview-modal', 'certification-modal', 'specialty-certification-modal', 'my-gear-modal',
                 'critter-detail-modal', 'share-profile-modal', 'dive-log-card-modal', 'log-detail-modal',
                 'dive-photos-modal', 'marine-sightings-modal', 'photo-lightbox-modal', 'csv-export-modal', 'pdf-export-modal',
-                'uddf-dive-select-modal', 'login-prompt-modal', 'confirm-modal'
+                'uddf-dive-select-modal', 'uddf-export-select-modal', 'login-prompt-modal', 'confirm-modal'
             ];
             const modals = modalIds.map(id => document.getElementById(id)).filter(Boolean);
 
@@ -4687,13 +4720,66 @@
             return (unit === 'PSI' ? v / 14.50377 : v).toFixed(2);
         }
 
-        function exportDivesToUDDF() {
+        // Lets the diver pick a subset of their logbook to export (e.g. just
+        // one trip) instead of always exporting everything — every dive is
+        // checked by default so the common "export it all" case is still
+        // just two clicks.
+        function openUddfExportSelectModal() {
             if (!state.dives || state.dives.length === 0) {
                 showToast("No dive logs to export yet", "info");
                 return;
             }
 
             const sortedDives = [...state.dives].sort((a, b) => (b.diveNo || 0) - (a.diveNo || 0));
+            const listEl = document.getElementById('uddf-export-dive-list');
+            listEl.innerHTML = sortedDives.map(dive => {
+                const dateStr = dive.date ? formatDateDMY(dive.date) : 'Date not set';
+                const siteStr = dive.site ? ` — ${dive.site}` : '';
+                const depthStr = (dive.maxDepth !== null && dive.maxDepth !== undefined) ? `${dive.maxDepth}m` : '';
+                return `
+                    <label class="flex items-center space-x-2.5 cursor-pointer py-1">
+                        <input type="checkbox" data-uddf-export-dive="${dive.id}" checked class="accent-cyan-500 flex-shrink-0">
+                        <span class="text-xs text-slate-700 dark:text-slate-300 truncate">Dive #${dive.diveNo ?? '--'} · ${dateStr}${siteStr}${depthStr ? ` · ${depthStr}` : ''}</span>
+                    </label>
+                `;
+            }).join('');
+
+            document.getElementById('uddf-export-select-modal').classList.remove('hidden');
+        }
+
+        function closeUddfExportSelectModal() {
+            document.getElementById('uddf-export-select-modal').classList.add('hidden');
+        }
+
+        function setUddfExportDiveSelection(checked) {
+            const checkboxes = document.querySelectorAll('#uddf-export-dive-list input[data-uddf-export-dive]');
+            checkboxes.forEach(cb => cb.checked = checked);
+        }
+
+        function confirmUddfExportSelection() {
+            const diveIds = Array.from(document.querySelectorAll('#uddf-export-dive-list input[data-uddf-export-dive]:checked')).map(cb => cb.getAttribute('data-uddf-export-dive'));
+            if (diveIds.length === 0) {
+                showToast("Choose at least one dive to export.", "info");
+                return;
+            }
+            closeUddfExportSelectModal();
+            exportDivesToUDDF(diveIds);
+        }
+
+        function exportDivesToUDDF(diveIds) {
+            if (!state.dives || state.dives.length === 0) {
+                showToast("No dive logs to export yet", "info");
+                return;
+            }
+
+            const diveIdSet = diveIds ? new Set(diveIds) : null;
+            const divesToExport = diveIdSet ? state.dives.filter(d => diveIdSet.has(d.id)) : state.dives;
+            if (divesToExport.length === 0) {
+                showToast("No dive logs to export yet", "info");
+                return;
+            }
+
+            const sortedDives = [...divesToExport].sort((a, b) => (b.diveNo || 0) - (a.diveNo || 0));
             // Prefer the dedicated firstName/lastName fields (saved via the Diver
             // Details form) so combination formats with commas/reordering (e.g.
             // "Cousteau Jacques, Jack") don't get mangled by a naive whitespace

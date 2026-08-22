@@ -1,5 +1,10 @@
 # Changelog
 
+## 260822-v50
+
+- **Export to UDDF now lets you choose which dives to include.** Tapping "Export to UDDF" opens a checklist of your logbook (every dive checked by default) instead of always exporting everything — handy for sharing just one trip's dives rather than your whole history.
+- Service worker cache bumped (`abyss-shell-v49` → `abyss-shell-v50`) to ship the above.
+
 ## 260822-v49
 
 - **UDDF export is one-click again.** Removed the "choose which specialty certifications to include" dialog added in v48 — export to UDDF now always includes everything, same as before that dialog existed.
