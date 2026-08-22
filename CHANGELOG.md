@@ -1,5 +1,12 @@
 # Changelog
 
+## 260822-v49
+
+- **UDDF export is one-click again.** Removed the "choose which specialty certifications to include" dialog added in v48 — export to UDDF now always includes everything, same as before that dialog existed.
+- **Fixed exported UDDF files showing up as `.xml` on mobile.** The file itself was always named correctly, but the MIME type used to build it (`application/xml`) is one mobile OS "save/share" sheets map straight to a `.xml` extension, overriding the actual filename. Switched to a generic MIME type that doesn't carry that OS-level mapping, so the `.uddf` extension is respected everywhere.
+- **UDDF import now pre-fills far more of the Log a Dive form.** Two real gaps: Country was written into the exported file's dive-site record but never read back on import, and Tank Volume was exported but never read back either — both now pre-fill correctly. Bigger fix: everything UDDF has no native field for (Weather, Water Type, Body of Water, Waves, Current, Surge, Weight, Exposure Suit, Cylinder Type, Buddy, Buddy Certification Number, Dive Center, Surface Temperature) was being exported as one unstructured block of text and, on import, dumped wholesale into the Notes field instead of being split back out — importing now recognizes each of those and pre-fills its actual field, leaving only genuine free-text notes in the Notes box. Dive Type, Activity Type, Dive Tags, Additional Gear, and Marine Life Sightings still have no UDDF equivalent and still need to be filled in manually after import.
+- Service worker cache bumped (`abyss-shell-v48` → `abyss-shell-v49`) to ship the above.
+
 ## 260820-v48
 
 - **Added Specialty Certifications** — a new, separate way to log scuba specialty courses (Wreck, Nitrox, Deep, Night, Navigation, and dozens more, sourced from PADI/SSI/SDI/NAUI's real course catalogs) alongside your main certification history. Unlike a main certification, specialties are purely additive: there's no "current" one, and you can log as many as you've earned from any organisation.

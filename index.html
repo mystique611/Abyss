@@ -538,7 +538,7 @@
                             <i class="fa-solid fa-chevron-down text-[10px]"></i>
                         </button>
                         <div id="export-menu" class="hidden absolute right-0 mt-2 w-52 rounded-xl glass-panel border border-slate-300 dark:border-ocean-800/40 shadow-2xl z-30 overflow-hidden">
-                            <button type="button" onclick="openUddfExportModal(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors">
+                            <button type="button" onclick="exportDivesToUDDF(); closeExportMenu();" class="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-500/10 flex items-center gap-2.5 transition-colors">
                                 <i class="fa-solid fa-file-code text-cyan-400 w-4"></i>
                                 <span>Export to UDDF</span>
                             </button>
@@ -2286,36 +2286,6 @@
         </div>
     </div>
 
-    <!-- ==================== MODAL: UDDF EXPORT OPTIONS ==================== -->
-    <!-- Only shown when the diver has at least one specialty certification —
-         UDDF export has no other selectable options today, so a diver with
-         none just exports immediately (same single-click behavior as
-         before this feature existed). -->
-    <div id="uddf-export-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
-        <div class="glass-panel w-full max-w-md rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
-            <button onclick="closeUddfExportModal()" class="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-10">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <div class="border-b border-slate-200 dark:border-ocean-900/30 pb-4 flex-shrink-0 pr-8">
-                <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Export to UDDF</h3>
-                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Choose which specialty certifications to include</p>
-            </div>
-
-            <div class="overflow-y-auto my-4 space-y-1.5 pr-1 flex-1 text-sm" id="uddf-specialty-cert-list">
-                <!-- JS populates one checkbox per specialty certification entry -->
-            </div>
-
-            <div class="border-t border-slate-200 dark:border-ocean-900/30 pt-4 flex justify-end gap-3 flex-shrink-0">
-                <button onclick="closeUddfExportModal()" class="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
-                    Cancel
-                </button>
-                <button onclick="confirmUddfExport()" class="px-6 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold flex items-center gap-2">
-                    <i class="fa-solid fa-file-export"></i> Export
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- ==================== MODAL: PDF EXPORT OPTIONS ==================== -->
     <div id="pdf-export-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
         <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative text-slate-700 dark:text-slate-300 flex flex-col max-h-[85vh] overflow-hidden">
@@ -2486,7 +2456,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '260820-v48';
+        const APP_VERSION = '260822-v49';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -3422,7 +3392,7 @@
                 'diver-profile-modal', 'diver-info-preview-modal', 'certification-modal', 'specialty-certification-modal', 'my-gear-modal',
                 'critter-detail-modal', 'share-profile-modal', 'dive-log-card-modal', 'log-detail-modal',
                 'dive-photos-modal', 'marine-sightings-modal', 'photo-lightbox-modal', 'csv-export-modal', 'pdf-export-modal',
-                'uddf-dive-select-modal', 'uddf-export-modal', 'login-prompt-modal', 'confirm-modal'
+                'uddf-dive-select-modal', 'login-prompt-modal', 'confirm-modal'
             ];
             const modals = modalIds.map(id => document.getElementById(id)).filter(Boolean);
 
@@ -4717,44 +4687,7 @@
             return (unit === 'PSI' ? v / 14.50377 : v).toFixed(2);
         }
 
-        // UDDF has no other selectable export options today (unlike PDF/CSV),
-        // so this modal only exists to let the diver pick which specialty
-        // certifications to include — if there are none, skip straight to
-        // export so the one-click UX for everyone else is unchanged.
-        function openUddfExportModal() {
-            if (!state.dives || state.dives.length === 0) {
-                showToast("No dive logs to export yet", "info");
-                return;
-            }
-
-            const specialtyOptions = getSpecialtyCertificationOptions();
-            if (specialtyOptions.length === 0) {
-                exportDivesToUDDF([]);
-                return;
-            }
-
-            const listEl = document.getElementById('uddf-specialty-cert-list');
-            listEl.innerHTML = specialtyOptions.map(c => `
-                <label class="flex items-center space-x-2.5 cursor-pointer py-0.5">
-                    <input type="checkbox" data-uddf-specialty-cert="${c.index}" checked class="accent-indigo-500">
-                    <span class="text-xs text-slate-700 dark:text-slate-300">${c.label || 'Untitled specialty certification'}</span>
-                </label>
-            `).join('');
-
-            document.getElementById('uddf-export-modal').classList.remove('hidden');
-        }
-
-        function closeUddfExportModal() {
-            document.getElementById('uddf-export-modal').classList.add('hidden');
-        }
-
-        function confirmUddfExport() {
-            const specialtyCertIndexes = Array.from(document.querySelectorAll('[data-uddf-specialty-cert]:checked')).map(c => parseInt(c.getAttribute('data-uddf-specialty-cert')));
-            closeUddfExportModal();
-            exportDivesToUDDF(specialtyCertIndexes);
-        }
-
-        function exportDivesToUDDF(specialtyCertIndexes) {
+        function exportDivesToUDDF() {
             if (!state.dives || state.dives.length === 0) {
                 showToast("No dive logs to export yet", "info");
                 return;
@@ -4943,14 +4876,10 @@
 
             // UDDF 3.2.1 has no standard element for specialty certifications,
             // so — same approach as the rest of this exporter takes for
-            // anything outside the spec's scope — they're written as a
-            // readable XML comment rather than omitted entirely. Only the
-            // certifications the diver checked in the export modal are
-            // included (see openUddfExportModal/confirmUddfExport above).
-            const specialtyOptionsForExport = getSpecialtyCertificationOptions();
-            const selectedSpecialtyLines = (specialtyCertIndexes || [])
-                .map(i => specialtyOptionsForExport.find(c => c.index === i))
-                .filter(Boolean)
+            // anything outside the spec's scope — every specialty
+            // certification on file is written as a readable XML comment
+            // rather than omitted entirely or gated behind a selection step.
+            const selectedSpecialtyLines = getSpecialtyCertificationOptions()
                 .map(c => `${c.org} — ${c.specialty}${c.certNo ? ` (# ${c.certNo})` : ''}`);
             const specialtyCertXml = selectedSpecialtyLines.length ? `
     <!-- Specialty Certifications:
@@ -4982,7 +4911,15 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
 `;
 
             const filename = `abyss-divelog-${sanitizeFilenamePart(state.diverProfile.name)}.uddf`;
-            downloadTextFile(filename, uddfXml, 'application/xml;charset=utf-8;');
+            // 'application/xml' is a recognized MIME type that mobile OS
+            // save/share sheets (Android's Downloads manager, iOS's Save to
+            // Files) map straight to a ".xml" extension, overriding the
+            // filename's own ".uddf" — that's why the exported file showed
+            // up as .xml on phones even though desktop browsers respected
+            // `download="...uddf"` correctly. 'application/octet-stream' has
+            // no such OS-level extension mapping, so the filename's actual
+            // extension is left alone everywhere.
+            downloadTextFile(filename, uddfXml, 'application/octet-stream');
             showToast(`Exported ${sortedDives.length} dive${sortedDives.length !== 1 ? 's' : ''} to ${filename}`, "success");
         }
 
@@ -5027,7 +4964,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
         // needs to be read back for the Depth & Time Profile graph.
         // Returns null for anything the UDDF standard has no concept of —
         // callers should leave the corresponding field untouched in that case.
-        function parseUddfDiveNode(diveEl, siteNames, siteCoords, gasMixes, tankToMix) {
+        function parseUddfDiveNode(diveEl, siteNames, siteCoords, gasMixes, tankToMix, siteCountries) {
             const text = (parent, tag) => {
                 if (!parent) return null;
                 const el = parent.getElementsByTagName(tag)[0];
@@ -5052,6 +4989,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
 
             let siteName = null;
             let siteLat = null, siteLng = null;
+            let siteCountry = null;
 
             // Per the UDDF spec (and real-world exporters like Subsurface), a
             // dive cross-references its dive site via <link ref="..."/>
@@ -5081,6 +5019,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 siteLat = siteCoords[siteRef].lat;
                 siteLng = siteCoords[siteRef].lng;
             }
+            if (siteRef && siteCountries && siteCountries[siteRef]) siteCountry = siteCountries[siteRef];
 
             if (!siteName && before) {
                 // A handful of non-standard exporters use a literal <site
@@ -5124,6 +5063,12 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             const tankEndPa = num(diveEl, 'tankpressureend');
             const tankBeginBar = tankBeginPa !== null ? Math.round((tankBeginPa / 100000) * 10) / 10 : null;
             const tankEndBar = tankEndPa !== null ? Math.round((tankEndPa / 100000) * 10) / 10 : null;
+
+            // Tank volume is stored in cubic metres per the UDDF spec (the
+            // matching m3 -> L conversion on export is /1000, so this is
+            // *1000 in reverse) — was exported but never read back in.
+            const tankVolumeM3 = num(diveEl, 'tankvolume');
+            const tankVolumeL = tankVolumeM3 !== null ? Math.round(tankVolumeM3 * 1000 * 100) / 100 : null;
 
             // Resolve the gas blend actually used for this dive, if the file
             // ties a <gasdefinitions><mix> to it. The link can point straight
@@ -5193,7 +5138,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             if (maxDepth !== null) maxDepth = Math.round(maxDepth * 10) / 10;
             if (avgDepth !== null) avgDepth = Math.round(avgDepth * 10) / 10;
 
-            return { date, timeIn, siteName, siteLat, siteLng, maxDepth, avgDepth, durationSec, visibility, waterTempK, airTempK, tankBeginBar, tankEndBar, notesText, depthProfile, gasMix };
+            return { date, timeIn, siteName, siteLat, siteLng, siteCountry, maxDepth, avgDepth, durationSec, visibility, waterTempK, airTempK, tankBeginBar, tankEndBar, tankVolumeL, notesText, depthProfile, gasMix };
         }
 
         // Pre-fills the currently-open Log a Dive form from a UDDF file. If
@@ -5222,6 +5167,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
 
             const siteNames = {};
             const siteCoords = {};
+            const siteCountries = {};
             Array.from(xml.getElementsByTagName('site')).forEach(siteEl => {
                 const id = siteEl.getAttribute('id');
                 if (!id) return;
@@ -5235,6 +5181,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                     const lat = latEl ? parseFloat(latEl.textContent.trim()) : NaN;
                     const lng = lngEl ? parseFloat(lngEl.textContent.trim()) : NaN;
                     if (!isNaN(lat) && !isNaN(lng)) siteCoords[id] = { lat, lng };
+
+                    const countryEl = geoEl.getElementsByTagName('country')[0];
+                    if (countryEl && countryEl.textContent.trim()) siteCountries[id] = countryEl.textContent.trim();
                 }
             });
 
@@ -5267,7 +5216,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 if (ref) tankToMix[id] = ref;
             });
 
-            const parsedDives = diveNodes.map(node => parseUddfDiveNode(node, siteNames, siteCoords, gasMixes, tankToMix));
+            const parsedDives = diveNodes.map(node => parseUddfDiveNode(node, siteNames, siteCoords, gasMixes, tankToMix, siteCountries));
 
             if (parsedDives.length === 1) {
                 applyParsedUddfDive(parsedDives[0]);
@@ -5275,6 +5224,58 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             }
 
             openUddfDiveSelectModal(parsedDives);
+        }
+
+        function setFormFieldValue(id, val) {
+            if (val === null || val === undefined || val === '') return;
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        }
+
+        // Our own exporter writes everything UDDF has no native element for
+        // as "Label: value" segments joined by " — " inside <notes> (see
+        // exportDivesToUDDF's noteParts array), rather than losing that
+        // data entirely. This is the reverse of that: it recognizes those
+        // same labels on import and routes each one back to its matching
+        // Log a Dive field, so a diver re-importing their own export gets
+        // everything pre-filled instead of one unstructured text blob.
+        // Anything left over (the diver's actual free-text notes, or a
+        // segment from a labeling scheme this doesn't recognize) is
+        // returned separately — only that remainder ends up in the Notes
+        // field.
+        const UDDF_NOTES_FIELD_MAP = [
+            { label: 'Weather', fieldId: 'form-weather' },
+            { label: 'Water Type', fieldId: 'form-water-type' },
+            { label: 'Body of Water', fieldId: 'form-body-of-water' },
+            { label: 'Waves', fieldId: 'form-waves' },
+            { label: 'Current', fieldId: 'form-current' },
+            { label: 'Surge', fieldId: 'form-surge' },
+            { label: 'Weight', fieldId: 'form-weight', strip: /\s*kg$/i },
+            { label: 'Exposure Suit', fieldId: 'form-suit' },
+            { label: 'Tank Type', fieldId: 'form-tank-type' },
+            { label: 'Buddy Cert Number', fieldId: 'form-buddy-no' },
+            { label: 'Buddy', fieldId: 'form-buddy' },
+            { label: 'Dive Center', fieldId: 'form-dive-center' },
+            { label: 'Surface Temp', fieldId: 'form-surface-temp', strip: /\s*C$/i },
+            { label: 'Country', fieldId: 'form-country' }
+        ];
+
+        function parseStructuredNotesFields(notesText) {
+            if (!notesText) return '';
+            const segments = notesText.split(' — ');
+            const leftover = [];
+            segments.forEach(segment => {
+                const trimmedSegment = segment.trim();
+                const match = UDDF_NOTES_FIELD_MAP.find(f => trimmedSegment.startsWith(`${f.label}: `));
+                if (match) {
+                    let value = trimmedSegment.slice(match.label.length + 2).trim();
+                    if (match.strip) value = value.replace(match.strip, '').trim();
+                    if (value) setFormFieldValue(match.fieldId, value);
+                } else if (trimmedSegment) {
+                    leftover.push(trimmedSegment);
+                }
+            });
+            return leftover.join(' — ');
         }
 
         // Fills the Log a Dive form fields from one parsed <dive> node. Split
@@ -5298,10 +5299,27 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             if (parsed.durationSec !== null) setVal('form-bottom-time', Math.round(parsed.durationSec / 60));
             if (parsed.tankBeginBar !== null) setVal('form-gas-start', parsed.tankBeginBar);
             if (parsed.tankEndBar !== null) setVal('form-gas-end', parsed.tankEndBar);
-            if (parsed.notesText) {
+            if (parsed.tankVolumeL !== null) setVal('form-tank-vol', parsed.tankVolumeL);
+
+            // Recover whatever structured fields (weather, water type, buddy,
+            // dive center, weight, exposure suit, cylinder type, etc.) our
+            // own exporter folded into the notes text, leaving only genuine
+            // free-text notes to actually land in the Notes field.
+            const leftoverNotes = parseStructuredNotesFields(parsed.notesText);
+            if (leftoverNotes) {
                 const notesEl = document.getElementById('form-notes');
-                if (notesEl) notesEl.value = notesEl.value ? `${notesEl.value}\n${parsed.notesText}` : parsed.notesText;
+                if (notesEl) notesEl.value = notesEl.value ? `${notesEl.value}\n${leftoverNotes}` : leftoverNotes;
             }
+
+            // Country: prefer the dive site's own native <geography><country>
+            // over anything recovered from the notes-text fallback above —
+            // parseStructuredNotesFields already applied a notes-based
+            // Country if present, so this only overrides it when the file
+            // actually has the site catalog entry (the common case).
+            if (parsed.siteCountry) setVal('form-country', parsed.siteCountry);
+            const countryEl = document.getElementById('form-country');
+            if (countryEl && countryEl.value) handleCountryChangeForLocationMap();
+
             if (parsed.timeIn) handleBottomTimeChange(); // keep Time Out in sync if only Time In + duration came from the file
 
             if (parsed.siteLat !== null && parsed.siteLat !== undefined && parsed.siteLng !== null && parsed.siteLng !== undefined) {
@@ -5349,7 +5367,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             updateDepthProfileGraph();
             updateRealtimeSAC();
 
-            showToast("Form pre-filled from UDDF. Country, Dive Type, Buddy, and Dive Tags aren't part of the UDDF standard — please fill those in.", "success");
+            showToast("Form pre-filled from UDDF. Dive Type, Activity Type, Dive Tags, Additional Gear, and Marine Life Sightings aren't part of the UDDF standard — please fill those in.", "success");
         }
 
         // Holds the parsed dives while the multi-dive selection modal is open.
