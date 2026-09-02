@@ -1,5 +1,11 @@
 # Changelog
 
+## 260902-v52
+
+- **Fixed map tiles showing an "API KEY REQUIRED" watermark.** CARTO (the provider behind the Dashboard's Global Exploration Footprint map, the Log a Dive location picker, and the Log Detail map) now requires a free API key for its basemap tiles. Wired in a key so all three maps render normally again, in both light and dark mode.
+- **Reworked the Exposure Suit selection in Log a Dive** to specific thickness options: Full Suit (2mm, 2.5mm, 3mm, 5mm, 7mm), Shorty (2mm, 2.5mm, 3mm), Top Wet Suit (2mm, 2.5mm, 3mm), Bottom Wet Suit (2mm, 2.5mm, 3mm), Vest (2mm, 2.5mm, 3mm), plus Semi Dry and Dry Suit.
+- Service worker cache bumped (`abyss-shell-v51` → `abyss-shell-v52`) to ship the above.
+
 ## 260822-v51
 
 - **Certifications and Specialty Certifications now support an optional Certification Card Photo.** Add or edit either kind of certification and you can attach a photo of the actual e-card or physical card — useful for keeping the real card on hand alongside the typed-in details. Entries with a card photo attached show a "View Certification Card" button in their history list. Uses the same photo storage/sync pipeline as dive and avatar photos, so it's cached locally and synced to OneDrive automatically.

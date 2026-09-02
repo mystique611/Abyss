@@ -986,10 +986,23 @@
                                 <label class="block text-xs font-mono-custom text-slate-600 dark:text-slate-400 uppercase mb-1">Exposure Suit</label>
                                 <select id="form-suit" class="w-full px-4 py-2 rounded-xl bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 focus:outline-none focus:border-cyan-400 text-sm">
                                     <option value="" selected>Choose suit...</option>
+                                    <option value="Full Suit 2mm">Full Suit 2mm</option>
+                                    <option value="Full Suit 2.5mm">Full Suit 2.5mm</option>
                                     <option value="Full Suit 3mm">Full Suit 3mm</option>
                                     <option value="Full Suit 5mm">Full Suit 5mm</option>
                                     <option value="Full Suit 7mm">Full Suit 7mm</option>
-                                    <option value="Shorty">Shorty</option>
+                                    <option value="Shorty 2mm">Shorty 2mm</option>
+                                    <option value="Shorty 2.5mm">Shorty 2.5mm</option>
+                                    <option value="Shorty 3mm">Shorty 3mm</option>
+                                    <option value="Top Wet Suit 2mm">Top Wet Suit 2mm</option>
+                                    <option value="Top Wet Suit 2.5mm">Top Wet Suit 2.5mm</option>
+                                    <option value="Top Wet Suit 3mm">Top Wet Suit 3mm</option>
+                                    <option value="Bottom Wet Suit 2mm">Bottom Wet Suit 2mm</option>
+                                    <option value="Bottom Wet Suit 2.5mm">Bottom Wet Suit 2.5mm</option>
+                                    <option value="Bottom Wet Suit 3mm">Bottom Wet Suit 3mm</option>
+                                    <option value="Vest 2mm">Vest 2mm</option>
+                                    <option value="Vest 2.5mm">Vest 2.5mm</option>
+                                    <option value="Vest 3mm">Vest 3mm</option>
                                     <option value="Semi Dry">Semi Dry</option>
                                     <option value="Dry Suit">Dry Suit</option>
                                 </select>
@@ -2517,7 +2530,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '260822-v51';
+        const APP_VERSION = '260902-v52';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -3425,10 +3438,14 @@
         // globally, unlike raw OpenStreetMap tiles which show each place's
         // native-language name. Same map style family in both themes, just
         // the light/dark variant CARTO itself provides.
+        //
+        // CARTO started requiring a (free) API key for these raster tiles
+        // and watermarks any unauthenticated request with "API KEY
+        // REQUIRED" — this key was issued at carto.com/basemaps/apikey.
+        const CARTO_API_KEY = 'cb1_2std_1_8a8c8e43e0886e95e1cf2379';
         function getMapTileUrl() {
-            return state.isDark
-                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+            const style = state.isDark ? 'dark_all' : 'light_all';
+            return `https://{s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`;
         }
 
         // Called whenever the theme toggles — updates any already-created
