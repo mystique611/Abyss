@@ -2530,7 +2530,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '260902-v52';
+        const APP_VERSION = '260925-v53';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -5760,6 +5760,87 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             document.getElementById('form-dive-no').value = nextDiveNo;
         }
 
+        // Distance in meters between two lat/lng points (haversine formula).
+        function haversineDistanceMeters(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const toRad = deg => deg * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        // How close two exact-pin dives need to be (in meters) to be treated
+        // as the same physical dive site on the Global Exploration Footprint
+        // map. Wide enough to absorb normal GPS drift / approximate pin
+        // placement, tight enough not to merge genuinely separate sites.
+        const SITE_CLUSTER_RADIUS_METERS = 400;
+
+        // Groups dives into one marker per dive site instead of one per dive,
+        // so a site visited many times shows a single dot instead of a stack
+        // of overlapping ones. Two dives are clustered together when their
+        // site names match (trimmed/case-insensitive) AND — for dives with an
+        // exact GPS pin — their coordinates are within SITE_CLUSTER_RADIUS_METERS
+        // of each other. Dives without an exact pin (using the jittered
+        // country-level fallback) cluster on name alone, since that fallback
+        // position isn't precise enough to run a meaningful distance check
+        // against; they're kept separate from exact-pin clusters of the same
+        // name so a rough fallback dot never merges with a precise one.
+        function groupDivesBySite(dives) {
+            const clusters = [];
+
+            dives.forEach(dive => {
+                if (!dive.site) return;
+                const normName = dive.site.trim().toLowerCase().replace(/\s+/g, ' ');
+                if (!normName) return;
+
+                const hasExactPin = typeof dive.latitude === 'number' && typeof dive.longitude === 'number'
+                    && !isNaN(dive.latitude) && !isNaN(dive.longitude);
+                const fallbackCoords = hasExactPin ? null : COUNTRY_COORDS[dive.country];
+                if (!hasExactPin && !fallbackCoords) return;
+
+                const lat = hasExactPin ? dive.latitude : fallbackCoords[0];
+                const lng = hasExactPin ? dive.longitude : fallbackCoords[1];
+
+                let cluster = clusters.find(c => {
+                    if (c.normName !== normName || c.hasExactPin !== hasExactPin) return false;
+                    if (!hasExactPin) return true;
+                    return haversineDistanceMeters(lat, lng, c.lat, c.lng) <= SITE_CLUSTER_RADIUS_METERS;
+                });
+
+                if (!cluster) {
+                    cluster = { normName, hasExactPin, lat, lng, latSum: 0, lngSum: 0, nameCounts: new Map(), dives: [] };
+                    clusters.push(cluster);
+                }
+
+                cluster.dives.push(dive);
+                cluster.latSum += lat;
+                cluster.lngSum += lng;
+                cluster.lat = cluster.latSum / cluster.dives.length;
+                cluster.lng = cluster.lngSum / cluster.dives.length;
+                cluster.nameCounts.set(dive.site, (cluster.nameCounts.get(dive.site) || 0) + 1);
+            });
+
+            return clusters.map(c => {
+                // Display the most common raw spelling seen for this site
+                // (handles minor casing/whitespace differences between visits).
+                let displayName = '', bestCount = -1;
+                c.nameCounts.forEach((count, name) => {
+                    if (count > bestCount) { bestCount = count; displayName = name; }
+                });
+                const sortedDives = [...c.dives].sort((a, b) => new Date(b.date) - new Date(a.date));
+                return {
+                    displayName,
+                    lat: c.lat,
+                    lng: c.lng,
+                    hasExactPin: c.hasExactPin,
+                    country: sortedDives[0].country || '',
+                    dives: sortedDives
+                };
+            });
+        }
+
         function initLeafletMap() {
             const mapContainer = document.getElementById('map');
             if (!mapContainer) return;
@@ -5800,41 +5881,48 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             // clear old markers and rebuild them from the current data.
             markersGroup.clearLayers();
 
-            // Populate slow pulsing markers for every logged dive. Dives with
-            // an exact pinned location (see the Log a Dive location picker)
-            // use those real coordinates; everything else falls back to a
-            // jittered marker near the selected country's capital, as before.
-            state.dives.forEach(dive => {
-                const hasExactPin = typeof dive.latitude === 'number' && typeof dive.longitude === 'number'
-                    && !isNaN(dive.latitude) && !isNaN(dive.longitude);
-                const coords = hasExactPin ? [dive.latitude, dive.longitude] : COUNTRY_COORDS[dive.country];
-                if (coords) {
-                    const jitterLat = hasExactPin ? coords[0] : coords[0] + (Math.random() - 0.5) * 0.6;
-                    const jitterLng = hasExactPin ? coords[1] : coords[1] + (Math.random() - 0.5) * 0.6;
+            // Populate one slow-pulsing marker per dive SITE (not per dive —
+            // see groupDivesBySite() above), so a site visited many times
+            // shows a single dot instead of a stack of overlapping ones.
+            // Dives with an exact pinned location (see the Log a Dive
+            // location picker) use those real coordinates; everything else
+            // falls back to a jittered marker near the selected country's
+            // capital, as before.
+            const siteClusters = groupDivesBySite(state.dives);
+            siteClusters.forEach(cluster => {
+                const jitterLat = cluster.hasExactPin ? cluster.lat : cluster.lat + (Math.random() - 0.5) * 0.6;
+                const jitterLng = cluster.hasExactPin ? cluster.lng : cluster.lng + (Math.random() - 0.5) * 0.6;
 
-                    // Leaflet divIcon overlayed with cyan animation pulses
-                    const customMarkerIcon = L.divIcon({
-                        className: 'leaflet-custom-pulse',
-                        html: `<div class="h-4 w-4 rounded-full bg-cyan-400/90 border-2 border-white map-pulsing-marker cursor-pointer"></div>`,
-                        iconSize: [16, 16],
-                        iconAnchor: [8, 8]
-                    });
+                // Leaflet divIcon overlayed with cyan animation pulses
+                const customMarkerIcon = L.divIcon({
+                    className: 'leaflet-custom-pulse',
+                    html: `<div class="h-4 w-4 rounded-full bg-cyan-400/90 border-2 border-white map-pulsing-marker cursor-pointer"></div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                });
 
-                    const popupHtml = `
-                        <div class="p-1 space-y-1 text-slate-700 dark:text-slate-200">
-                            <h4 class="font-bold text-cyan-600 dark:text-cyan-400 text-xs">Dive #${dive.diveNo}</h4>
-                            <p class="text-[11px] font-bold text-slate-900 dark:text-white block truncate leading-tight">${dive.site}</p>
-                            <p class="text-[10px] text-slate-600 dark:text-slate-400 flex items-center leading-none"><i class="fa-solid fa-location-dot mr-1"></i>${dive.country}</p>
-                            <button onclick="openLogDetailModal('${dive.id}')" class="mt-1.5 w-full px-2 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-[10px] font-semibold flex items-center justify-center gap-1">
-                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> View Full Log Details
-                            </button>
+                const diveCount = cluster.dives.length;
+                const diveListHtml = cluster.dives.map(d => `
+                    <button onclick="openLogDetailModal('${d.id}')" class="w-full text-left px-2 py-1 rounded-lg bg-slate-100 dark:bg-ocean-900/40 hover:bg-cyan-500/10 text-[10px] flex items-center justify-between gap-1 transition-colors">
+                        <span class="truncate">Dive #${d.diveNo} · ${d.date ? formatDateDMY(d.date) : 'Date not set'}</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-cyan-400 flex-shrink-0"></i>
+                    </button>
+                `).join('');
+
+                const popupHtml = `
+                    <div class="p-1 space-y-1 text-slate-700 dark:text-slate-200" style="max-width:220px;">
+                        <h4 class="text-[11px] font-bold text-slate-900 dark:text-white leading-tight">${cluster.displayName}</h4>
+                        <p class="text-[10px] text-slate-600 dark:text-slate-400 flex items-center leading-none"><i class="fa-solid fa-location-dot mr-1"></i>${cluster.country}</p>
+                        <p class="text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">${diveCount} dive${diveCount === 1 ? '' : 's'} here</p>
+                        <div class="space-y-1 mt-1" style="max-height:140px;overflow-y:auto;">
+                            ${diveListHtml}
                         </div>
-                    `;
+                    </div>
+                `;
 
-                    L.marker([jitterLat, jitterLng], { icon: customMarkerIcon })
-                        .bindPopup(popupHtml)
-                        .addTo(markersGroup);
-                }
+                L.marker([jitterLat, jitterLng], { icon: customMarkerIcon })
+                    .bindPopup(popupHtml)
+                    .addTo(markersGroup);
             });
         }
 

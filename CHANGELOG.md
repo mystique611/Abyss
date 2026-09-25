@@ -1,5 +1,10 @@
 # Changelog
 
+## 260925-v53
+
+- **Global Exploration Footprint map now groups repeat visits to the same dive site into a single dot** instead of showing one overlapping marker per dive. Dives are grouped when their site name matches (trimmed/case-insensitive) and, for dives with an exact GPS pin, their coordinates are within ~400m of each other — close enough to absorb normal GPS drift without merging genuinely separate sites. Tapping a grouped dot now shows a scrollable list of every dive logged there, each linking straight to its Full Log Details.
+- Service worker cache bumped (`abyss-shell-v52` → `abyss-shell-v53`) to ship the above.
+
 ## 260902-v52
 
 - **Fixed map tiles showing an "API KEY REQUIRED" watermark.** CARTO (the provider behind the Dashboard's Global Exploration Footprint map, the Log a Dive location picker, and the Log Detail map) now requires a free API key for its basemap tiles. Wired in a key so all three maps render normally again, in both light and dark mode.
