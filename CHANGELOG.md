@@ -1,5 +1,12 @@
 # Changelog
 
+## 261002-v55
+
+- **AquaDex opens much faster.** The grid used to re-scan the entire logbook once per species — and again twice per comparison while sorting locked/unlocked species — so it got slower with every dive logged. Sightings are now indexed in a single pass per render and looked up from there. The same index now also backs the Dashboard's Marine Life count and the Log a Dive marine life checklist.
+- **AquaDex cards are inserted in one go** instead of one at a time, so the page lays out once rather than once per card.
+- **AquaDex search waits for a short pause in typing** (200 ms) before filtering, instead of rebuilding the grid on every keystroke. Pressing Enter or the search button still filters immediately.
+- Service worker cache bumped (`abyss-shell-v54` → `abyss-shell-v55`) to ship the above.
+
 ## 261002-v54
 
 - **AquaDex category icons now work offline on a fresh install.** The 14 icons in `icons/critters/` were never in the service worker's precache list, so they were only cached after first being viewed online — a new install opened offline (e.g. at a dive site) could show blank AquaDex category icons. They're now precached with the rest of the app shell.

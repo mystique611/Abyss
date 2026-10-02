@@ -1281,7 +1281,7 @@
                     <p class="text-sm text-slate-600 dark:text-slate-400">Marine Life Logbook</p>
                 </div>
                 <div class="relative w-full md:w-64 flex-shrink-0">
-                    <input type="text" id="critter-search-input" placeholder="Search species..." oninput="searchCritters()" onkeydown="if(event.key==='Enter'){event.preventDefault();searchCritters();}" class="w-full pl-4 pr-11 py-2.5 rounded-full text-sm bg-slate-100 dark:bg-ocean-900/20 border border-slate-200 dark:border-ocean-900/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
+                    <input type="text" id="critter-search-input" placeholder="Search species..." oninput="searchCrittersDebounced()" onkeydown="if(event.key==='Enter'){event.preventDefault();searchCritters();}" class="w-full pl-4 pr-11 py-2.5 rounded-full text-sm bg-slate-100 dark:bg-ocean-900/20 border border-slate-200 dark:border-ocean-900/30 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
                     <button type="button" onclick="searchCritters()" aria-label="Search AquaDex" class="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white flex items-center justify-center transition-colors">
                         <i class="fa-solid fa-magnifying-glass text-xs"></i>
                     </button>
@@ -2530,7 +2530,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '261002-v54';
+        const APP_VERSION = '261002-v55';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -6684,8 +6684,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             // keeps them off the checklist for new sightings while still
             // letting an old dive's sighting render/save correctly on edit
             // instead of silently disappearing.
+            const sightingIndex = buildSightingIndex();
             const speciesList = Object.values(CRITTER_DATABASE)
-                .filter(critter => !critter.deprecated || checkSighting(critter.id).count > 0)
+                .filter(critter => !critter.deprecated || checkSighting(critter.id, sightingIndex).count > 0)
                 .sort((a, b) => {
                     const tagCompare = a.tag.localeCompare(b.tag);
                     if (tagCompare !== 0) return tagCompare;
@@ -8356,11 +8357,12 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             const totalCumulativeDepth = dives.reduce((sum, d) => sum + (d.maxDepth || 0), 0);
             const countriesVisited = new Set(dives.map(d => d.country).filter(Boolean)).size;
             const uniqueSites = new Set(dives.map(d => d.site).filter(Boolean)).size;
-            const unlockedCrittersCount = getUnlockedSpeciesCount();
+            const sightingIndex = buildSightingIndex();
+            const unlockedCrittersCount = getUnlockedSpeciesCount(sightingIndex);
             // Excludes retired (deprecated:true) entries with no sightings —
             // keeps this denominator matching exactly what's actually
             // visible/loggable in AquaDex (see renderCritterdex()).
-            const totalCrittersCount = Object.values(CRITTER_DATABASE).filter(c => !c.deprecated || checkSighting(c.id).count > 0).length;
+            const totalCrittersCount = Object.values(CRITTER_DATABASE).filter(c => !c.deprecated || checkSighting(c.id, sightingIndex).count > 0).length;
 
             // ---- Section 2 (last 20) / Section 3 (all-time) averages ----
             const avgDepth20 = avgOf(collect(last20Dives, diveDepth));
@@ -9656,53 +9658,69 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
 
         // Search box + button above the category pills — filters by common
         // or scientific name, on top of whatever category/rarity is active.
+        // Typing waits for a short pause before re-rendering, so the grid
+        // isn't rebuilt on every keystroke. Enter / the search button still
+        // call searchCritters() directly for an immediate result.
+        let critterSearchTimer = null;
+        function searchCrittersDebounced() {
+            clearTimeout(critterSearchTimer);
+            critterSearchTimer = setTimeout(searchCritters, 200);
+        }
+
         function searchCritters() {
+            clearTimeout(critterSearchTimer);
             const input = document.getElementById('critter-search-input');
             state.critterSearchQuery = input ? input.value.trim().toLowerCase() : '';
             renderCritterdex();
         }
 
-        function getUnlockedSpeciesCount() {
+        function getUnlockedSpeciesCount(index = buildSightingIndex()) {
             let count = 0;
             Object.keys(CRITTER_DATABASE).forEach(critterId => {
-                const seen = checkSighting(critterId);
-                if (seen.count > 0) count++;
+                if (checkSighting(critterId, index).count > 0) count++;
             });
             return count;
         }
 
-        function checkSighting(critterId) {
-            let count = 0;
-            let sightingsList = [];
-
+        // One pass over the whole logbook → Map of critterId → { count,
+        // sightings (newest first) }. Callers that look up many species at
+        // once (AquaDex grid, dashboard counts, Log a Dive checklist) build
+        // this once and pass it to checkSighting(), instead of re-scanning
+        // every dive per species — that per-species rescan (repeated inside
+        // the AquaDex sort comparator) was what made AquaDex slow to open.
+        function buildSightingIndex() {
+            const index = new Map();
             state.dives.forEach(dive => {
-                if (dive.critters) {
-                    // .filter(), not .find() — a single dive can carry more
-                    // than one sighting of the same species (e.g. two
-                    // different "others" entries), and every one of them
-                    // should count and show up in the sighting history.
-                    const matches = dive.critters.filter(c => c.id === critterId);
-                    matches.forEach(match => {
-                        count++;
-                        sightingsList.push({
-                            date: dive.date,
-                            site: dive.site,
-                            country: dive.country,
-                            depth: match.depth,
-                            note: match.note,
-                            photoId: match.photoId,
-                            customName: match.customName || null
-                        });
+                if (!dive.critters) return;
+                // Every match counts — a single dive can carry more than
+                // one sighting of the same species (e.g. two different
+                // "others" entries), and each should show in the history.
+                dive.critters.forEach(match => {
+                    let entry = index.get(match.id);
+                    if (!entry) {
+                        entry = { count: 0, sightings: [] };
+                        index.set(match.id, entry);
+                    }
+                    entry.count++;
+                    entry.sightings.push({
+                        date: dive.date,
+                        site: dive.site,
+                        country: dive.country,
+                        depth: match.depth,
+                        note: match.note,
+                        photoId: match.photoId,
+                        customName: match.customName || null
                     });
-                }
+                });
             });
+            index.forEach(entry => {
+                entry.sightings.sort((a, b) => new Date(b.date) - new Date(a.date));
+            });
+            return index;
+        }
 
-            sightingsList.sort((a,b) => new Date(b.date) - new Date(a.date));
-
-            return {
-                count,
-                sightings: sightingsList
-            };
+        function checkSighting(critterId, index = buildSightingIndex()) {
+            return index.get(critterId) || { count: 0, sightings: [] };
         }
 
         async function openCritterDetailModal(critterId) {
@@ -9799,7 +9817,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             const grid = document.getElementById('critterdex-grid');
             if (!grid) return;
 
-            grid.innerHTML = '';
+            const sightingIndex = buildSightingIndex();
 
             // Filter species by current active category tab and rarity filter.
             // Retired (deprecated:true) catalog entries only show up here if
@@ -9807,7 +9825,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             // permanently-locked card for a species nobody can ever log.
             const searchQuery = (state.critterSearchQuery || '').toLowerCase();
             const filteredSpecies = Object.values(CRITTER_DATABASE).filter(species => {
-                if (species.deprecated && checkSighting(species.id).count === 0) return false;
+                if (species.deprecated && checkSighting(species.id, sightingIndex).count === 0) return false;
                 const matchesCategory = state.critterFilter === 'all' || species.tag === state.critterFilter;
                 const matchesRarity = state.critterRarityFilter === 'all' || species.rarity === state.critterRarityFilter;
                 const matchesSearch = !searchQuery || species.name.toLowerCase().includes(searchQuery) || (species.scientific || '').toLowerCase().includes(searchQuery);
@@ -9816,8 +9834,8 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
 
             // Sort logic: Discovered (unlocked) species on top, then sort alphabetically by name
             filteredSpecies.sort((a, b) => {
-                const aHistory = checkSighting(a.id);
-                const bHistory = checkSighting(b.id);
+                const aHistory = checkSighting(a.id, sightingIndex);
+                const bHistory = checkSighting(b.id, sightingIndex);
                 const aUnlocked = aHistory.count > 0;
                 const bUnlocked = bHistory.count > 0;
 
@@ -9829,8 +9847,12 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 return a.name.localeCompare(b.name);
             });
 
+            // Cards are assembled off-DOM and inserted in one go — appending
+            // them one at a time made the page (and Tailwind's CDN runtime,
+            // which watches the DOM for changes) react to every single card.
+            const fragment = document.createDocumentFragment();
             filteredSpecies.forEach(species => {
-                const history = checkSighting(species.id);
+                const history = checkSighting(species.id, sightingIndex);
                 const isUnlocked = history.count > 0;
                 const card = document.createElement('div');
                 
@@ -9908,8 +9930,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                     `;
                 }
 
-                grid.appendChild(card);
+                fragment.appendChild(card);
             });
+            grid.replaceChildren(fragment);
         }
 
         function updateRealtimeSAC() {
