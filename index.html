@@ -395,7 +395,7 @@
                     <div class="flex justify-between items-start relative z-10">
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-id-card text-xl text-cyan-400"></i>
-                            <span class="text-xs font-bold uppercase tracking-wider font-mono-custom text-cyan-300">Diver Credentials</span>
+                            <span id="card-cert-org" class="text-xs font-bold uppercase tracking-wider font-mono-custom text-cyan-300">Diver Credentials</span>
                         </div>
                         <button onclick="switchTab('profile')" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center space-x-1" title="View Diver Details">
                             <span>View Diver Detail</span>
@@ -410,11 +410,9 @@
                             <img id="card-avatar-img" class="h-full w-full object-cover hidden" src="">
                         </div>
                         <div class="min-w-0">
-                            <h3 id="card-diver-name" class="text-lg font-bold leading-tight truncate">Explorer</h3>
-                            <div id="card-cert-level-badge" class="inline-block mt-1 px-2 py-0.5 rounded-md text-[9px] font-mono-custom font-extrabold uppercase tracking-wider bg-cyan-500 text-white">
-                                OPEN WATER DIVER
-                            </div>
-                            <div id="card-specialty-pills" class="flex flex-wrap gap-1 mt-1"></div>
+                            <h3 id="card-diver-name" class="text-xl font-bold leading-tight truncate">Explorer</h3>
+                            <p id="card-cert-level-badge" class="text-sm font-semibold text-cyan-300 leading-snug mt-0.5">Open Water Diver</p>
+                            <p id="card-specialty-pills" class="text-[11px] text-indigo-200 leading-snug mt-1 empty:hidden"></p>
                         </div>
                     </div>
 
@@ -1349,22 +1347,25 @@
             <!-- Profile Summary: Credential card + Certification History, side by side -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Credential & Card Details -->
-                <div class="diver-card-gradient p-6 rounded-3xl text-white space-y-6 flex flex-col justify-between">
+                <div class="diver-card-gradient p-6 rounded-3xl text-white flex flex-col gap-6">
                     <div class="flex justify-between items-center">
                         <span id="prof-detail-org-card-label" class="text-xs font-bold tracking-widest font-mono-custom uppercase text-cyan-300">Current Certification</span>
                         <i class="fa-solid fa-id-card text-2xl text-cyan-300"></i>
                     </div>
 
-                    <div class="space-y-4">
-                        <div class="flex items-center space-x-4">
-                            <div id="prof-detail-avatar-container" class="h-16 w-16 rounded-full border-2 border-cyan-400 bg-slate-200 dark:bg-slate-800/80 overflow-hidden flex items-center justify-center">
+                    <!-- Grows to fill the card (it stretches to match the
+                         Certification History panel), keeping the name block
+                         vertically centered with cert details pinned below. -->
+                    <div class="flex-1 flex flex-col gap-4">
+                        <div class="flex-1 flex items-center space-x-4">
+                            <div id="prof-detail-avatar-container" class="h-16 w-16 flex-shrink-0 rounded-full border-2 border-cyan-400 bg-slate-200 dark:bg-slate-800/80 overflow-hidden flex items-center justify-center">
                                 <i id="prof-detail-avatar-fallback" class="fa-solid fa-user-astronaut text-3xl text-cyan-300"></i>
                                 <img id="prof-detail-avatar-img" class="h-full w-full object-cover hidden" src="">
                             </div>
-                            <div>
-                                <h3 id="prof-detail-name" class="text-xl font-bold">Explorer</h3>
-                                <span id="prof-detail-cert-level" class="text-xs font-mono-custom bg-cyan-500 text-white px-2 py-0.5 rounded uppercase font-bold">OPEN WATER DIVER</span>
-                                <div id="prof-detail-specialty-pills" class="flex flex-wrap gap-1 mt-1.5"></div>
+                            <div class="min-w-0">
+                                <h3 id="prof-detail-name" class="text-2xl font-bold leading-tight">Explorer</h3>
+                                <p id="prof-detail-cert-level" class="text-sm font-semibold text-cyan-300 leading-snug mt-0.5">Open Water Diver</p>
+                                <p id="prof-detail-specialty-pills" class="text-xs text-indigo-200 leading-snug mt-1 empty:hidden"></p>
                             </div>
                         </div>
 
@@ -1373,7 +1374,7 @@
                                 <span class="block text-[10px] text-cyan-200/70">CERTIFICATION NUMBER</span>
                                 <strong id="prof-detail-cert-no" class="text-white">DIV-PENDING</strong>
                             </div>
-                            <div>
+                            <div class="text-right">
                                 <span class="block text-[10px] text-cyan-200/70">ISSUE DATE</span>
                                 <strong id="prof-detail-cert-date" class="text-white">--/--/----</strong>
                             </div>
@@ -1534,13 +1535,25 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
-                        <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">SAC Rate by Month (L/min)</span>
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <span class="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">SAC Trend</span>
+                            <div class="flex items-center bg-white/60 dark:bg-ocean-900/30 rounded-xl p-1 flex-shrink-0">
+                                <button type="button" id="sac-trend-btn-month" onclick="setTrendChartMode('sac', 'month')" class="px-3 py-1 rounded-lg text-xs font-semibold transition-colors">By Month</button>
+                                <button type="button" id="sac-trend-btn-dive" onclick="setTrendChartMode('sac', 'dive')" class="px-3 py-1 rounded-lg text-xs font-semibold transition-colors">Every Dive</button>
+                            </div>
+                        </div>
                         <div class="relative h-64">
                             <canvas id="chart-sac-monthly"></canvas>
                         </div>
                     </div>
                     <div class="bg-slate-100 dark:bg-ocean-900/10 p-4 rounded-2xl border border-slate-200 dark:border-ocean-800/10">
-                        <span class="block text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">Average Weight by Month (kg)</span>
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <span class="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">Weight Trend</span>
+                            <div class="flex items-center bg-white/60 dark:bg-ocean-900/30 rounded-xl p-1 flex-shrink-0">
+                                <button type="button" id="weight-trend-btn-month" onclick="setTrendChartMode('weight', 'month')" class="px-3 py-1 rounded-lg text-xs font-semibold transition-colors">By Month</button>
+                                <button type="button" id="weight-trend-btn-dive" onclick="setTrendChartMode('weight', 'dive')" class="px-3 py-1 rounded-lg text-xs font-semibold transition-colors">Every Dive</button>
+                            </div>
+                        </div>
                         <div class="relative h-64">
                             <canvas id="chart-weight-monthly"></canvas>
                         </div>
@@ -2530,7 +2543,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '261002-v55';
+        const APP_VERSION = '261002-v56';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -3806,17 +3819,15 @@
                 <span style="color:#e6f1fb;font-weight:700;text-transform:uppercase;">${level}</span>`;
         }
 
-        // Renders the specialty certifications line on the shareable Diver
-        // Profile card — wraps into a compact pill row underneath the main
-        // credential line, indigo-accented to match the specialty pills
-        // shown elsewhere in the app. Returns '' when there are none, so
-        // the layout doesn't leave an empty gap.
+        // Renders the specialty certifications on the shareable Diver
+        // Profile card as one plain-text line under the main credential
+        // line — same "Nitrox · Deep · Wreck" style as the in-app cards (see
+        // buildSpecialtyLineText()). Returns '' when there are none, so the
+        // layout doesn't leave an empty gap.
         function buildSpecialtyLineHtml() {
-            const specialties = state.diverProfile.specialtyCertifications || [];
-            if (specialties.length === 0) return '';
-            const sorted = [...specialties].sort(sortCertificationsByDateDesc);
-            const pills = sorted.map(cert => `<span style="display:inline-block;background:rgba(99,102,241,0.18);border:1px solid rgba(129,140,248,0.4);color:#a5adf0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 8px;border-radius:6px;margin:2px 3px;">${getSpecialtyCertificationDisplayName(cert)}</span>`).join('');
-            return `<div style="margin-top:8px;">${pills}</div>`;
+            const line = buildSpecialtyLineText();
+            if (!line) return '';
+            return `<div style="margin-top:8px;max-width:520px;font-size:12px;line-height:1.5;color:#a5b4fc;">${xmlEscape(line)}</div>`;
         }
 
         function buildShareCardMarkup() {
@@ -8471,6 +8482,16 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             // line — those were removed).
             const sacByMonthAll = bucketAverages(monthKeys, monthKey, diveSAC, dives);
             const weightByMonthAll = bucketAverages(monthKeys, monthKey, d => d.weight, dives);
+
+            // "Every Dive" view of the same two trends: one point per dive,
+            // in dive-number order, x-axis labelled by dive number. Dives
+            // missing the value stay on the axis as a gap (spanGaps joins
+            // the line across it).
+            const byDiveNoAsc = [...dives].sort((a, b) => (a.diveNo || 0) - (b.diveNo || 0));
+            const diveNoLabels = byDiveNoAsc.map(d => `#${d.diveNo ?? '--'}`);
+            const toPoint = v => (v === null || v === undefined || isNaN(v)) ? null : Math.round(v * 100) / 100;
+            const sacByDive = byDiveNoAsc.map(d => toPoint(diveSAC(d)));
+            const weightByDive = byDiveNoAsc.map(d => toPoint(d.weight));
             const divesByMonth = monthKeys.map(k => dives.filter(d => monthKey(d.date) === k).length);
             const divesByQuarter = quarterKeys.map(k => dives.filter(d => quarterKey(d.date) === k).length);
             const divesByYear = yearKeys.map(k => dives.filter(d => yearKey(d.date) === k).length);
@@ -8483,6 +8504,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 minWeight20, maxWeight20, minWeightAll, maxWeightAll,
                 monthLabels: monthKeys.map(monthLabel),
                 sacByMonthAll, weightByMonthAll, divesByMonth,
+                diveNoLabels, sacByDive, weightByDive,
                 quarterLabels: quarterKeys.map(quarterLabel), divesByQuarter,
                 yearLabels: yearKeys, divesByYear,
                 gasMixLabels, gasMixData,
@@ -8601,60 +8623,94 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             // shown, so skipping here just avoids the wasted/broken attempt.
             if (state.currentTab !== 'profile') return;
 
-            const labels = analytics.monthLabels;
+            updateTrendModeButtonStyles();
 
-            // ---- SAC rate by month ----
-            // Single series: simple average of that month's per-dive SAC
-            // values across the entire logbook. (No last-20 split, no
-            // benchmark reference line — removed per user request.)
-            // Charts are updated in place (same dataset shape every render)
-            // rather than destroyed and recreated — destroy+recreate forces
-            // Chart.js to redo full layout/animation setup from scratch every
-            // time, which is unnecessary when only the data has changed.
-            const sacCtx = document.getElementById('chart-sac-monthly');
-            if (sacCtx) {
-                if (profileCharts.sac) {
-                    profileCharts.sac.data.labels = labels;
-                    profileCharts.sac.data.datasets[0].data = analytics.sacByMonthAll;
-                    profileCharts.sac.options = baseChartOptions('L/min', false);
-                    profileCharts.sac.update();
-                } else {
-                    profileCharts.sac = new Chart(sacCtx, {
-                        type: 'line',
-                        data: {
-                            labels,
-                            datasets: [
-                                { label: 'Average SAC Rate', data: analytics.sacByMonthAll, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 }
-                            ]
-                        },
-                        options: baseChartOptions('L/min', false)
-                    });
-                }
+            // ---- SAC trend / Weight trend ----
+            // Each has a By Month / Every Dive toggle. By Month is a single
+            // series: the simple average of that month's per-dive values
+            // across the entire logbook (no last-20 split or benchmark line —
+            // removed per user request). Every Dive plots one point per dive
+            // with the dive number along the x-axis.
+            // Every Dive also gets a dotted reference line at the all-dives
+            // average (same figure as "Avg SAC / Avg Weight — All Dives").
+            renderTrendChart(analytics, 'sac', 'chart-sac-monthly', 'L/min', analytics.sacByMonthAll, analytics.sacByDive, 'Average SAC Rate', 'SAC Rate', analytics.avgSACAll);
+            renderTrendChart(analytics, 'weight', 'chart-weight-monthly', 'kg', analytics.weightByMonthAll, analytics.weightByDive, 'Average Weight', 'Weight', analytics.avgWeightAll);
+        }
+
+        const CHART_COLOR_AVERAGE_LINE = '#22d3ee'; // cyan — contrasts with the magenta series line
+
+        // Which view each trend chart shows — 'month' or 'dive'. Remembered
+        // across re-renders of the page (like the Total Dives granularity).
+        let trendChartModes = { sac: 'month', weight: 'month' };
+
+        function setTrendChartMode(chartKey, mode) {
+            trendChartModes[chartKey] = mode;
+            if (lastComputedAnalytics) renderAnalyticsCharts(lastComputedAnalytics);
+        }
+
+        function updateTrendModeButtonStyles() {
+            const activeClass = "px-3 py-1 rounded-lg text-xs font-semibold transition-colors bg-cyan-500 text-white";
+            const inactiveClass = "px-3 py-1 rounded-lg text-xs font-semibold transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200";
+            ['sac', 'weight'].forEach(key => {
+                const monthBtn = document.getElementById(`${key}-trend-btn-month`);
+                const diveBtn = document.getElementById(`${key}-trend-btn-dive`);
+                if (!monthBtn || !diveBtn) return;
+                monthBtn.className = trendChartModes[key] === 'month' ? activeClass : inactiveClass;
+                diveBtn.className = trendChartModes[key] === 'dive' ? activeClass : inactiveClass;
+            });
+        }
+
+        function renderTrendChart(analytics, chartKey, canvasId, yLabel, monthData, diveData, monthSeriesLabel, diveSeriesLabel, allDivesAverage) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+
+            const perDive = trendChartModes[chartKey] === 'dive';
+            const labels = perDive ? analytics.diveNoLabels : analytics.monthLabels;
+            const data = perDive ? diveData : monthData;
+            const seriesLabel = perDive ? diveSeriesLabel : monthSeriesLabel;
+            const showAverageLine = perDive && allDivesAverage !== null && allDivesAverage !== undefined && !isNaN(allDivesAverage);
+
+            // Legend only in Every Dive view, where it explains the dotted line.
+            const opts = baseChartOptions(yLabel, showAverageLine);
+            opts.scales.x.title = { display: true, text: perDive ? 'Dive #' : 'Month', color: opts.scales.x.ticks.color, font: { size: 10 } };
+
+            const seriesDataset = { label: seriesLabel, data, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 };
+            const datasets = [seriesDataset];
+            if (showAverageLine) {
+                const avg = Math.round(allDivesAverage * 100) / 100;
+                datasets.push({
+                    label: `Average, all dives (${avg} ${yLabel})`,
+                    data: labels.map(() => avg),
+                    borderColor: CHART_COLOR_AVERAGE_LINE,
+                    backgroundColor: CHART_COLOR_AVERAGE_LINE,
+                    borderDash: [6, 4],
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0
+                });
             }
 
-            // ---- Average weight by month ----
-            // Single series: simple average of that month's per-dive weight
-            // values across the entire logbook (last-20 split and legend
-            // removed per user request, matching the SAC chart above).
-            const weightCtx = document.getElementById('chart-weight-monthly');
-            if (weightCtx) {
-                if (profileCharts.weight) {
-                    profileCharts.weight.data.labels = labels;
-                    profileCharts.weight.data.datasets[0].data = analytics.weightByMonthAll;
-                    profileCharts.weight.options = baseChartOptions('kg', false);
-                    profileCharts.weight.update();
-                } else {
-                    profileCharts.weight = new Chart(weightCtx, {
-                        type: 'line',
-                        data: {
-                            labels,
-                            datasets: [
-                                { label: 'Average Weight', data: analytics.weightByMonthAll, borderColor: CHART_COLOR_ALLTIME, backgroundColor: CHART_COLOR_ALLTIME, spanGaps: true, tension: 0.3 }
-                            ]
-                        },
-                        options: baseChartOptions('kg', false)
-                    });
-                }
+            // Updated in place rather than destroyed and recreated —
+            // destroy+recreate forces Chart.js to redo full layout/animation
+            // setup from scratch every time, which is unnecessary when only
+            // the data (or the month/dive view) has changed. The series
+            // dataset object is kept so its line animates between views;
+            // the average line is added/removed alongside it.
+            const chart = profileCharts[chartKey];
+            if (chart) {
+                const existing = chart.data.datasets[0];
+                Object.assign(existing, seriesDataset);
+                chart.data.labels = labels;
+                chart.data.datasets = [existing, ...datasets.slice(1)];
+                chart.options = opts;
+                chart.update();
+            } else {
+                profileCharts[chartKey] = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets },
+                    options: opts
+                });
             }
         }
 
@@ -8763,36 +8819,38 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             }
         }
 
-        // Specialty pills use a distinct indigo/violet hue (vs. the cyan main
-        // certification pill) so they read as "additive extras" rather than
-        // competing progression levels — matches the approved mockup.
-        function buildSpecialtyPillsHtml() {
+        // Specialties render as one plain-text line ("Nitrox · Deep · Wreck"),
+        // not pills — filled pills looked dated and their tiny uppercase text
+        // never sat centered. Indigo text still sets them apart from the cyan
+        // main certification level. Most recent first.
+        function buildSpecialtyLineText() {
             const specialties = state.diverProfile.specialtyCertifications || [];
             if (specialties.length === 0) return '';
             const sorted = [...specialties].sort(sortCertificationsByDateDesc);
-            return sorted.map(cert => `<span class="text-[8px] font-mono-custom font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500 text-white">${getSpecialtyCertificationDisplayName(cert)}</span>`).join('');
+            return sorted.map(getSpecialtyCertificationDisplayName).join(' · ');
         }
 
         function renderDiverProfileCard() {
+            const org = state.diverProfile.org || '';
+            const level = state.diverProfile.level || "Open Water Diver";
+            const specialtyLine = buildSpecialtyLineText();
+
+            // The organisation sits in the card's top-left label, so the
+            // level line underneath the name can be plain text.
+            document.getElementById('card-cert-org').innerText = org || 'Diver Credentials';
             document.getElementById('card-diver-name').innerText = state.diverProfile.name || "Explorer";
-
-
-            const badge = document.getElementById('card-cert-level-badge');
-            badge.innerText = (state.diverProfile.level || "Open Water Diver").toUpperCase();
+            document.getElementById('card-cert-level-badge').innerText = level;
             document.getElementById('card-cert-no').innerText = `# ${state.diverProfile.certNo || 'PENDING'}`;
-
-            const specialtyPillsHtml = buildSpecialtyPillsHtml();
-            const cardSpecialtyPills = document.getElementById('card-specialty-pills');
-            if (cardSpecialtyPills) cardSpecialtyPills.innerHTML = specialtyPillsHtml;
+            const cardSpecialtyLine = document.getElementById('card-specialty-pills');
+            if (cardSpecialtyLine) cardSpecialtyLine.innerText = specialtyLine;
 
             // Re-render in diver detail page too
+            document.getElementById('prof-detail-org-card-label').innerText = org ? `${org} · Current Certification` : 'Current Certification';
             document.getElementById('prof-detail-name').innerText = state.diverProfile.name || "Explorer";
-            const detailBadge = document.getElementById('prof-detail-cert-level');
-            detailBadge.innerText = (state.diverProfile.level || "Open Water Diver").toUpperCase();
+            document.getElementById('prof-detail-cert-level').innerText = level;
             document.getElementById('prof-detail-cert-no').innerText = state.diverProfile.certNo || "PENDING";
-
-            const detailSpecialtyPills = document.getElementById('prof-detail-specialty-pills');
-            if (detailSpecialtyPills) detailSpecialtyPills.innerHTML = specialtyPillsHtml;
+            const detailSpecialtyLine = document.getElementById('prof-detail-specialty-pills');
+            if (detailSpecialtyLine) detailSpecialtyLine.innerText = specialtyLine;
 
             const issueDateStr = state.diverProfile.date
                 ? formatDateDMY(state.diverProfile.date)
@@ -9104,36 +9162,22 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
 
             container.innerHTML = '';
             filteredDives.forEach(dive => {
-                let crittersCardList = '';
-                if (dive.critters && dive.critters.length > 0) {
-                    dive.critters.forEach(c => {
-                        const template = CRITTER_DATABASE[c.id];
-                        if (template) {
-                            const hasPhotoIndicator = c.photoId
-                                ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[8px] font-mono-custom flex items-center gap-1"><i class="fa-solid fa-image"></i> Photo</span>`
-                                : '';
-                            crittersCardList += `
-                                <div class="p-3 rounded-xl bg-slate-50 dark:bg-ocean-950/50 border border-slate-300 dark:border-ocean-800/30 flex items-center space-x-3">
-                                    <div class="h-10 w-10 bg-cyan-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                        ${CRITTER_ICONS[template.tag] || CRITTER_ICONS["Reef Fish"]}
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <div class="flex justify-between items-start">
-                                            <span class="text-xs font-bold block truncate text-slate-900 dark:text-white">${c.customName || template.name}</span>
-                                            <span class="text-[9px] font-mono-custom bg-cyan-500/10 text-cyan-400 px-1.5 py-0.2 rounded">${template.rarity}</span>
-                                        </div>
-                                        <div class="flex justify-between items-center mt-1 text-[10px] text-slate-600 dark:text-slate-400">
-                                            <span>Seen at: <strong class="text-cyan-400">${c.depth !== null ? c.depth + 'm' : '--'}</strong></span>
-                                            ${hasPhotoIndicator}
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    });
-                } else {
-                    crittersCardList = `<p class="text-xs text-slate-600 dark:text-slate-500 italic py-2">No marine life observations logged during this dive.</p>`;
-                }
+                // Compact text summary — just a count and the species names
+                // (repeat sightings collapsed to "Name ×2"), not one card per
+                // sighting, so dives with lots of marine life don't turn the
+                // expanded view into a long scroll. Per-sighting depth/photo
+                // detail stays in Full Log Details and View Marine Sightings.
+                const sightingCounts = new Map();
+                (dive.critters || []).forEach(c => {
+                    const template = CRITTER_DATABASE[c.id];
+                    if (!template) return;
+                    const label = c.customName || template.name;
+                    sightingCounts.set(label, (sightingCounts.get(label) || 0) + 1);
+                });
+                const totalSightings = [...sightingCounts.values()].reduce((sum, n) => sum + n, 0);
+                const crittersSummary = totalSightings > 0
+                    ? `<p class="text-xs leading-relaxed text-slate-700 dark:text-slate-300">${[...sightingCounts].map(([label, n]) => n > 1 ? `${xmlEscape(label)} ×${n}` : xmlEscape(label)).join(', ')}</p>`
+                    : `<p class="text-xs text-slate-600 dark:text-slate-500 italic">No marine life observations logged during this dive.</p>`;
 
                 const maxDepthText = dive.maxDepth !== null ? `${dive.maxDepth}m` : '--';
                 const bottomTimeText = dive.bottomTime !== null ? `${dive.bottomTime}m` : '--';
@@ -9232,10 +9276,8 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                             </div>
 
                             <div class="space-y-2">
-                                <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase">Marine Species Sightings</span>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    ${crittersCardList}
-                                </div>
+                                <span class="block text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase">Marine Species Sightings${totalSightings > 0 ? ` <span class="text-cyan-400 font-bold">(${totalSightings})</span>` : ''}</span>
+                                ${crittersSummary}
                             </div>
 
                             <div class="flex justify-end pt-1 space-x-2">

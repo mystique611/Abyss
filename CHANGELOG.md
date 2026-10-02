@@ -1,5 +1,17 @@
 # Changelog
 
+## 261002-v56
+
+- **Logbook: marine sightings in a dive's expanded view are now a compact text summary.** Instead of one card per sighting (icon, rarity tag, depth, photo badge), the section header shows the total count — e.g. "Marine Species Sightings (7)" — followed by a single line of species names, with repeat sightings collapsed to "Name ×2". Dives with lots of marine life no longer turn the expanded view into a long scroll. Per-sighting depth and photos are still in Full Log Details and View Marine Sightings.
+- **Diver credential cards redesigned — no more pills.** The filled cyan certification-level pill and indigo specialty pills (tiny uppercase text that never sat centered) are replaced with clean text on the Dashboard card, the Diver Details card, and the shareable Diver Profile image:
+  - The certification organisation (e.g. PADI) now sits in the card's top-left label.
+  - The diver name is larger, with the certification level underneath as plain cyan text in normal case.
+  - Specialty certifications are one indigo text line, most recent first — e.g. "Wreck Diver · Deep Diver · Enriched Air Nitrox Diver".
+  - On Diver Details, the name block is now vertically centered in the card instead of sitting low with an empty gap above it, and Issue Date is right-aligned to match the Dashboard card.
+- **Diver Details trend charts: By Month / Every Dive toggle.** The SAC and weight charts under "Trends Over Time" each have their own toggle. **By Month** is the existing view (average of each month's dives). **Every Dive** plots one point per dive, in dive-number order, with the dive number (`#1`, `#2`, …) along the horizontal axis; dives missing a SAC or weight value are skipped over with the line joined across the gap. In Every Dive view, each chart also shows a **dotted cyan reference line at the average of all logged dives** (all-dives average SAC in L/min, or all-dives average weight in kg), with a small legend naming the line and its value. Each chart remembers its choice while you use the app, and both now label their horizontal axis ("Month" / "Dive #").
+- **Trend chart titles renamed**: "SAC Rate by Month (L/min)" → **SAC Trend**, "Average Weight by Month (kg)" → **Weight Trend** (units are still shown on each chart's vertical axis).
+- Service worker cache bumped (`abyss-shell-v55` → `abyss-shell-v56`) to ship the above.
+
 ## 261002-v55
 
 - **AquaDex opens much faster.** The grid used to re-scan the entire logbook once per species — and again twice per comparison while sorting locked/unlocked species — so it got slower with every dive logged. Sightings are now indexed in a single pass per render and looked up from there. The same index now also backs the Dashboard's Marine Life count and the Log a Dive marine life checklist.
