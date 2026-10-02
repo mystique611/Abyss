@@ -1,5 +1,12 @@
 # Changelog
 
+## 261002-v54
+
+- **AquaDex category icons now work offline on a fresh install.** The 14 icons in `icons/critters/` were never in the service worker's precache list, so they were only cached after first being viewed online — a new install opened offline (e.g. at a dive site) could show blank AquaDex category icons. They're now precached with the rest of the app shell.
+- **README brought up to date**: added a features overview, the vendored Chart.js and `icons/critters/` entries in the file overview, a "Shipping a new version" checklist, and removed the outdated note about placeholder icons.
+- **Release snapshots trimmed** to the latest 10 versions.
+- Service worker cache bumped (`abyss-shell-v53` → `abyss-shell-v54`) to ship the above.
+
 ## 260925-v53
 
 - **Global Exploration Footprint map now groups repeat visits to the same dive site into a single dot** instead of showing one overlapping marker per dive. Dives are grouped when their site name matches (trimmed/case-insensitive) and, for dives with an exact GPS pin, their coordinates are within ~400m of each other — close enough to absorb normal GPS drift without merging genuinely separate sites. Tapping a grouped dot now shows a scrollable list of every dive logged there, each linking straight to its Full Log Details.

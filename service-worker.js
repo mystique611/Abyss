@@ -8,7 +8,7 @@
  * otherwise returning visitors keep getting the old cached copy.
  */
 
-const CACHE_VERSION = 'abyss-shell-v53';
+const CACHE_VERSION = 'abyss-shell-v54';
 
 // Keep this list in sync with every static asset the app needs to boot offline.
 const APP_SHELL_FILES = [
@@ -21,7 +21,22 @@ const APP_SHELL_FILES = [
     './js/msal-browser.min.js',
     './js/chart.umd.min.js',
     './icons/icon-192.png',
-    './icons/icon-512.png'
+    './icons/icon-512.png',
+    // AquaDex category icons — precached so they show offline on a fresh install
+    './icons/critters/cephalopods.png',
+    './icons/critters/corals-anemones.png',
+    './icons/critters/crustaceans.png',
+    './icons/critters/echinoderms.png',
+    './icons/critters/eel.png',
+    './icons/critters/jellyfish.png',
+    './icons/critters/marine-mammals.png',
+    './icons/critters/nudibranchs.png',
+    './icons/critters/others.png',
+    './icons/critters/pelagic-fish.png',
+    './icons/critters/rays.png',
+    './icons/critters/reef-fish.png',
+    './icons/critters/sharks.png',
+    './icons/critters/turtles.png'
 ];
 
 self.addEventListener('install', (event) => {

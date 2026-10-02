@@ -4,19 +4,57 @@ This app works fully offline (IndexedDB), and syncs to the signed-in user's
 personal OneDrive whenever a connection is available. It's a static site —
 no backend server required — so it deploys for free on GitHub Pages.
 
+See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+
+## Features
+
+- **Dashboard** — lifetime stat widgets (Countries, Unique Dive Sites, Total Dives,
+  Bottom Time, Cumulative Depth, Marine Life), diver credential card, and a Global
+  Exploration Footprint map that groups repeat visits to the same site into one dot.
+- **Logbook** — searchable/filterable dive list (country, site, dive type, tags),
+  Full Log Details, dive photo and marine sighting galleries, and a shareable
+  one-page **Dive Diary** image per dive.
+- **Log a Dive** — sectioned form: General (activity/dive type, tags, map pin with
+  place search + current location), Environmental Profile, Equipment (exposure suit,
+  additional gear, reusable **My Gear** library), Depth & Time Profile (live graph),
+  Gas Metrics & SAC, repeatable marine life sightings, captioned Dive Photos, and
+  Dive Buddy / Dive Center / Journal.
+- **AquaDex** — critter database across 14 categories with category, rarity, and
+  name search filters, plus per-species sighting history.
+- **Diver Profile** — diver info and emergency contact, certification and specialty
+  certification history (with optional card photos), sub-surface analytics and
+  trend charts (SAC, weight, dives per month/quarter/year), and a shareable
+  Diver Profile card.
+- **Import / Export** — UDDF import (multi-dive selection, profile/gas/GPS
+  pre-fill), and UDDF, CSV, and PDF export with selectable dives/fields.
+- **Light / dark theme**, synced across devices.
+
 ## File overview
 
 ```
-index.html          the app itself
-manifest.json        PWA metadata (install prompt, icons, theme color)
-service-worker.js    caches the app shell so it boots with zero connectivity
-js/db.js             IndexedDB wrapper — local source of truth for all data
-js/auth.js           Microsoft login (MSAL.js) — OneDrive access
-js/sync.js           pushes/pulls data to the user's OneDrive app folder
-js/msal-browser.min.js  vendored copy of @azure/msal-browser (not loaded from
-                      a CDN — see CHANGELOG.md for why)
-icons/               placeholder app icons (replace with your own artwork)
+index.html             the app itself (UI, logic, AquaDex species database)
+manifest.json          PWA metadata (install prompt, icons, theme color)
+service-worker.js      caches the app shell so it boots with zero connectivity
+js/db.js               IndexedDB wrapper — local source of truth for all data
+js/auth.js             Microsoft login (MSAL.js) — OneDrive access
+js/sync.js             pushes/pulls data to the user's OneDrive app folder
+js/msal-browser.min.js vendored copy of @azure/msal-browser (not loaded from
+                       a CDN — see CHANGELOG.md for why)
+js/chart.umd.min.js    vendored Chart.js (UMD build) for all charts
+icons/                 app icons (wave mark) + icons/critters/ AquaDex category icons
+Critters Icon/         original source artwork for the AquaDex category icons
+YYMMDD-vNN/            snapshot of each shipped release (latest 10 kept)
 ```
+
+## Shipping a new version
+
+1. Make changes in the root files.
+2. Bump `APP_VERSION` in `index.html` and `CACHE_VERSION` in `service-worker.js`
+   (otherwise installed users keep the old cached build).
+3. If you add a new static asset the app needs offline, add it to
+   `APP_SHELL_FILES` in `service-worker.js`.
+4. Add a top entry to `CHANGELOG.md`.
+5. Copy the build into a new `YYMMDD-vNN` snapshot folder (real ship date).
 
 ## 1. Register an Azure AD app (one-time, ~5 minutes)
 
@@ -66,4 +104,3 @@ just remember to update the Azure redirect URI to match if you do.
 
 - **iOS Safari** has no Background Sync API, so sync only runs while the app is actively open (not silently while backgrounded). It also may clear IndexedDB after ~7 days of inactivity unless the user "installs" the app to their home screen — encourage users to do this.
 - **Conflict resolution** here is last-write-wins on the whole dataset, which is fine for one person syncing across their own devices, but isn't built for multiple people editing simultaneously.
-- The two placeholder icons in `icons/` are generated programmatically — swap them for real artwork before shipping.
