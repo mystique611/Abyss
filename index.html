@@ -652,7 +652,7 @@
                         <button type="button" id="log-mode-btn-quick" onclick="setLogFormMode('quick')" class="px-4 py-1.5 rounded-lg text-xs font-semibold"><i class="fa-solid fa-bolt mr-1"></i>Quick Log</button>
                         <button type="button" id="log-mode-btn-full" onclick="setLogFormMode('full')" class="px-4 py-1.5 rounded-lg text-xs font-semibold"><i class="fa-solid fa-list mr-1"></i>Full Log</button>
                     </div>
-                    <p id="log-mode-hint" class="hidden text-xs text-slate-600 dark:text-slate-400">Just the essentials. Switch to Full Log any time to add conditions, gear, gas and photos.</p>
+                    <p id="log-mode-hint" class="hidden text-xs text-slate-600 dark:text-slate-400">Just the essentials. Switch to Full Log any time to add conditions, gear, marine life and photos.</p>
                 </div>
 
                 <div id="log-draft-banner" class="hidden glass-panel p-4 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -1191,7 +1191,7 @@
                     </div>
 
                     <!-- SECTION 5: Gas Calculations (Metric / Imperial Auto-Sync) -->
-                    <div class="glass-panel p-6 rounded-3xl space-y-4" data-full-log-only>
+                    <div class="glass-panel p-6 rounded-3xl space-y-4">
                         <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-slate-200 dark:border-ocean-900/20 pb-2">
                             <span class="font-mono-custom text-sm">05.</span>
                             <h3 class="text-sm tracking-widest uppercase">Gas Metrics & Surface Air Consumption (SAC)</h3>
@@ -1246,7 +1246,7 @@
                     </div>
 
                     <!-- SECTION 6: Critter Sighting & Discovery Upload -->
-                    <div class="glass-panel p-6 rounded-3xl space-y-4">
+                    <div class="glass-panel p-6 rounded-3xl space-y-4" data-full-log-only>
                         <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-slate-200 dark:border-ocean-900/20 pb-2">
                             <span class="font-mono-custom text-sm">06.</span>
                             <h3 class="text-sm tracking-widest uppercase">Marine Life Sightings</h3>
@@ -2615,7 +2615,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '261031-v57';
+        const APP_VERSION = '261031-v58';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -7210,7 +7210,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
 
         /* ==================== LOG A DIVE: QUICK LOG MODE ==================== */
         // Quick Log hides the sections marked data-full-log-only (conditions,
-        // equipment, gas, photos) so a dive can be logged on the boat in a
+        // equipment, marine life, photos) so a dive can be logged on the boat in a
         // few taps. Hidden fields keep their values, so switching modes never
         // loses anything; dives saved in Quick Log are flagged (quickLog) so
         // the Logbook can offer "add details" later. The choice is remembered.

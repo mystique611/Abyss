@@ -1,5 +1,10 @@
 # Changelog
 
+## 261031-v58
+
+- **Quick Log now includes Gas Metrics & SAC and leaves out Marine Life Sightings.** Quick Log shows General, Depth & Time, Gas Metrics & SAC, and Dive Buddy & Journal; Environmental Profile, Equipment, Marine Life Sightings and Dive Photos are in Full Log only. As before, nothing typed in a hidden section is lost when switching modes.
+- Service worker cache bumped (`abyss-shell-v57` → `abyss-shell-v58`) to ship the above.
+
 ## 261031-v57
 
 - **Log a Dive auto-saves a draft.** The form is saved on this device a moment after every change (and immediately if the app is closed or sent to the background), so a reload, a closed tab, or the phone killing the app on the boat no longer loses a half-typed log. Opening Log a Dive with an unsaved draft shows a **Resume Draft / Discard** banner, and launching the app with a draft waiting shows a **Resume** prompt. A small "Draft saved hh:mm" note sits under the form title. Drafts are cleared when the dive is saved, cancelled, or cleared with Clear All. Edits to an existing dive are draft-saved too.
