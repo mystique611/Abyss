@@ -10,9 +10,13 @@
  *     /Apps/AbyssDiveLog/photos/<id>.jpg
  * so the JSON snapshot itself stays small and only stores a reference/URL.
  *
- * Conflict rule: last-write-wins by `updatedAt` timestamp. Good enough for a
- * single user syncing across their own devices; not built for concurrent
- * multi-user editing.
+ * Conflict rule: merged dive-by-dive (see mergeSnapshots). Each dive keeps
+ * whichever copy has the newer `updatedAt`; dives that only exist on one
+ * side are kept; deletions travel as tombstones (`deletedDives`: id ->
+ * deletedAt) so a dive deleted on one device doesn't come back from
+ * another. The diver profile is last-write-wins on its own timestamp.
+ * Good for one person syncing across their own devices; not built for
+ * concurrent multi-user editing.
  */
 
 const GRAPH_ROOT = 'https://graph.microsoft.com/v1.0';
@@ -20,6 +24,8 @@ const APP_FOLDER = 'me/drive/special/approot'; // Graph's per-app sandboxed OneD
 const SNAPSHOT_PATH = 'dive_data.json';
 
 let syncInProgress = false;
+let retryTimer = null;
+const SYNC_RETRY_DELAY_MS = 2 * 60 * 1000;
 let statusListeners = [];
 
 function onSyncStatusChange(callback) {
@@ -102,8 +108,77 @@ async function downloadPhoto(token, photoId) {
 function mergeSnapshots(local, remote) {
     if (!remote) return local;
     if (!local) return remote;
-    // Whole-snapshot last-write-wins, compared by a single top-level timestamp.
-    return (remote.updatedAt || 0) > (local.updatedAt || 0) ? remote : local;
+
+    // Snapshot-level timestamp is only a tie-breaker now — for dives saved
+    // before per-dive updatedAt existed (both sides 0), and for the theme.
+    const remoteNewer = (remote.updatedAt || 0) > (local.updatedAt || 0);
+
+    const deletedDives = { ...(local.deletedDives || {}) };
+    Object.entries(remote.deletedDives || {}).forEach(([id, ts]) => {
+        deletedDives[id] = Math.max(deletedDives[id] || 0, ts || 0);
+    });
+
+    const byId = new Map();
+    (local.dives || []).forEach(d => byId.set(d.id, d));
+    (remote.dives || []).forEach(r => {
+        const l = byId.get(r.id);
+        if (!l) { byId.set(r.id, r); return; }
+        const lu = l.updatedAt || 0;
+        const ru = r.updatedAt || 0;
+        if (ru > lu || (ru === lu && remoteNewer)) byId.set(r.id, r);
+    });
+    // A dive edited (or restored via Undo) after it was deleted elsewhere
+    // wins over the tombstone; otherwise the deletion sticks.
+    const dives = [...byId.values()].filter(d => !(deletedDives[d.id] && deletedDives[d.id] >= (d.updatedAt || 0)));
+
+    const lp = local.profileUpdatedAt || 0;
+    const rp = remote.profileUpdatedAt || 0;
+    const useRemoteProfile = remote.diverProfile && (!local.diverProfile || rp > lp || (rp === lp && remoteNewer));
+
+    return {
+        dives,
+        deletedDives,
+        diverProfile: useRemoteProfile ? remote.diverProfile : local.diverProfile,
+        profileUpdatedAt: Math.max(lp, rp),
+        theme: remoteNewer ? (remote.theme || local.theme) : (local.theme || remote.theme),
+        updatedAt: Math.max(local.updatedAt || 0, remote.updatedAt || 0)
+    };
+}
+
+// Key-order-independent JSON, so two snapshots holding the same data
+// compare equal no matter how each side's objects were built.
+function stableStringify(value) {
+    if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+    if (value && typeof value === 'object') {
+        return `{${Object.keys(value).sort().filter(k => value[k] !== undefined).map(k => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+    }
+    return JSON.stringify(value === undefined ? null : value);
+}
+
+function snapshotContent(snap) {
+    if (!snap) return '';
+    const dives = [...(snap.dives || [])].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    return stableStringify({ dives, deletedDives: snap.deletedDives || {}, diverProfile: snap.diverProfile || null });
+}
+
+async function readLocalSnapshot() {
+    return {
+        dives: await window.AbyssDB.getAllDives(),
+        deletedDives: await window.AbyssDB.getMeta('deletedDives', {}),
+        diverProfile: await window.AbyssDB.getMeta('diverProfile', null),
+        profileUpdatedAt: await window.AbyssDB.getMeta('profileUpdatedAt', 0),
+        theme: await window.AbyssDB.getMeta('theme', 'dark'),
+        updatedAt: await window.AbyssDB.getLocalDataVersion()
+    };
+}
+
+async function applySnapshotLocally(snap) {
+    await window.AbyssDB.replaceAllDives(snap.dives || []);
+    await window.AbyssDB.setMeta('deletedDives', snap.deletedDives || {});
+    if (snap.diverProfile) await window.AbyssDB.setMeta('diverProfile', snap.diverProfile);
+    await window.AbyssDB.setMeta('profileUpdatedAt', snap.profileUpdatedAt || 0);
+    if (snap.theme) await window.AbyssDB.setMeta('theme', snap.theme);
+    await window.AbyssDB.setLocalDataVersion(snap.updatedAt || Date.now());
 }
 
 /* ---------------- Public sync entry point ---------------- */
@@ -122,55 +197,31 @@ async function syncNow() {
 
         const queue = await window.AbyssDB.getSyncQueue();
 
-        // Build the current local snapshot. updatedAt comes from
-        // localDataVersion — a timestamp that only advances when a real
-        // local edit happens (see db.js enqueueSync) — NOT a fresh
-        // Date.now() on every sync attempt. Stamping "now" here regardless
-        // of whether anything changed was the root cause of a data-loss bug:
-        // a freshly-opened second device with zero local dives would always
-        // look "newer" than the real data already on OneDrive, so
-        // last-write-wins picked the empty local copy and hid/overwrote the
-        // real one. Using the real last-edit time keeps the comparison honest.
-        const localSnapshot = {
-            dives: await window.AbyssDB.getAllDives(),
-            diverProfile: await window.AbyssDB.getMeta('diverProfile', null),
-            theme: await window.AbyssDB.getMeta('theme', 'dark'),
-            updatedAt: await window.AbyssDB.getLocalDataVersion()
-        };
-
+        // localSnapshot.updatedAt comes from localDataVersion — a timestamp
+        // that only advances on a real local edit (see db.js enqueueSync),
+        // never a fresh Date.now() per sync attempt. With the per-dive merge
+        // below it's only a tie-breaker, but keeping it honest still matters
+        // for legacy dives that have no updatedAt of their own.
+        //
+        // The old whole-snapshot last-write-wins needed a special guard so
+        // an empty, never-synced device couldn't push its emptiness over
+        // real remote data. The merge makes that impossible by design: a
+        // dive only disappears through an explicit deletedDives tombstone,
+        // so an empty local side simply contributes nothing.
+        const localSnapshot = await readLocalSnapshot();
         const remoteSnapshot = await downloadSnapshot(token);
-        let winner = mergeSnapshots(localSnapshot, remoteSnapshot);
+        const merged = mergeSnapshots(localSnapshot, remoteSnapshot);
+        const mergedContent = snapshotContent(merged);
 
-        // Belt-and-suspenders safety net, independent of the timestamp fix
-        // above: this device/browser has NEVER completed a sync before
-        // (e.g. storage was just cleared, or this is a brand-new device),
-        // local has zero dives, and remote already has real data. Never
-        // push an empty snapshot over that, no matter what any timestamp
-        // says — always prefer the real data. Once this device has synced
-        // successfully at least once (lastSyncedAt gets set below), this
-        // guard steps aside and trusts the normal comparison, so genuinely
-        // deleting all your dives on an established device still syncs fine.
-        const hasSyncedBefore = await window.AbyssDB.getMeta('lastSyncedAt', null);
-        const localHasNoDives = (localSnapshot.dives || []).length === 0;
-        const remoteHasDives = remoteSnapshot && (remoteSnapshot.dives || []).length > 0;
-        if (winner === localSnapshot && !hasSyncedBefore && localHasNoDives && remoteHasDives) {
-            console.warn('Refusing to push an empty local snapshot over existing remote data on first-ever sync — pulling remote instead.');
-            winner = remoteSnapshot;
+        if (mergedContent !== snapshotContent(localSnapshot)) {
+            // Something came in from another device — bring this one up to date.
+            await applySnapshotLocally(merged);
+            if (window.onRemoteDataApplied) window.onRemoteDataApplied(merged);
         }
-
-        if (winner === remoteSnapshot && remoteSnapshot) {
-            // Remote copy is newer — pull it down so this device catches up
-            // (e.g. data changed on another device, or this is a fresh
-            // device signing in for the first time).
-            await window.AbyssDB.replaceAllDives(remoteSnapshot.dives || []);
-            await window.AbyssDB.setMeta('diverProfile', remoteSnapshot.diverProfile);
-            await window.AbyssDB.setMeta('theme', remoteSnapshot.theme);
-            await window.AbyssDB.setLocalDataVersion(remoteSnapshot.updatedAt || Date.now());
-            if (window.onRemoteDataApplied) window.onRemoteDataApplied(remoteSnapshot);
-        } else {
-            // Local copy is newer (a real change happened here), or this is
-            // the very first sync ever (no remote snapshot exists yet) — push it.
-            await uploadSnapshot(token, winner);
+        if (!remoteSnapshot || mergedContent !== snapshotContent(remoteSnapshot)) {
+            // This device has changes OneDrive doesn't (or there's no remote
+            // copy yet) — push the merged result.
+            await uploadSnapshot(token, merged);
         }
 
         // Process each queued item individually, deleting only the ones that
@@ -197,80 +248,30 @@ async function syncNow() {
         }
 
         await window.AbyssDB.setMeta('lastSyncedAt', Date.now());
+        clearTimeout(retryTimer);
         emitStatus('synced');
     } catch (err) {
         console.error('Sync failed:', err);
         emitStatus('error', err.message);
+        // Nothing is lost (every change is already in IndexedDB and still
+        // queued) — just try again in a couple of minutes instead of
+        // waiting for the next edit or reconnect.
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(() => { if (navigator.onLine) syncNow(); }, SYNC_RETRY_DELAY_MS);
     } finally {
         syncInProgress = false;
     }
 }
 
-/* ---------------- Post-sign-in safe sync ---------------- */
-// The riskiest moment for the "empty local device silently overwrites real
-// remote data" failure mode is the very first sync a device ever does after
-// signing in — local IndexedDB is empty, and if anything causes local's
-// timestamp to look newer than it should, plain last-write-wins in syncNow()
-// would push that emptiness over real remote data.
-//
-// syncAfterSignIn() sidesteps timestamps entirely for that one moment, but
-// ONLY when local is genuinely empty: it downloads the remote snapshot FIRST,
-// and pulls it unconditionally if local has zero dives and remote has real
-// data (the classic "fresh device signing in" case, where there's nothing
-// local to lose). If local already has dives of its own — e.g. a dive was
-// logged while offline or signed out, before this sign-in — that data must
-// be protected too, so this falls through to syncNow()'s existing
-// timestamp-based comparison instead of blindly letting remote win. That
-// comparison already correctly picks whichever side has the newer edit,
-// since db.js only advances the local timestamp on genuine local changes.
+/* ---------------- Post-sign-in sync ---------------- */
+// The first sync after signing in used to need its own pull-first path,
+// because whole-snapshot last-write-wins could let an empty local logbook
+// overwrite real remote data. The per-dive merge in syncNow() can't lose
+// dives that way (an empty side contributes nothing, and only explicit
+// tombstones remove a dive), so this is now just syncNow(). Kept as its
+// own entry point so the sign-in callers don't need to change.
 async function syncAfterSignIn() {
-    if (syncInProgress) return;
-    if (!navigator.onLine) { emitStatus('offline'); return; }
-    if (!window.AbyssAuth || !window.AbyssAuth.isSignedIn()) { emitStatus('signed-out'); return; }
-
-    emitStatus('syncing');
-    let pulledRemote = false;
-
-    try {
-        const token = await window.AbyssAuth.getGraphAccessToken();
-        if (!token) { emitStatus('signed-out'); return; }
-
-        const localDives = await window.AbyssDB.getAllDives();
-        const localHasDives = (localDives || []).length > 0;
-
-        const remoteSnapshot = await downloadSnapshot(token);
-        const remoteHasDives = remoteSnapshot && (remoteSnapshot.dives || []).length > 0;
-
-        // Unconditional remote-wins shortcut — safe ONLY because local has
-        // nothing of its own to protect here.
-        if (remoteHasDives && !localHasDives) {
-            syncInProgress = true;
-            await window.AbyssDB.replaceAllDives(remoteSnapshot.dives || []);
-            await window.AbyssDB.setMeta('diverProfile', remoteSnapshot.diverProfile);
-            await window.AbyssDB.setMeta('theme', remoteSnapshot.theme);
-            await window.AbyssDB.setLocalDataVersion(remoteSnapshot.updatedAt || Date.now());
-            await window.AbyssDB.clearSyncQueue();
-            await window.AbyssDB.setMeta('lastSyncedAt', Date.now());
-            if (window.onRemoteDataApplied) window.onRemoteDataApplied(remoteSnapshot);
-            emitStatus('synced');
-            pulledRemote = true;
-        }
-    } catch (err) {
-        console.error('Post-sign-in sync check failed:', err);
-        emitStatus('error', err.message);
-        return;
-    } finally {
-        if (pulledRemote) syncInProgress = false;
-    }
-
-    if (!pulledRemote) {
-        // Remote is missing/empty, OR local already has real dives to
-        // protect (e.g. logged while offline/signed-out) — either way, fall
-        // through to the normal timestamp-based compare-and-push flow, which
-        // correctly picks whichever side actually has the newer data instead
-        // of letting remote win by default.
-        await syncNow();
-    }
+    return syncNow();
 }
 
 /* ---------------- Auto-sync triggers ---------------- */

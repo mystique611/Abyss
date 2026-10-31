@@ -186,6 +186,10 @@ async function deletePhoto(id) {
 
 async function enqueueSync(action, payload = {}) {
     await setMeta('localDataVersion', Date.now());
+    // The diver profile has no per-record timestamp of its own, so stamp
+    // one here — sync.js uses it to pick the newer profile independently
+    // of which side has the newer dives (see mergeSnapshots).
+    if (action === 'profile-updated') await setMeta('profileUpdatedAt', Date.now());
     return dbPut('syncQueue', {
         action,          // e.g. 'dives-updated', 'profile-updated', 'theme-updated'
         payload,

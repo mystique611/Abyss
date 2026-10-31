@@ -90,6 +90,10 @@
     <script src="js/db.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/sync.js"></script>
+    <!-- Static reference data (species catalog, countries, certifications) -->
+    <script src="js/data/critters.js"></script>
+    <script src="js/data/countries.js"></script>
+    <script src="js/data/certifications.js"></script>
 
     <!-- Standalone-preview fallback: if js/db.js, js/auth.js, or js/sync.js
          failed to load (e.g. viewing this index.html on its own, without the
@@ -313,6 +317,32 @@
 
         <!-- ==================== DASHBOARD VIEW ==================== -->
         <section id="view-dashboard" class="space-y-6">
+
+            <!-- Install prompt (see refreshInstallBanner) — installing keeps the logbook safe from browser storage clean-up -->
+            <div id="install-banner" class="hidden glass-panel p-4 rounded-2xl border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div class="flex items-start gap-3 flex-1">
+                    <div class="p-2 bg-cyan-500/10 rounded-xl text-cyan-400"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                    <div>
+                        <p class="text-sm font-bold">Install Abyss on this device</p>
+                        <p id="install-banner-text" class="text-xs text-slate-600 dark:text-slate-400">Opens like an app, works offline at the dive site, and stops the browser from clearing your logbook.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 self-end sm:self-auto">
+                    <button type="button" onclick="dismissInstallBanner()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-ocean-900/20">Not now</button>
+                    <button type="button" id="install-banner-btn" onclick="installApp()" class="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold">Install</button>
+                </div>
+            </div>
+
+            <!-- Stats period (see getDashboardDives) — narrows the stat widgets and map to a date range or detected trip -->
+            <div class="flex flex-wrap items-center gap-2">
+                <label for="dash-period" class="text-[10px] font-mono-custom text-slate-600 dark:text-slate-400 uppercase tracking-wider">Showing</label>
+                <select id="dash-period" onchange="setDashboardPeriod(this.value)" class="px-3 py-1.5 rounded-lg bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 text-xs max-w-full"></select>
+                <div id="dash-period-custom" class="hidden flex items-center gap-2">
+                    <input type="date" id="dash-period-from" onchange="setDashboardPeriod('custom')" class="px-3 py-1.5 rounded-lg bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 text-xs" aria-label="From date">
+                    <span class="text-xs text-slate-500">to</span>
+                    <input type="date" id="dash-period-to" onchange="setDashboardPeriod('custom')" class="px-3 py-1.5 rounded-lg bg-white dark:bg-ocean-950 border border-slate-300 dark:border-ocean-800/50 text-xs" aria-label="To date">
+                </div>
+            </div>
             
             <!-- Dashboard Top Grid: Quick Stats & Holographic Diver Card -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -472,7 +502,11 @@
                 </div>
             </div>
 
-            <p class="text-[10px] font-mono-custom text-slate-400 dark:text-slate-600" id="app-version-label"></p>
+            <div class="space-y-0.5">
+                <p class="text-[10px] font-mono-custom text-slate-500" id="sync-detail-label"></p>
+                <p class="text-[10px] font-mono-custom text-slate-500" id="storage-status-label"></p>
+                <p class="text-[10px] font-mono-custom text-slate-400 dark:text-slate-600" id="app-version-label"></p>
+            </div>
         </section>
 
         <!-- ==================== LOGBOOK VIEW ==================== -->
@@ -483,10 +517,19 @@
                     <p class="text-sm text-slate-600 dark:text-slate-400">Dive Logs</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                    <div class="relative flex-1 md:w-64">
+                    <div class="relative w-full md:w-64 md:flex-1">
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400 text-sm"></i>
                         <input type="text" id="log-search" oninput="renderLogs()" placeholder="Search dive site, location..." class="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-100 dark:bg-ocean-900/20 border border-slate-300 dark:border-ocean-800/30 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 text-sm">
                     </div>
+                    <select id="log-sort" onchange="setLogSort(this.value)" aria-label="Sort dives" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-ocean-900/20 border border-slate-300 dark:border-ocean-800/30 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:border-cyan-500">
+                        <option value="diveNo-desc">Newest first</option>
+                        <option value="diveNo-asc">Oldest first</option>
+                        <option value="date-desc">Date (newest)</option>
+                        <option value="date-asc">Date (oldest)</option>
+                        <option value="depth-desc">Deepest</option>
+                        <option value="time-desc">Longest</option>
+                        <option value="site-asc">Site A–Z</option>
+                    </select>
                     <div class="relative">
                         <button type="button" onclick="toggleLogFilterMenu(event)" id="log-filter-btn" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center space-x-2 transition-colors">
                             <i class="fa-solid fa-filter"></i>
@@ -579,9 +622,16 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 id="log-form-title" class="text-2xl font-extrabold tracking-tight">Log a dive</h2>
-                        <p class="text-sm text-slate-600 dark:text-slate-400">Fields marked with * are required.</p>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">Fields marked with * are required. <span id="log-draft-status" class="text-xs font-mono-custom text-emerald-500"></span></p>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex flex-wrap items-center justify-end gap-3">
+                        <div class="relative">
+                            <button type="button" onclick="toggleCopyDiveMenu(event)" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center space-x-2 transition-colors" title="Start from a previous dive's site, gear, gas and buddy">
+                                <i class="fa-solid fa-clone"></i>
+                                <span class="hidden sm:inline">Copy Previous</span>
+                            </button>
+                            <div id="copy-dive-menu" class="hidden absolute right-0 mt-2 w-72 max-h-80 overflow-y-auto rounded-xl glass-panel border border-slate-300 dark:border-ocean-800/40 shadow-2xl z-30"></div>
+                        </div>
                         <div id="edit-indicator" class="hidden bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-xl text-xs font-mono-custom font-bold">
                             <i class="fa-solid fa-pen-to-square mr-1"></i> EDIT MODE
                         </div>
@@ -594,6 +644,25 @@
                             <span class="hidden sm:inline">Import UDDF</span>
                             <input type="file" id="uddf-import-input" accept=".uddf,.xml,text/xml,application/xml,application/octet-stream" onchange="handleUDDFImportToForm(this)" class="hidden">
                         </label>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="inline-flex rounded-xl border border-slate-300 dark:border-ocean-800/50 p-1" role="group" aria-label="Form length">
+                        <button type="button" id="log-mode-btn-quick" onclick="setLogFormMode('quick')" class="px-4 py-1.5 rounded-lg text-xs font-semibold"><i class="fa-solid fa-bolt mr-1"></i>Quick Log</button>
+                        <button type="button" id="log-mode-btn-full" onclick="setLogFormMode('full')" class="px-4 py-1.5 rounded-lg text-xs font-semibold"><i class="fa-solid fa-list mr-1"></i>Full Log</button>
+                    </div>
+                    <p id="log-mode-hint" class="hidden text-xs text-slate-600 dark:text-slate-400">Just the essentials. Switch to Full Log any time to add conditions, gear, gas and photos.</p>
+                </div>
+
+                <div id="log-draft-banner" class="hidden glass-panel p-4 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div class="flex items-start gap-3 flex-1">
+                        <i class="fa-solid fa-floppy-disk text-amber-400 mt-0.5"></i>
+                        <p id="log-draft-banner-text" class="text-xs text-slate-700 dark:text-slate-300"></p>
+                    </div>
+                    <div class="flex items-center gap-2 self-end sm:self-auto">
+                        <button type="button" onclick="discardLogDraft()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-ocean-900/20">Discard</button>
+                        <button type="button" onclick="resumeLogDraft()" class="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold">Resume Draft</button>
                     </div>
                 </div>
 
@@ -882,7 +951,7 @@
                     </div>
 
                     <!-- SECTION 2: Environmental Conditions -->
-                    <div class="glass-panel p-6 rounded-3xl space-y-4">
+                    <div class="glass-panel p-6 rounded-3xl space-y-4" data-full-log-only>
                         <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-slate-200 dark:border-ocean-900/20 pb-2">
                             <span class="font-mono-custom text-sm">02.</span>
                             <h3 class="text-sm tracking-widest uppercase">Environmental Profile</h3>
@@ -970,7 +1039,7 @@
                     </div>
 
                     <!-- SECTION 3: Equipment Config -->
-                    <div class="glass-panel p-6 rounded-3xl space-y-4">
+                    <div class="glass-panel p-6 rounded-3xl space-y-4" data-full-log-only>
                         <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-slate-200 dark:border-ocean-900/20 pb-2">
                             <span class="font-mono-custom text-sm">03.</span>
                             <h3 class="text-sm tracking-widest uppercase">Equipment</h3>
@@ -1122,7 +1191,7 @@
                     </div>
 
                     <!-- SECTION 5: Gas Calculations (Metric / Imperial Auto-Sync) -->
-                    <div class="glass-panel p-6 rounded-3xl space-y-4">
+                    <div class="glass-panel p-6 rounded-3xl space-y-4" data-full-log-only>
                         <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-slate-200 dark:border-ocean-900/20 pb-2">
                             <span class="font-mono-custom text-sm">05.</span>
                             <h3 class="text-sm tracking-widest uppercase">Gas Metrics & Surface Air Consumption (SAC)</h3>
@@ -1212,7 +1281,7 @@
                     </div>
 
                     <!-- SECTION 7: Dive Photos -->
-                    <div class="glass-panel p-6 rounded-3xl space-y-4">
+                    <div class="glass-panel p-6 rounded-3xl space-y-4" data-full-log-only>
                         <div class="flex items-center space-x-2 text-cyan-400 font-bold border-b border-slate-200 dark:border-ocean-900/20 pb-2">
                             <span class="font-mono-custom text-sm">07.</span>
                             <h3 class="text-sm tracking-widest uppercase">Dive Photos</h3>
@@ -2242,6 +2311,9 @@
                 <button onclick="closeLogDetailModal()" class="px-6 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
                     Close
                 </button>
+                <button onclick="duplicateFromLogDetailModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-ocean-800/50 hover:bg-slate-100 dark:hover:bg-ocean-900/20 text-xs font-semibold flex items-center gap-2" title="Start a new log with this dive's site, gear, gas and buddy">
+                    <i class="fa-solid fa-clone"></i> Log Similar Dive
+                </button>
                 <button id="log-detail-edit-btn" onclick="editFromLogDetailModal()" class="px-6 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold flex items-center gap-2">
                     <i class="fa-solid fa-pen-to-square"></i> Edit Entry
                 </button>
@@ -2543,7 +2615,7 @@
         // created (not a fixed date — earlier versions in this project
         // mistakenly reused a static "260724" prefix for every version;
         // going forward this reflects the real ship date).
-        const APP_VERSION = '261002-v56';
+        const APP_VERSION = '261031-v57';
 
         // Premium vector icons (consistent graphics) representing animal families / types
         const CRITTER_ICONS = {
@@ -2581,647 +2653,11 @@
             { id: 14, title: "Ocean Legend", range: "3,000–4,999", badge: "👑", badgeText: "Crown", color: "from-yellow-400 to-amber-500" },
             { id: 15, title: "Ocean Immortal", range: "5,000+", badge: "🌌", badgeText: "Constellation", color: "from-blue-600 via-purple-600 to-pink-600" }
         ];
-
-        // Fully Expanded, Categorized Marine Species Database
-        const CRITTER_DATABASE = {
-            // ==================== MARINE MAMMALS ====================
-            "blue_whale": { id: "blue_whale", name: "Blue Whale", scientific: "Balaenoptera musculus", rarity: "Ultra-Rare", tag: "Marine Mammals", typicalRegion: "Global Pelagic", description: "The largest animal known to have ever lived." },
-            "fin_whale": { id: "fin_whale", name: "Fin Whale", scientific: "Balaenoptera physalus", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Temperate & Polar", description: "Fast-swimming whale with asymmetrical jaw color." },
-            "sei_whale": { id: "sei_whale", name: "Sei Whale", scientific: "Balaenoptera borealis", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Subtropical Offshores", description: "One of the fastest cetaceans, preferring deep offshore basins." },
-            "brydes_whale": { id: "brydes_whale", name: "Bryde's Whale", scientific: "Balaenoptera edeni", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Tropical Coastal", description: "Warm-water dweller that feeds on small schooling fish." },
-            "humpback_whale": { id: "humpback_whale", name: "Humpback Whale", scientific: "Megaptera novaeangliae", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Polar & Tropical Channels", description: "Famous for vocal songs and acrobatic surface breaches." },
-            "minke_whale": { id: "minke_whale", name: "Minke Whale", scientific: "Balaenoptera acutorostrata", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Subpolar Seas", description: "Smallest of the rorquals, possessing white bands on its flippers." },
-            "gray_whale": { id: "gray_whale", name: "Gray Whale", scientific: "Eschrichtius robustus", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Eastern Pacific Shelves", description: "Benthic filter-feeding whale known for its long migrations." },
-            "sperm_whale": { id: "sperm_whale", name: "Sperm Whale", scientific: "Physeter macrocephalus", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Deep Abyssal Basins", description: "Deepest-diving toothed whale, hunting giant squid in the dark." },
-            "pygmy_sperm_whale": { id: "pygmy_sperm_whale", name: "Pygmy Sperm Whale", scientific: "Kogia breviceps", rarity: "Ultra-Rare", tag: "Marine Mammals", typicalRegion: "Deep Tropical Drop-offs", description: "Secretive small whale that releases a dark ink-like liquid to escape." },
-            "dwarf_sperm_whale": { id: "dwarf_sperm_whale", name: "Dwarf Sperm Whale", scientific: "Kogia sima", rarity: "Ultra-Rare", tag: "Marine Mammals", typicalRegion: "Subtropical Slopes", description: "Smallest whale species, often basking motionless at the surface." },
-            "orca": { id: "orca", name: "Orca (Killer Whale)", scientific: "Orcinus orca", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Temperate & Polar Oceans", description: "The ultimate apex predator dolphin, hunting in highly organized pods." },
-            "false_killer_whale": { id: "false_killer_whale", name: "False Killer Whale", scientific: "Pseudorca crassidens", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Pelagic Warm Pools", description: "Social and fast-moving, sometimes shares catches with divers." },
-            "pilot_whale": { id: "pilot_whale", name: "Pilot Whale", scientific: "Globicephala melas", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Global Oceans", description: "Highly social globose-headed dolphin known for tight-knit pods." },
-            "melon_headed_whale": { id: "melon_headed_whale", name: "Melon-headed Whale", scientific: "Peponocephala electra", rarity: "Ultra-Rare", tag: "Marine Mammals", typicalRegion: "Equatorial Currents", description: "Small sleek dolphin with a distinct rounded forehead shape." },
-            "beaked_whales": { id: "beaked_whales", name: "Beaked Whales", scientific: "Ziphiidae (spp.)", rarity: "Ultra-Rare", tag: "Marine Mammals", typicalRegion: "Ultra-Deep Trenches", description: "Bizarre deep-divers that live in deep ocean canyons." },
-            "bottlenose_dolphin": { id: "bottlenose_dolphin", name: "Bottlenose Dolphin", scientific: "Tursiops truncatus", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Worldwide Coastal", description: "Highly intelligent and interactive coastal companions." },
-            "spinner_dolphin": { id: "spinner_dolphin", name: "Spinner Dolphin", scientific: "Stenella longirostris", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Tropical Atolls", description: "Famous for leaping and spinning along their longitudinal axis." },
-            "common_dolphin": { id: "common_dolphin", name: "Common Dolphin", scientific: "Delphinus delphis", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Global Warm Seas", description: "Features an hourglass pattern on their flanks." },
-            "risso_dolphin": { id: "risso_dolphin", name: "Risso's Dolphin", scientific: "Grampus griseus", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Deep Outer Reefs", description: "Heavy scarring across grey skin from squid battles." },
-            "pacific_whitesided_dolphin": { id: "pacific_whitesided_dolphin", name: "Pacific White-sided Dolphin", scientific: "Lagenorhynchus obliquidens", rarity: "Common", tag: "Marine Mammals", typicalRegion: "North Pacific Slopes", description: "Extremely active dolphin with three contrasting skin tones." },
-            "indopacific_humpback_dolphin": { id: "indopacific_humpback_dolphin", name: "Indo-Pacific Humpback Dolphin", scientific: "Sousa chinensis", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Indo-Pacific Estuaries", description: "Often pinkish in color, living near river deltas and estuaries." },
-            "harbour_porpoise": { id: "harbour_porpoise", name: "Harbour Porpoise", scientific: "Phocoena phocoena", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Temperate Harbours", description: "Small, shy cetacean that keeps close to coastal bays." },
-            "dugong": { id: "dugong", name: "Dugong", scientific: "Dugong dugon", rarity: "Ultra-Rare", tag: "Marine Mammals", typicalRegion: "Indo-Pacific Meadows", description: "Gentle marine herbivore grazing strictly on seagrass." },
-            "west_indian_manatee": { id: "west_indian_manatee", name: "West Indian Manatee", scientific: "Trichechus manatus", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Caribbean Estuaries", description: "Affectionate 'sea cow' that moves between salt and fresh water." },
-            "amazonian_manatee": { id: "amazonian_manatee", name: "Amazonian Manatee", scientific: "Trichechus inunguis", rarity: "Ultra-Rare", tag: "Marine Mammals", typicalRegion: "Amazon River Delta", description: "Freshwater sirenian with a bright pink chest patch." },
-            "california_sea_lion": { id: "california_sea_lion", name: "California Sea Lion", scientific: "Zalophus californianus", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Eastern Pacific Reefs", description: "Highly energetic and intelligent pinniped acrobats." },
-            "steller_sea_lion": { id: "steller_sea_lion", name: "Steller Sea Lion", scientific: "Eumetopias jubatus", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Subarctic Rocky Islets", description: "The largest of the eared seals, possessing a golden coat." },
-            "fur_seals": { id: "fur_seals", name: "Fur Seals", scientific: "Arctocephalinae (spp.)", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Southern Oceans", description: "Noted for their extremely dense, insulating waterproof fur." },
-            "harbour_seal": { id: "harbour_seal", name: "Harbour Seal", scientific: "Phoca vitulina", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Northern Coastlines", description: "Plump, spotted pinnipeds seen resting on sandbars." },
-            "leopard_seal": { id: "leopard_seal", name: "Leopard Seal", scientific: "Hydrurga leptonyx", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Antarctic Ice", description: "Fierce, serpentine predator hunting seals and penguins." },
-            "elephant_seal": { id: "elephant_seal", name: "Elephant Seal", scientific: "Mirounga angustirostris", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Pacific Deep Basins", description: "Gigantic seals with vocal inflatable proboscis noses." },
-            "walrus": { id: "walrus", name: "Walrus", scientific: "Odobenus rosmarus", rarity: "Epic", tag: "Marine Mammals", typicalRegion: "Arctic Ice Flats", description: "Distinguished by long ivory tusks and stiff whiskers." },
-            "marine_mammals_other": { id: "marine_mammals_other", name: "Marine Mammals (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Marine Mammals", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a marine mammal species not already in the catalog — enter the species name you observed." },
-
-            // ==================== SHARKS ====================
-            "whale_shark": { id: "whale_shark", name: "Whale Shark", scientific: "Rhincodon typus", rarity: "Ultra-Rare", tag: "Sharks", typicalRegion: "Tropical Reefs", description: "The largest fish in the world, filtering plankton." },
-            "great_white_shark": { id: "great_white_shark", name: "Great White Shark", scientific: "Carcharodon carcharias", rarity: "Epic", tag: "Sharks", typicalRegion: "Temperate Coastal", description: "Famous apex predator with exceptional electro-reception." },
-            "tiger_shark": { id: "tiger_shark", name: "Tiger Shark", scientific: "Galeocerdo cuvier", rarity: "Epic", tag: "Sharks", typicalRegion: "Worldwide Tropical", description: "Large striped predator known to eat almost anything." },
-            "bull_shark": { id: "bull_shark", name: "Bull Shark", scientific: "Carcharhinus leucas", rarity: "Epic", tag: "Sharks", typicalRegion: "Rivers & Reefs", description: "Highly aggressive shark capable of living in freshwater." },
-            "lemon_shark": { id: "lemon_shark", name: "Lemon Shark", scientific: "Negaprion brevirostris", rarity: "Common", tag: "Sharks", typicalRegion: "Mangrove Estuaries", description: "Yellow-tinged skin, commonly socializing in shallow flats." },
-            "grey_reef_shark": { id: "grey_reef_shark", name: "Grey Reef Shark", scientific: "Carcharhinus amblyrhynchos", rarity: "Common", tag: "Sharks", typicalRegion: "Outer Reef Slopes", description: "Common reef hunter patrolling drop-offs and channels." },
-            "caribbean_reef_shark": { id: "caribbean_reef_shark", name: "Caribbean Reef Shark", scientific: "Carcharhinus perezi", rarity: "Common", tag: "Sharks", typicalRegion: "Caribbean Drop-offs", description: "Heavy-bodied reef shark common near Bahamas reefs." },
-            "blacktip_reef_shark": { id: "blacktip_reef_shark", name: "Blacktip Reef Shark", scientific: "Carcharhinus melanopterus", rarity: "Common", tag: "Sharks", typicalRegion: "Shallow Reef Tops", description: "Instantly recognized by black tips on its dorsal fins." },
-            "whitetip_reef_shark": { id: "whitetip_reef_shark", name: "Whitetip Reef Shark", scientific: "Triaenodon obesus", rarity: "Common", tag: "Sharks", typicalRegion: "Rocky Ledges", description: "Slender shark often seen resting on sandy cave floors." },
-            "silvertip_shark": { id: "silvertip_shark", name: "Silvertip Shark", scientific: "Carcharhinus albimarginatus", rarity: "Epic", tag: "Sharks", typicalRegion: "Deep Ocean Walls", description: "Bold and aggressive predator with silver fin margins." },
-            "silky_shark": { id: "silky_shark", name: "Silky Shark", scientific: "Carcharhinus falciformis", rarity: "Common", tag: "Sharks", typicalRegion: "Open Pelagic Blue", description: "Extremely smooth skin texture, often follows tunas." },
-            "oceanic_whitetip": { id: "oceanic_whitetip", name: "Oceanic Whitetip", scientific: "Carcharhinus longimanus", rarity: "Epic", tag: "Sharks", typicalRegion: "Offshore Blue Waters", description: "Pelagic wanderer with rounded paddle-like white fins." },
-            "galapagos_shark": { id: "galapagos_shark", name: "Galápagos Shark", scientific: "Carcharhinus galapagensis", rarity: "Epic", tag: "Sharks", typicalRegion: "Volcanic Island Shelves", description: "Abundant near clear waters of oceanic volcanic chains." },
-            "sandbar_shark": { id: "sandbar_shark", name: "Sandbar Shark", scientific: "Carcharhinus plumbeus", rarity: "Common", tag: "Sharks", typicalRegion: "Sandy Estuaries", description: "Possesses a very tall, prominent first dorsal fin." },
-            "dusky_shark": { id: "dusky_shark", name: "Dusky Shark", scientific: "Carcharhinus obscurus", rarity: "Common", tag: "Sharks", typicalRegion: "Continental Shelves", description: "Large, slow-growing shark migrating over deep waters." },
-            "copper_shark": { id: "copper_shark", name: "Copper Shark", scientific: "Carcharhinus brachyurus", rarity: "Common", tag: "Sharks", typicalRegion: "Temperate Coasts", description: "Also called Bronze Whaler, often targets sardine runs." },
-            "spinner_shark": { id: "spinner_shark", name: "Spinner Shark", scientific: "Carcharhinus brevipinna", rarity: "Common", tag: "Sharks", typicalRegion: "Pelagic Warm Channels", description: "Spins through schools of fish, leaping out of the water." },
-            "blacktip_shark": { id: "blacktip_shark", name: "Blacktip Shark", scientific: "Carcharhinus limbatus", rarity: "Common", tag: "Sharks", typicalRegion: "Inshore Shelves", description: "Sleek and swift, often makes dramatic spinning leaps." },
-            "sand_tiger_shark": { id: "sand_tiger_shark", name: "Sand Tiger Shark", scientific: "Carcharias taurus", rarity: "Common", tag: "Sharks", typicalRegion: "Shipwrecks & Caves", description: "Scary-looking teeth, but remarkably docile and slow." },
-            "nurse_shark": { id: "nurse_shark", name: "Nurse Shark", scientific: "Ginglymostoma cirratum", rarity: "Common", tag: "Sharks", typicalRegion: "Shallow Reef Floors", description: "Suction-feeder that sleeps on reef floors during the day." },
-            "tawny_nurse_shark": { id: "tawny_nurse_shark", name: "Tawny Nurse Shark", scientific: "Nebrius ferrugioneus", rarity: "Common", tag: "Sharks", typicalRegion: "Indo-Pacific Reefs", description: "Docile giant frequently interacting with scuba divers." },
-            "zebra_shark": { id: "zebra_shark", name: "Zebra Shark", scientific: "Stegostoma tigrinum", rarity: "Common", tag: "Sharks", typicalRegion: "Sandy Atoll Slopes", description: "Also called leopard shark; changes spots with maturity." },
-            "wobbegongs": { id: "wobbegongs", name: "Wobbegongs (spp.)", scientific: "Orectolobidae", rarity: "Common", tag: "Sharks", typicalRegion: "Kelp & Coral Floors", description: "Carpet shark featuring ornate beard-like skin flaps." },
-            "bamboo_sharks": { id: "bamboo_sharks", name: "Bamboo Sharks", scientific: "Hemiscylliidae", rarity: "Common", tag: "Sharks", typicalRegion: "Coral Tide Pools", description: "Small, striped sharks that walk using pectoral fins." },
-            "epaulette_shark": { id: "epaulette_shark", name: "Epaulette Shark", scientific: "Hemiscyllium ocellatum", rarity: "Epic", tag: "Sharks", typicalRegion: "Shallow Reef Rubble", description: "Fascinating walker shark that survives without oxygen." },
-            "port_jackson_shark": { id: "port_jackson_shark", name: "Port Jackson Shark", scientific: "Heterodontus portusjacksoni", rarity: "Common", tag: "Sharks", typicalRegion: "Southern Aussie Bays", description: "Distinct harness-like markings and spiral egg cases." },
-            "horn_shark": { id: "horn_shark", name: "Horn Shark", scientific: "Heterodontus francisci", rarity: "Common", tag: "Sharks", typicalRegion: "Kelp Forest Rocks", description: "Small slow-moving shark with defensive dorsal spines." },
-            "angel_sharks": { id: "angel_sharks", name: "Angel Sharks", scientific: "Squatina squatina", rarity: "Epic", tag: "Sharks", typicalRegion: "Temperate Sandy Bays", description: "Flat, ray-like ambush hunter resting under sand layers." },
-            "goblin_shark": { id: "goblin_shark", name: "Goblin Shark", scientific: "Mitsukurina owstoni", rarity: "Ultra-Rare", tag: "Sharks", typicalRegion: "Deep Midnight Trenches", description: "Prehistoric pink shark with highly protrusible jaws." },
-            "sixgill_shark": { id: "sixgill_shark", name: "Sixgill Shark", scientific: "Hexanchus griseus", rarity: "Ultra-Rare", tag: "Sharks", typicalRegion: "Cold Deep Trenches", description: "Prehistoric deep-dweller keeping six gill slits." },
-            "sevengill_shark": { id: "sevengill_shark", name: "Sevengill Shark", scientific: "Notorynchus cepedianus", rarity: "Epic", tag: "Sharks", typicalRegion: "Shallow Kelp Bays", description: "Ancient, slow-swimming shark with seven gill slits." },
-            "greenland_shark": { id: "greenland_shark", name: "Greenland Shark", scientific: "Somniosus microcephalus", rarity: "Ultra-Rare", tag: "Sharks", typicalRegion: "Deep Arctic Oceans", description: "The longest-living vertebrate, aging up to 500 years." },
-            "cookiecutter_shark": { id: "cookiecutter_shark", name: "Cookiecutter Shark", scientific: "Isistius brasiliensis", rarity: "Ultra-Rare", tag: "Sharks", typicalRegion: "Bathyal Open Oceans", description: "Extracts round, plug-like tissue bites from larger prey." },
-            "scalloped_hammerhead": { id: "scalloped_hammerhead", name: "Scalloped Hammerhead", scientific: "Sphyrna lewini", rarity: "Epic", tag: "Sharks", typicalRegion: "High-Current Passes", description: "Migrates in massive, mesmerizing synchronized schools." },
-            "great_hammerhead": { id: "great_hammerhead", name: "Great Hammerhead", scientific: "Sphyrna mokarran", rarity: "Epic", tag: "Sharks", typicalRegion: "Pelagic Ocean Walls", description: "Massive hammerhead with highly developed cephalofoil." },
-            "smooth_hammerhead": { id: "smooth_hammerhead", name: "Smooth Hammerhead", scientific: "Sphyrna zygaena", rarity: "Epic", tag: "Sharks", typicalRegion: "Coastal Temperate Waters", description: "Hammerhead without a central indentation on its snout." },
-            "bonnethead": { id: "bonnethead", name: "Bonnethead", scientific: "Sphyrna tiburo", rarity: "Common", tag: "Sharks", typicalRegion: "Estuarine Seagrass Beds", description: "Shovel-nosed hammerhead, known to digest seagrass." },
-            "pelagic_thresher": { id: "pelagic_thresher", name: "Pelagic Thresher", scientific: "Alopias pelagicus", rarity: "Epic", tag: "Sharks", typicalRegion: "Seamount cleaning stations", description: "Stunning whip-tailed thresher that hunts in the deep." },
-            "common_thresher": { id: "common_thresher", name: "Common Thresher", scientific: "Alopias vulpinus", rarity: "Epic", tag: "Sharks", typicalRegion: "Offshore Temperate Seas", description: "Whips schools of fish using its long caudal fin." },
-            "bigeye_thresher": { id: "bigeye_thresher", name: "Bigeye Thresher", scientific: "Alopias superciliosus", rarity: "Epic", tag: "Sharks", typicalRegion: "Pelagic Deep Drops", description: "Features enormous upward-pointing eyes for deep hunting." },
-            "mako_sharks": { id: "mako_sharks", name: "Mako Sharks", scientific: "Isurus oxyrinchus", rarity: "Epic", tag: "Sharks", typicalRegion: "Deep Ocean Currents", description: "The fastest shark in the sea, leaping high out of water." },
-            "sharks_other": { id: "sharks_other", name: "Sharks (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Sharks", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a shark species not already in the catalog — enter the species name you observed." },
-
-            // ==================== RAYS ====================
-            "oceanic_manta": { id: "oceanic_manta", name: "Oceanic Manta", scientific: "Mobula birostris", rarity: "Epic", tag: "Rays", typicalRegion: "Deep Ocean Slopes", description: "Gigantic filter feeder reaching widths of up to 7m." },
-            "reef_manta": { id: "reef_manta", name: "Reef Manta", scientific: "Mobula alfredi", rarity: "Epic", tag: "Rays", typicalRegion: "Inshore Reef cleaning stations", description: "Aggregates around shallow cleaning stations globally." },
-            "devil_rays": { id: "devil_rays", name: "Devil Rays (Mobula spp.)", scientific: "Mobula (spp.)", rarity: "Common", tag: "Rays", typicalRegion: "Subtropical Open Oceans", description: "Fast, schooling rays known for making acrobatic leaps." },
-            "giant_devil_ray": { id: "giant_devil_ray", name: "Giant Devil Ray", scientific: "Mobula mobular", rarity: "Epic", tag: "Rays", typicalRegion: "Mediterranean Basins", description: "Largest of the mobula rays, threatened by bycatch." },
-            "eagle_ray": { id: "eagle_ray", name: "Eagle Ray", scientific: "Myliobatis aquila", rarity: "Common", tag: "Rays", typicalRegion: "Continental Coasts", description: "Sleek pelagic rays that dig into sandbeds for food." },
-            "spotted_eagle_ray": { id: "spotted_eagle_ray", name: "Spotted Eagle Ray", scientific: "Aetobatus narinari", rarity: "Common", tag: "Rays", typicalRegion: "Shallow Sandy Lagoons", description: "Dappled with beautiful white spots and a duck-like snout." },
-            "cownose_ray": { id: "cownose_ray", name: "Cownose Ray", scientific: "Rhinoptera bonasus", rarity: "Common", tag: "Rays", typicalRegion: "Warm Inshore Lagoons", description: "Swarms in massive migrating fleets along coastlines." },
-            "bat_ray": { id: "bat_ray", name: "Bat Ray", scientific: "Myliobatis californica", rarity: "Common", tag: "Rays", typicalRegion: "Pacific Kelp Forests", description: "Crushes crabs and clams with heavy, plate-like teeth." },
-            "southern_stingray": { id: "southern_stingray", name: "Southern Stingray", scientific: "Hypanus americanus", rarity: "Common", tag: "Rays", typicalRegion: "Caribbean Sandy Bays", description: "Large diamond-shaped ray, common near stingray city." },
-            "blue_spotted_stingray": { id: "blue_spotted_stingray", name: "Blue-spotted Stingray", scientific: "Neotrygon kuhlii", rarity: "Common", tag: "Rays", typicalRegion: "Coral sandy margins", description: "Marked with brilliant neon spots; hides under ledges." },
-            "pink_whipray": { id: "pink_whipray", name: "Pink Whipray", scientific: "Pateobatis fai", rarity: "Common", tag: "Rays", typicalRegion: "Reef lagoon slopes", description: "Uniformly pinkish with an incredibly long whipping tail." },
-            "jenkins_whipray": { id: "jenkins_whipray", name: "Jenkins Whipray", scientific: "Pateobatis jenkinsii", rarity: "Common", tag: "Rays", typicalRegion: "Silty Coastal Estuaries", description: "Thick yellow-brown ray featuring diagnostic tail spines." },
-            "marble_ray": { id: "marble_ray", name: "Marble Ray", scientific: "Taeniura meyeni", rarity: "Common", tag: "Rays", typicalRegion: "Outer Coral Drop-offs", description: "Huge dark round ray patterned with marbled gray clouds." },
-            "cowtail_ray": { id: "cowtail_ray", name: "Cowtail Ray", scientific: "Pastinachus sephen", rarity: "Common", tag: "Rays", typicalRegion: "Shallow Muddy Flats", description: "A broad-skinned ray with a distinct flag-like tail skin fold." },
-            "electric_rays": { id: "electric_rays", name: "Electric Rays", scientific: "Torpediniformes (spp.)", rarity: "Epic", tag: "Rays", typicalRegion: "Rocky Sandbeds", description: "Discharges high-voltage shocks to stun prey on contact." },
-            "bowmouth_guitarfish": { id: "bowmouth_guitarfish", name: "Bowmouth Guitarfish", scientific: "Rhina ancylostoma", rarity: "Epic", tag: "Rays", typicalRegion: "Deep Reef Margins", description: "Prehistoric looking cross between a ray and a shark." },
-            "shovelnose_ray": { id: "shovelnose_ray", name: "Shovelnose Ray", scientific: "Glaucostegus typus", rarity: "Common", tag: "Rays", typicalRegion: "Sandy Estuaries", description: "Wedge-shaped sand dweller, frequently targeted for fins." },
-            "wedgefish": { id: "wedgefish", name: "Wedgefish", scientific: "Rhinidae (spp.)", rarity: "Epic", tag: "Rays", typicalRegion: "Continental slopes", description: "Shark-like body, critically endangered bottom wanderer." },
-            "sawfish": { id: "sawfish", name: "Sawfish", scientific: "Pristidae (spp.)", rarity: "Ultra-Rare", tag: "Rays", typicalRegion: "Estuarine seagrass beds", description: "Equipped with a long flattened rostrum lined with teeth." },
-            "thornback_skate": { id: "thornback_skate", name: "Thornback Skate", scientific: "Raja clavata", rarity: "Common", tag: "Rays", typicalRegion: "Temperate Shelf Bays", description: "Skate dotted with prickles and thorny rows along its spine." },
-            "rays_other": { id: "rays_other", name: "Rays (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Rays", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a ray or skate species not already in the catalog — enter the species name you observed." },
-
-            // ==================== PELAGIC FISH ====================
-            "ocean_sunfish": { id: "ocean_sunfish", name: "Ocean Sunfish (Mola mola)", scientific: "Mola mola", rarity: "Epic", tag: "Pelagic Fish", typicalRegion: "Temperate Open Blue", description: "The heaviest bony fish, rising to sunbathe." },
-            "southern_sunfish": { id: "southern_sunfish", name: "Southern Sunfish", scientific: "Mola alexandrini", rarity: "Epic", tag: "Pelagic Fish", typicalRegion: "Southern Ocean Channels", description: "Distinguished by a heavy chin bump and skin ossicles." },
-            "slender_sunfish": { id: "slender_sunfish", name: "Slender Sunfish", scientific: "Masturus lanceolatus", rarity: "Ultra-Rare", tag: "Pelagic Fish", typicalRegion: "Deep Ocean Currents", description: "Possesses a highly streamlined, oblong mola-like body." },
-            "sharptail_sunfish": { id: "sharptail_sunfish", name: "Sharptail Sunfish", scientific: "Masturus oxyuropterus", rarity: "Ultra-Rare", tag: "Pelagic Fish", typicalRegion: "Subtropical Open Ocean", description: "Distinguished by a pointed projection in the center of its clavus." },
-            "hoodwinker_sunfish": { id: "hoodwinker_sunfish", name: "Hoodwinker Sunfish", scientific: "Mola tecta", rarity: "Epic", tag: "Pelagic Fish", typicalRegion: "Cold Southern Seas", description: "Recently discovered sunfish hiding in the cold southern oceans." },
-            "giant_trevally": { id: "giant_trevally", name: "Giant Trevally", scientific: "Caranx ignobilis", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Outer Drop-offs", description: "Fierce, powerful silver giant patrolling reef drop-offs." },
-            "bluefin_trevally": { id: "bluefin_trevally", name: "Bluefin Trevally", scientific: "Caranx melampygus", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Coral Pinnacles", description: "Breathtaking electric-blue fins, swift and aggressive hunter." },
-            "rainbow_runner": { id: "rainbow_runner", name: "Rainbow Runner", scientific: "Elagatis bipinnulata", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Open Pelagic Water", description: "Streamlined green-and-yellow speedster, travels in large packs." },
-            "wahoo": { id: "wahoo", name: "Wahoo", scientific: "Acanthocybium solandri", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Blue Water Channels", description: "Incredibly fast pelagic fish with dark tiger-stripe markings." },
-            "dogtooth_tuna": { id: "dogtooth_tuna", name: "Dogtooth Tuna", scientific: "Gymnosarda unicolor", rarity: "Epic", tag: "Pelagic Fish", typicalRegion: "Deep Reef Ledges", description: "Powerful non-schooling tuna with large, canine-like teeth." },
-            "yellowfin_tuna": { id: "yellowfin_tuna", name: "Yellowfin Tuna", scientific: "Thunnus albacares", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Deep Ocean Basins", description: "Fast, muscular pelagic speedster with long bright yellow fins." },
-            "skipjack_tuna": { id: "skipjack_tuna", name: "Skipjack Tuna", scientific: "Katsuwonus pelamis", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Offshore Surface Waters", description: "Small, striped schooling tuna highly prized for commercial fisheries." },
-            "giant_barracuda": { id: "giant_barracuda", name: "Giant Barracuda", scientific: "Sphyraena barracuda", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Coral Drop-offs", description: "Elongated ambush hunter armed with rows of razor teeth." },
-            "chevron_barracuda": { id: "chevron_barracuda", name: "Chevron Barracuda", scientific: "Sphyraena qenie", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Tidal Reef Channels", description: "Aggregates in huge, spinning tornado schools near channels." },
-            "sailfish": { id: "sailfish", name: "Sailfish", scientific: "Istiophorus platypterus", rarity: "Epic", tag: "Pelagic Fish", typicalRegion: "Open Pelagic Plains", description: "Equipped with a giant sail-like dorsal fin; fastest fish in ocean." },
-            "black_marlin": { id: "black_marlin", name: "Black Marlin", scientific: "Istiompax indica", rarity: "Epic", tag: "Pelagic Fish", typicalRegion: "Pacific Seamounts", description: "Enormously powerful billfish, possessing rigid pectoral fins." },
-            "striped_marlin": { id: "striped_marlin", name: "Striped Marlin", scientific: "Kajikia audax", rarity: "Epic", tag: "Pelagic Fish", typicalRegion: "Temperate Blue Waters", description: "Glows with bright iridescent blue stripes when actively hunting." },
-            "pelagic_fish_other": { id: "pelagic_fish_other", name: "Pelagic Fish (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Pelagic Fish", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a pelagic fish species not already in the catalog — enter the species name you observed." },
-
-            // ==================== REEF FISH ====================
-            "clownfish": { id: "clownfish", name: "Clownfish", scientific: "Amphiprion ocellaris", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shallow Anemone Beds", description: "Vibrant orange and white, nested inside protective anemones." },
-            "damselfish": { id: "damselfish", name: "Damselfish", scientific: "Pomacentridae (spp.)", rarity: "Common", tag: "Reef Fish", typicalRegion: "Branching Coral Tops", description: "Tiny, colorful, and aggressive reef fish guarding their territories." },
-            "chromis": { id: "chromis", name: "Chromis", scientific: "Chromis viridis", rarity: "Common", tag: "Reef Fish", typicalRegion: "Branching Staghorn Coral", description: "Schools in shimmering blue-green formations over branching coral." },
-            "anthias": { id: "anthias", name: "Anthias", scientific: "Pseudanthias squamipinnis", rarity: "Common", tag: "Reef Fish", typicalRegion: "Current-Swept Ridges", description: "Brilliant pink and orange schools feeding on drifting plankton." },
-            "butterflyfish": { id: "butterflyfish", name: "Butterflyfish", scientific: "Chaetodontidae (spp.)", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shallow Hard Corals", description: "Thin disc-shaped fish with long snouts for picking coral polyps." },
-            "angelfish": { id: "angelfish", name: "Angelfish", scientific: "Pomacanthidae (spp.)", rarity: "Common", tag: "Reef Fish", typicalRegion: "Rocky Reef Shelves", description: "Beautifully colored fish featuring a sharp defensive cheek spine." },
-            "moorish_idol": { id: "moorish_idol", name: "Moorish Idol", scientific: "Zanclus cornutus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Warm Coastal Reefs", description: "Distinguished by a long trailing white pennant on its back." },
-            "bannerfish": { id: "bannerfish", name: "Bannerfish", scientific: "Heniochus acuminatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Protected Lagoons", description: "Often mistaken for the Moorish Idol, has black-and-white stripes." },
-            "napoleon_wrasse": { id: "napoleon_wrasse", name: "Napoleon Wrasse", scientific: "Cheilinus undulatus", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Coral Wall Slopes", description: "Friendly reef giant with a thick bump on its forehead." },
-            // Retired (housekeeping pass, 260724-v36) — folded into the generic
-            // "Wrasse" entry below. Kept in the catalog with deprecated:true
-            // rather than deleted outright, so any dive that already logged
-            // one of these keeps showing correctly in AquaDex (sighting
-            // counts, history, unlocked total) instead of the record silently
-            // vanishing. Hidden from the Log a Dive checklist and the AquaDex
-            // grid for anyone who's never sighted it.
-            "cleaner_wrasse": { id: "cleaner_wrasse", name: "Cleaner Wrasse", scientific: "Labroides dimidiatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Reef Cleaning Stations", deprecated: true, description: "Runs 'salons' by eating dead skin and parasites off larger fish." },
-            "humphead_parrotfish": { id: "humphead_parrotfish", name: "Humphead Parrotfish", scientific: "Bolbometopon muricatum", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Shallow Outer Reefs", description: "Large parrotfish that rams coral structures with its heavy head." },
-            "bumphead_parrotfish": { id: "bumphead_parrotfish", name: "Bumphead Parrotfish", scientific: "Bolbometopon muricatum", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Outer Coral Slopes", deprecated: true, description: "Feeds on algae and live coral polyps, pooping fine white sand. Same species as Humphead Parrotfish, kept only for dives logged before this was merged." },
-            "triggerfish": { id: "triggerfish", name: "Triggerfish", scientific: "Balistidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Reef flats", description: "Uses locking spine mechanisms on its dorsal fin to hide in cracks." },
-            "titan_triggerfish": { id: "titan_triggerfish", name: "Titan Triggerfish", scientific: "Balistoides viridescens", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Mating Flats", deprecated: true, description: "Highly territorial fish that will aggressively defend its nest." },
-            "picasso_triggerfish": { id: "picasso_triggerfish", name: "Picasso Triggerfish", scientific: "Rhinecanthus aculeatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shallow Sandy Rubble", deprecated: true, description: "Striking, abstract coloration resembling cubist artwork." },
-            "pufferfish": { id: "pufferfish", name: "Pufferfish", scientific: "Tetraodontidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Reef Shelves", description: "Inflates with water to look larger, containing lethal tetrodotoxin." },
-            "porcupinefish": { id: "porcupinefish", name: "Porcupinefish", scientific: "Diodontidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Lagoon Ledges", description: "Dotted with sharp spikes that lock outward when inflated." },
-            "cowfish": { id: "cowfish", name: "Cowfish", scientific: "Lactoria cornuta", rarity: "Common", tag: "Reef Fish", typicalRegion: "Silty Reef Margins", description: "Boxy, hard-shelled fish with long horns above its eyes." },
-            "boxfish": { id: "boxfish", name: "Boxfish", scientific: "Ostraciidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Rocky Cracks", description: "Scretes an organic toxic slime under immediate distress." },
-            "lionfish": { id: "lionfish", name: "Lionfish", scientific: "Pterois volitans", rarity: "Common", tag: "Reef Fish", typicalRegion: "Rocky Ledges", description: "Highly striking predator with venomous feather-like dorsal spines." },
-            "stonefish": { id: "stonefish", name: "Stonefish", scientific: "Synanceia verrucosa", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Rubble Reef Floors", description: "World's most venomous fish, perfectly resembling rocky bottom debris." },
-            "leaf_scorpionfish": { id: "leaf_scorpionfish", name: "Leaf Scorpionfish", scientific: "Taenianotus triacanthus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Current swept slopes", description: "Resembles a dead leaf swaying back and forth in the current." },
-            "devil_scorpionfish": { id: "devil_scorpionfish", name: "Devil Scorpionfish", scientific: "Scorpaenopsis diabolus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Rocky Sandbeds", description: "Benthic ambush hunter with orange warning coloration under its fins." },
-            "frogfish": { id: "frogfish", name: "Frogfish", scientific: "Antennariidae (spp.)", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Sponge Reef Structures", description: "Master of disguise, uses a built-in lure on its head to fish." },
-            "batfish": { id: "batfish", name: "Batfish", scientific: "Platacid (spp.)", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shipwrecks & Bridges", description: "Large disc-shaped social fish that follows divers." },
-            "sweetlips": { id: "sweetlips", name: "Sweetlips", scientific: "Plectorhinchus (spp.)", rarity: "Common", tag: "Reef Fish", typicalRegion: "Hanging Coral Caves", description: "Features thick, pouty lips and spotted or striped skins." },
-            "goatfish": { id: "goatfish", name: "Goatfish", scientific: "Mullidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Lagoon Basins", description: "Possesses long chin barbels to locate small sandy invertebrates." },
-            "surgeonfish": { id: "surgeonfish", name: "Surgeonfish", scientific: "Acanthuridae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shallow Sunlit Flats", description: "Equipped with retractable blade-like spines near its tail base." },
-            "unicornfish": { id: "unicornfish", name: "Unicornfish", scientific: "Naso (spp.)", rarity: "Common", tag: "Reef Fish", typicalRegion: "Drop-off Margins", description: "Dermal horn-like protrusion centered on its head." },
-            "rabbitfish": { id: "rabbitfish", name: "Rabbitfish", scientific: "Siganidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Coral Seagrass Margins", description: "Docile herbivore with venomous dorsal spines for defense." },
-            "snappers": { id: "snappers", name: "Snappers", scientific: "Lutjanidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Deep Reef structures", description: "Opportunistic schoolers patrolling drops and caves." },
-            "groupers": { id: "groupers", name: "Groupers", scientific: "Serranidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Rocky Cave Chambers", description: "Large, solitary ambush predators that swallow prey whole." },
-            "squirrelfish": { id: "squirrelfish", name: "Squirrelfish", scientific: "Holocentridae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Dark Coral Crevices", description: "Nocturnal reef resident with large reflective red eyes." },
-            "soldierfish": { id: "soldierfish", name: "Soldierfish", scientific: "Myripristinae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Overhanging Cave Walls", description: "Nocturnal, schooling red fish found inside deep dark caverns." },
-            "trumpetfish": { id: "trumpetfish", name: "Trumpetfish", scientific: "Aulostomus maculatus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Vertical Sea Whips", description: "Hangs vertically to disguise itself among sea whips." },
-            "cornetfish": { id: "cornetfish", name: "Cornetfish", scientific: "Fistularia commersonii", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Reef Margins", description: "Extremely long, thin tubular fish with a filament-like tail." },
-            "pipefish": { id: "pipefish", name: "Pipefish", scientific: "Syngnathinae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Coral Rubble Shelves", description: "Slender relative of the seahorse, hiding in benthic cracks." },
-            "dragonets": { id: "dragonets", name: "Dragonets", scientific: "Callionymidae", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Sandy Rubble Floors", description: "Small, colorful bottom fish with striking dorsal displays." },
-            "mandarin_fish": { id: "mandarin_fish", name: "Mandarin Fish", scientific: "Synchiropus splendidus", rarity: "Epic", tag: "Reef Fish", typicalRegion: "Rubble Reef Blocks", description: "extraordinarily colorful bottom fish. Renowned for evening mating dances." },
-            "gobies": { id: "gobies", name: "Gobies", scientific: "Gobiidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Burrow Flats", description: "Small bottom dwellers, often sharing burrows with pistol shrimp." },
-            "blennies": { id: "blennies", name: "Blennies", scientific: "Blenniiformes", rarity: "Common", tag: "Reef Fish", typicalRegion: "Empty Worm Holes", description: "Cute reef residents that peek out from tiny rocky worm holes." },
-            "hawkfish": { id: "hawkfish", name: "Hawkfish", scientific: "Cirrhitidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Hard Coral Heads", description: "Perches on coral branches, waiting to ambush passing prey." },
-            "cardinalfish": { id: "cardinalfish", name: "Cardinalfish", scientific: "Apogonidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Reef Cave Thresholds", description: "Mouthbrooding fish that keeps its eggs inside its oral cavity." },
-            "filefish": { id: "filefish", name: "Filefish", scientific: "Monacanthidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Seagrass Flats", description: "Rough-skinned fish, closely related to triggerfish." },
-            "leatherjackets": { id: "leatherjackets", name: "Leatherjackets", scientific: "Oligoplites saurus", rarity: "Common", tag: "Reef Fish", typicalRegion: "Silty Estuary Drop-offs", description: "Smooth, leathery skin and sharp dorsal spines." },
-            "fusiliers": { id: "fusiliers", name: "Fusiliers", scientific: "Caesionidae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Current-Swept Reef Walls", description: "Fast, torpedo-shaped schoolers that hover in the blue picking off drifting plankton." },
-            "wrasse": { id: "wrasse", name: "Wrasse", scientific: "Labridae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Sandy Reef Flats", description: "One of the reef's most diverse fish families, recognized by a distinctive rowing swim stroke." },
-            "parrotfish": { id: "parrotfish", name: "Parrotfish", scientific: "Scaridae", rarity: "Common", tag: "Reef Fish", typicalRegion: "Shallow Coral Reefs", description: "Grazes algae off coral with a fused, beak-like mouth, grinding it into fine white sand." },
-            "reef_fish_other": { id: "reef_fish_other", name: "Reef Fish (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Reef Fish", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a reef fish species not already in the catalog — enter the species name you observed." },
-
-            // ==================== CEPHALOPODS ====================
-            "common_octopus": { id: "common_octopus", name: "Common Octopus", scientific: "Octopus vulgaris", rarity: "Common", tag: "Cephalopods", typicalRegion: "Rocky Shallow Pools", description: "Brilliant disguise-maker with remarkable spatial intelligence." },
-            "coconut_octopus": { id: "coconut_octopus", name: "Coconut Octopus", scientific: "Amphioctopus marginatus", rarity: "Epic", tag: "Cephalopods", typicalRegion: "Silty Muck Basins", description: "Saves half coconut shells to construct defensive battle forts." },
-            "mimic_octopus": { id: "mimic_octopus", name: "Mimic Octopus", scientific: "Thaumoctopus mimicus", rarity: "Ultra-Rare", tag: "Cephalopods", typicalRegion: "Muck Reef Slopes", description: "Impersonates flatfish, sea snakes, and lionfish on command." },
-            "wunderpus": { id: "wunderpus", name: "Wunderpus", scientific: "Wunderpus photogenicus", rarity: "Ultra-Rare", tag: "Cephalopods", typicalRegion: "Shallow Mud Flats", description: "Spectacular nocturnal mimic with elegant zebra banding patterns." },
-            "blue_ringed_octopus": { id: "blue_ringed_octopus", name: "Blue-ringed Octopus", scientific: "Hapalochlaena maculosa", rarity: "Ultra-Rare", tag: "Cephalopods", typicalRegion: "Rubble Coral Shelves", description: "Flashes neon-blue rings under distress; highly toxic venom." },
-            "giant_pacific_octopus": { id: "giant_pacific_octopus", name: "Giant Pacific Octopus", scientific: "Enteroctopus dofleini", rarity: "Epic", tag: "Cephalopods", typicalRegion: "Cold Deep Kelps", description: "The largest octopus species, dwelling in dark cold caves." },
-            "reef_squid": { id: "reef_squid", name: "Reef Squid", scientific: "Sepioteuthis sepioidea", rarity: "Common", tag: "Cephalopods", typicalRegion: "Shallow reef margins", description: "Highly communicative; flashes visual body language patterns." },
-            "bigfin_reef_squid": { id: "bigfin_reef_squid", name: "Bigfin Reef Squid", scientific: "Sepioteuthis lessoniana", rarity: "Common", tag: "Cephalopods", typicalRegion: "Coastal seagrass slopes", description: "Broad oval-shaped fins extending along almost the entire body." },
-            "bobtail_squid": { id: "bobtail_squid", name: "Bobtail Squid", scientific: "Sepiolida (spp.)", rarity: "Epic", tag: "Cephalopods", typicalRegion: "Nocturnal Sand Flats", description: "Formulates glowing bacterial shields to hide shadow outlines." },
-            "pharaoh_cuttlefish": { id: "pharaoh_cuttlefish", name: "Pharaoh Cuttlefish", scientific: "Sepia pharaonis", rarity: "Common", tag: "Cephalopods", typicalRegion: "Silty Mud Flats", description: "Large tropical cuttlefish exhibiting highly complex hunting signals." },
-            "flamboyant_cuttlefish": { id: "flamboyant_cuttlefish", name: "Flamboyant Cuttlefish", scientific: "Metasepia pfefferi", rarity: "Ultra-Rare", tag: "Cephalopods", typicalRegion: "Silty Rubble beds", description: "Flashes electric purple, pink, and yellow; walks on seabed." },
-            "broadclub_cuttlefish": { id: "broadclub_cuttlefish", name: "Broadclub Cuttlefish", scientific: "Sepia latimanus", rarity: "Common", tag: "Cephalopods", typicalRegion: "Coral Reef Slopes", description: "Hypnotizes crabs and fish with rolling, pulsing color lines." },
-            "paper_nautilus": { id: "paper_nautilus", name: "Paper Nautilus", scientific: "Argonauta argo", rarity: "Ultra-Rare", tag: "Cephalopods", typicalRegion: "Pelagic Drift Lines", description: "Female octopus that secretes a delicate, paper-thin egg shell." },
-            "cephalopods_other": { id: "cephalopods_other", name: "Cephalopods (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Cephalopods", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for an octopus, squid, or cuttlefish species not already in the catalog — enter the species name you observed." },
-
-            // ==================== CRUSTACEANS ====================
-            "peacock_mantis_shrimp": { id: "peacock_mantis_shrimp", name: "Peacock Mantis Shrimp", scientific: "Odontodactylus scyllarus", rarity: "Common", tag: "Crustaceans", typicalRegion: "Sandy burrow shores", description: "Armed with hammer dactyl clubs delivering bullet-force strikes." },
-            "cleaner_shrimp": { id: "cleaner_shrimp", name: "Cleaner Shrimp", scientific: "Lysmata amboinensis", rarity: "Common", tag: "Crustaceans", typicalRegion: "Reef Cave Ledges", description: "Picks parasites off reef groupers at busy cleaning stations." },
-            "harlequin_shrimp": { id: "harlequin_shrimp", name: "Harlequin Shrimp", scientific: "Hymenocera picta", rarity: "Epic", tag: "Crustaceans", typicalRegion: "Coral Reef crevices", description: "Vibrantly colored predator feeding exclusively on live sea stars." },
-            "coleman_shrimp": { id: "coleman_shrimp", name: "Coleman Shrimp", scientific: "Periclimenes colemani", rarity: "Epic", tag: "Crustaceans", typicalRegion: "Fire Urchin Spines", description: "Lives exclusively in mated pairs on fire urchin spines." },
-            "emperor_shrimp": { id: "emperor_shrimp", name: "Emperor Shrimp", scientific: "Periclimenes imperator", rarity: "Common", tag: "Crustaceans", typicalRegion: "Sea Cucumber Skins", description: "Rides symbiotically on large nudibranchs and sea cucumbers." },
-            // Retired (housekeeping pass, 260724-v38) — same species as
-            // Coral Banded Shrimp (Stenopus hispidus), just a different
-            // common name. Kept with deprecated:true rather than deleted so
-            // any dive that already logged "Boxer Shrimp" keeps showing
-            // correctly instead of vanishing from AquaDex.
-            "boxer_shrimp": { id: "boxer_shrimp", name: "Boxer Shrimp", scientific: "Stenopus hispidus", rarity: "Common", tag: "Crustaceans", typicalRegion: "Cave Roof Shallows", deprecated: true, description: "Commonly called banded coral shrimp, waving white claws. Same species as Coral Banded Shrimp, kept only for dives logged before this was merged." },
-            "coral_banded_shrimp": { id: "coral_banded_shrimp", name: "Coral Banded Shrimp", scientific: "Stenopus hispidus", rarity: "Common", tag: "Crustaceans", typicalRegion: "Rocky Wall Crevices", description: "Cleans fish inside rocky crevices using long, thin antennae." },
-            "spiny_lobster": { id: "spiny_lobster", name: "Spiny Lobster", scientific: "Panulirus argus", rarity: "Common", tag: "Crustaceans", typicalRegion: "Subtropical caves", description: "Social decapod executing single-file migrations during storms." },
-            "slipper_lobster": { id: "slipper_lobster", name: "Slipper Lobster", scientific: "Scyllaridae", rarity: "Common", tag: "Crustaceans", typicalRegion: "Cavern sandy bottoms", description: "Lacks pincers, relying on heavy scale-like plating to protect itself." },
-            "japanese_spider_crab": { id: "japanese_spider_crab", name: "Japanese Spider Crab", scientific: "Macrocheira kaempferi", rarity: "Ultra-Rare", tag: "Crustaceans", typicalRegion: "Cold Abyssal Slopes", description: "Longest leg-span of any arthropod, up to 3.8 meters." },
-            "decorator_crab": { id: "decorator_crab", name: "Decorator Crab", scientific: "Camposcia retusa", rarity: "Common", tag: "Crustaceans", typicalRegion: "Algal Rubble Beds", description: "Attaches living sponges and algae to its body for camouflage." },
-            "orangutan_crab": { id: "orangutan_crab", name: "Orangutan Crab", scientific: "Acheus japonicus", rarity: "Epic", tag: "Crustaceans", typicalRegion: "Bubble Coral Heads", description: "Ornate spider crab covered in thick reddish orange fuzzy hairs." },
-            "porcelain_crab": { id: "porcelain_crab", name: "Porcelain Crab", scientific: "Neopetrolisthes maculatus", rarity: "Common", tag: "Crustaceans", typicalRegion: "Anemone Margin Edges", description: "Shallow anemone dweller that uses fans to filter plankton." },
-            "anemone_crab": { id: "anemone_crab", name: "Anemone Crab", scientific: "Mithraculus cinctimanus", rarity: "Common", tag: "Crustaceans", typicalRegion: "Shallow Anemone Bases", description: "Lives safely among protective stinging anemone tentacles." },
-            "arrow_crab": { id: "arrow_crab", name: "Arrow Crab", scientific: "Stenorhynchus seticornis", rarity: "Common", tag: "Crustaceans", typicalRegion: "Dark Crevice Ledges", description: "Extremely long, spider-like legs and a pointed triangular snout." },
-            "hermit_crabs": { id: "hermit_crabs", name: "Hermit Crabs", scientific: "Paguroidea", rarity: "Common", tag: "Crustaceans", typicalRegion: "Tide pools & Sand beds", description: "Occupies empty gastropod shells, switching as it grows." },
-            "crustaceans_other": { id: "crustaceans_other", name: "Crustaceans (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Crustaceans", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a shrimp, crab, or lobster species not already in the catalog — enter the species name you observed." },
-
-            // ==================== NUDIBRANCHS ====================
-            "spanish_dancer": { id: "spanish_dancer", name: "Spanish Dancer", scientific: "Hexabranchus sanguineus", rarity: "Epic", tag: "Nudibranchs", typicalRegion: "Nocturnal Reef Walls", description: "Giant red sea slug that swims by undulating its body." },
-            "chromodoris": { id: "chromodoris", name: "Chromodoris", scientific: "Chromodoris annae", rarity: "Common", tag: "Nudibranchs", typicalRegion: "Western Pacific Flats", description: "Sleek blue sea slug marked with yellow and black stripes." },
-            "hypselodoris": { id: "hypselodoris", name: "Hypselodoris", scientific: "Hypselodoris apolegma", rarity: "Common", tag: "Nudibranchs", typicalRegion: "Indo-Pacific Dropoffs", description: "Stunning purple-to-yellow gradient border markings." },
-            "nembrotha": { id: "nembrotha", name: "Nembrotha", scientific: "Nembrotha kubaryana", rarity: "Common", tag: "Nudibranchs", typicalRegion: "Silty Reef Slopes", description: "Fascinating black slug striped with bright neon-green." },
-            "flabellina": { id: "flabellina", name: "Flabellina", scientific: "Flabellina affinis", rarity: "Common", tag: "Nudibranchs", typicalRegion: "Temperate Rocky Walls", description: "Elegantly arrayed with pink-purple cerata along its back." },
-            "glossodoris": { id: "glossodoris", name: "Glossodoris", scientific: "Glossodoris cincta", rarity: "Common", tag: "Nudibranchs", typicalRegion: "Indo-West Pacific Shallows", description: "Spotted greyish body trimmed with yellow, black, and blue margins." },
-            "phyllidia": { id: "phyllidia", name: "Phyllidia", scientific: "Phyllidia varicosa", rarity: "Common", tag: "Nudibranchs", typicalRegion: "Shallow Reef Floors", description: "Firm, bumpy body with toxic ridges that deter predators." },
-            "hexabranchus": { id: "hexabranchus", name: "Hexabranchus", scientific: "Hexabranchus lacer", rarity: "Epic", tag: "Nudibranchs", typicalRegion: "Coral Wall Ledges", description: "Active nocturnal feeder with six highly visible feathery gills." },
-            "thecacera": { id: "thecacera", name: "Thecacera (Pikachu)", scientific: "Thecacera pacifica", rarity: "Epic", tag: "Nudibranchs", typicalRegion: "Sandy Estuaries", description: "Glows in yellow and black; highly reminiscent of Pikachu." },
-            "janolus": { id: "janolus", name: "Janolus", scientific: "Janolus cristatus", rarity: "Epic", tag: "Nudibranchs", typicalRegion: "Deep Rocky Walls", description: "Enormously dense array of crystal-like cerata tipped in blue." },
-            "armina": { id: "armina", name: "Armina", scientific: "Armina babai", rarity: "Epic", tag: "Nudibranchs", typicalRegion: "Silty Mud Beds", description: "Flat, burrowing sea slug that feeds on sea pens in the mud." },
-            "shaun_the_sheep": { id: "shaun_the_sheep", name: "Costasiella (Shaun the Sheep)", scientific: "Costasiella kuroshimae", rarity: "Epic", tag: "Nudibranchs", typicalRegion: "Shallow Seagrass bays", description: "Microscopic sap-sucking slug resembling a cartoon sheep." },
-            "nudibranchs_other": { id: "nudibranchs_other", name: "Nudibranchs (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Nudibranchs", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a nudibranch species not already in the catalog — enter the species name you observed." },
-
-            // ==================== ECHINODERMS ====================
-            "crown_of_thorns": { id: "crown_of_thorns", name: "Crown-of-Thorns Starfish", scientific: "Acanthaster planci", rarity: "Common", tag: "Echinoderms", typicalRegion: "Hard Coral Slopes", description: "Spiny coral predator covered in sharp, toxic defensive thorns." },
-            "blue_sea_star": { id: "blue_sea_star", name: "Blue Sea Star", scientific: "Linckia laevigata", rarity: "Common", tag: "Echinoderms", typicalRegion: "Sunny Coral Reefs", description: "Beautiful cobalt-blue starfish found on shallow sunlit reef tops." },
-            "cushion_star": { id: "cushion_star", name: "Cushion Star", scientific: "Oreaster reticulatus", rarity: "Common", tag: "Echinoderms", typicalRegion: "Seagrass Sandy Beds", description: "Large thick cushion-like sea star common on shallow sandbeds." },
-            "brittle_stars": { id: "brittle_stars", name: "Brittle Stars", scientific: "Ophiuroidea", rarity: "Common", tag: "Echinoderms", typicalRegion: "Rocky Reef Cavities", description: "Extremely long, flexible snaky arms that break off easily to escape." },
-            "feather_stars": { id: "feather_stars", name: "Feather Stars", scientific: "Crinoidea", rarity: "Common", tag: "Echinoderms", typicalRegion: "High-Current Pinnacles", description: "Ancient, elegant filter feeder with numerous feathery arms." },
-            "pencil_urchin": { id: "pencil_urchin", name: "Pencil Urchin", scientific: "Heterocentrotus mammillatus", rarity: "Common", tag: "Echinoderms", typicalRegion: "Shallow Reef Rocks", description: "Equipped with thick, blunt defensive spines resembling stone pencils." },
-            "long_spined_urchin": { id: "long_spined_urchin", name: "Long-spined Urchin", scientific: "Diadema antillarum", rarity: "Common", tag: "Echinoderms", typicalRegion: "Shallow Lagoon Bays", description: "Keeps extremely long needle-like spines sensitive to passing shadows." },
-            "collector_urchin": { id: "collector_urchin", name: "Collector Urchin", scientific: "Tripneustes gratilla", rarity: "Common", tag: "Echinoderms", typicalRegion: "Subtropical Seagrass", description: "Decorates its body with loose shell debris and kelp bits." },
-            "sea_apples": { id: "sea_apples", name: "Sea Apples", scientific: "Pseudocolochirus violaceus", rarity: "Epic", tag: "Echinoderms", typicalRegion: "Outer Drop-off Walls", description: "Highly colorful sea cucumber with bright purple skins and yellow feelers." },
-            "tiger_tail_cucumber": { id: "tiger_tail_cucumber", name: "Tiger Tail Sea Cucumber", scientific: "Holothuria hilla", rarity: "Common", tag: "Echinoderms", typicalRegion: "Lagoon Sand Floors", description: "Spotted worm-like filter feeder that process fine sandbeds." },
-            "starfish_other": { id: "starfish_other", name: "Starfish (Other)", scientific: "Asteroidea", rarity: "Common", tag: "Echinoderms", typicalRegion: "Reef & Sandy Flats", allowCustomName: true, description: "Use this entry for a starfish species not already in the catalog — enter the species name you observed." },
-            "sea_urchin_other": { id: "sea_urchin_other", name: "Sea Urchin (Other)", scientific: "Echinoidea", rarity: "Common", tag: "Echinoderms", typicalRegion: "Reef & Rocky Flats", allowCustomName: true, description: "Use this entry for a sea urchin species not already in the catalog — enter the species name you observed." },
-            "sea_cucumber_other": { id: "sea_cucumber_other", name: "Sea Cucumber (Other)", scientific: "Holothuroidea", rarity: "Common", tag: "Echinoderms", typicalRegion: "Sandy & Rubble Flats", allowCustomName: true, description: "Use this entry for a sea cucumber species not already in the catalog — enter the species name you observed." },
-            "echinoderms_other": { id: "echinoderms_other", name: "Echinoderms (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Echinoderms", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for any other echinoderm (e.g. a brittle star, feather star, or sand dollar) not already in the catalog — enter the species name you observed." },
-
-            // ==================== CORALS & ANEMONES ====================
-            "brain_coral": { id: "brain_coral", name: "Brain Coral", scientific: "Diploria labyrinthiformis", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Shallow Hard Reefs", description: "Symmetrical hard coral resembling complex labyrinth brain folds." },
-            "staghorn_coral": { id: "staghorn_coral", name: "Staghorn Coral", scientific: "Acropora cervicornis", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Warm Shallow Waters", description: "Formulates massive branching structures mimicking deer antlers." },
-            "elkhorn_coral": { id: "elkhorn_coral", name: "Elkhorn Coral", scientific: "Acropora palmata", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Inshore Reef Flats", description: "Provides vital structure with thick, flat, moose-horn branches." },
-            "plate_coral": { id: "plate_coral", name: "Plate Coral", scientific: "Fungia (spp.)", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Sandy Lagoon Shelves", description: "Flat, circular, free-living hard coral that remains solitary." },
-            "table_coral": { id: "table_coral", name: "Table Coral", scientific: "Acropora hyacinthus", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Sunlit reef tops", description: "Flat, tabletop-like structures designed to maximize solar surface." },
-            "mushroom_coral": { id: "mushroom_coral", name: "Mushroom Coral", scientific: "Fungiidae (spp.)", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Sandy Atoll Flats", description: "Single-polyp coral capable of slowly creeping across sand beds." },
-            "soft_corals": { id: "soft_corals", name: "Soft Corals", scientific: "Alcyonacea", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Current-swept walls", description: "Non-reef-building corals that sway gracefully in deep currents." },
-            "sea_fans": { id: "sea_fans", name: "Sea Fans", scientific: "Gorgoniidae", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Deep Ocean Walls", description: "Vibrant branching structures oriented perpendicular to water currents." },
-            "sea_whips": { id: "sea_whips", name: "Sea Whips", scientific: "Ellisellidae", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Cavern Drop-offs", description: "Elegant, whip-like colonies projecting directly off vertical reef walls." },
-            "bubble_coral": { id: "bubble_coral", name: "Bubble Coral", scientific: "Plerogyra sinuosa", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Protected Reef Slopes", description: "Hard coral covered in water-filled bubble-like vesicles." },
-            "torch_coral": { id: "torch_coral", name: "Torch Coral", scientific: "Euphyllia glabrescens", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Lagoon Reef Tops", description: "Long fleshy tentacles tipped in glowing green or pink dots." },
-            "magnificent_anemone": { id: "magnificent_anemone", name: "Magnificent Sea Anemone", scientific: "Heteractis magnifica", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Shallow Outer Pinnacles", description: "Large anemone with colorful column walls, hosting clownfish." },
-            "carpet_anemone": { id: "carpet_anemone", name: "Carpet Anemone", scientific: "Stichodactyla haddoni", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Estuarine Sand Flats", description: "Large sticky anemone resembling shag carpets, hosting clownfish." },
-            "corals_anemones_other": { id: "corals_anemones_other", name: "Corals & Anemones (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Corals & Anemones", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a coral or anemone species not already in the catalog — enter the species name you observed." },
-
-            // ==================== EEL ====================
-            "giant_moray": { id: "giant_moray", name: "Giant Moray", scientific: "Gymnothorax javanicus", rarity: "Common", tag: "Eel", typicalRegion: "Indo-Pacific Reef Crevices", description: "The largest moray on Indo-Pacific reefs, often seen with cleaner shrimp." },
-            "yellow_margin_moray": { id: "yellow_margin_moray", name: "Yellow-margin Moray", scientific: "Gymnothorax flavimarginatus", rarity: "Common", tag: "Eel", typicalRegion: "Rocky & Coral Reef Crevices", description: "Recognized by the pale yellow trim edging its dorsal fin." },
-            "honeycomb_moray": { id: "honeycomb_moray", name: "Honeycomb Moray", scientific: "Gymnothorax favagineus", rarity: "Epic", tag: "Eel", typicalRegion: "Coral Rubble Slopes", description: "Bold black honeycomb-patterned skin over a pale body." },
-            "snowflake_moray": { id: "snowflake_moray", name: "Snowflake Moray", scientific: "Echidna nebulosa", rarity: "Common", tag: "Eel", typicalRegion: "Shallow Reef Flats & Tide Pools", description: "Blunt, molar-like teeth built for crushing crab and shrimp shells." },
-            "white_eyed_moray": { id: "white_eyed_moray", name: "White-eyed Moray", scientific: "Siderea thyrsoidea", rarity: "Epic", tag: "Eel", typicalRegion: "Sandy Reef Slopes", description: "Pale grey moray easily identified by its striking white-ringed eyes." },
-            "fimbriated_moray": { id: "fimbriated_moray", name: "Fimbriated Moray", scientific: "Gymnothorax fimbriatus", rarity: "Common", tag: "Eel", typicalRegion: "Coral Reef Crevices", description: "Dark-spotted moray commonly seen peeking out from reef holes by day." },
-            "undulated_moray": { id: "undulated_moray", name: "Undulated Moray", scientific: "Gymnothorax undulatus", rarity: "Common", tag: "Eel", typicalRegion: "Shallow Reef Flats", description: "Wavy dark markings across a yellow-green body, active at night." },
-            "dragon_moray": { id: "dragon_moray", name: "Dragon Moray", scientific: "Enchelycore pardalis", rarity: "Ultra-Rare", tag: "Eel", typicalRegion: "Deep Rocky Crevices", description: "Ornate, horn-like nostril filaments make this the most sought-after moray." },
-            // Merged into one "Ribbon Eel" entry (housekeeping pass,
-            // 260724-v38) — black juvenile, blue adult male, and yellow
-            // adult female are all the same species (Rhinomuraena
-            // quaesita) at different life stages, not different species.
-            "blue_ribbon_eel": { id: "blue_ribbon_eel", name: "Ribbon Eel", scientific: "Rhinomuraena quaesita", rarity: "Epic", tag: "Eel", typicalRegion: "Sandy Reef Burrows", description: "Changes color through its life: born jet black, matures into a vivid blue male, then some individuals become entirely yellow females." },
-            "black_ribbon_eel_juvenile": { id: "black_ribbon_eel_juvenile", name: "Black Ribbon Eel (juvenile)", scientific: "Rhinomuraena quaesita", rarity: "Ultra-Rare", tag: "Eel", typicalRegion: "Sandy Reef Burrows", deprecated: true, description: "Juvenile color morph — jet black body with a thin yellow dorsal stripe. Same species as Ribbon Eel, kept only for dives logged before this was merged." },
-            "yellow_ribbon_eel_female": { id: "yellow_ribbon_eel_female", name: "Yellow Ribbon Eel (female)", scientific: "Rhinomuraena quaesita", rarity: "Epic", tag: "Eel", typicalRegion: "Sandy Reef Burrows", deprecated: true, description: "Mature female color morph — entirely yellow, larger-bodied than males. Same species as Ribbon Eel, kept only for dives logged before this was merged." },
-            "spotted_garden_eel": { id: "spotted_garden_eel", name: "Spotted Garden Eel", scientific: "Heteroconger hassi", rarity: "Common", tag: "Eel", typicalRegion: "Sandy Current-swept Slopes", description: "Lives in colonies, swaying from burrows to feed on drifting plankton." },
-            "splendid_garden_eel": { id: "splendid_garden_eel", name: "Splendid Garden Eel", scientific: "Gorgasia preclara", rarity: "Epic", tag: "Eel", typicalRegion: "Deep Sandy Slopes", description: "Vivid orange-and-white banded garden eel found in dense colonies." },
-            "european_conger": { id: "european_conger", name: "European Conger", scientific: "Conger conger", rarity: "Common", tag: "Eel", typicalRegion: "Temperate Rocky Reefs & Wrecks", description: "Large, powerful eel often found denning in shipwrecks and rocky gullies." },
-            "japanese_conger": { id: "japanese_conger", name: "Japanese Conger", scientific: "Conger myriaster", rarity: "Common", tag: "Eel", typicalRegion: "Temperate Sandy & Muddy Bottoms", description: "Slender burrowing conger common across temperate Northwest Pacific waters." },
-            "sharptail_snake_eel": { id: "sharptail_snake_eel", name: "Sharptail Snake Eel", scientific: "Apterichtus klazingai", rarity: "Epic", tag: "Eel", typicalRegion: "Sandy Lagoon Bottoms", description: "Rarely seen fully — spends most of its life buried in sand with just its snout showing." },
-            "banded_snake_eel": { id: "banded_snake_eel", name: "Banded Snake Eel", scientific: "Myrichthys colubrinus", rarity: "Common", tag: "Eel", typicalRegion: "Sandy Reef Flats", description: "Bold black-and-white banding mimics the venomous banded sea snake." },
-            "marbled_snake_eel": { id: "marbled_snake_eel", name: "Marbled Snake Eel", scientific: "Callechelys marmorata", rarity: "Epic", tag: "Eel", typicalRegion: "Sandy Reef Slopes", description: "Mottled marble-like pattern helps it blend into sand and rubble." },
-            "longfin_pike_conger": { id: "longfin_pike_conger", name: "Longfin Pike Conger", scientific: "Muraenesox cinereus", rarity: "Common", tag: "Eel", typicalRegion: "Muddy Estuarine Slopes", description: "Slender, pike-jawed conger with sharp teeth, hunting at dusk over soft bottoms." },
-            "eels_other": { id: "eels_other", name: "Eels (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Eel", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for an eel species not already in the catalog — enter the species name you observed." },
-
-            // ==================== TURTLES (all 7 living sea turtle species) ====================
-            "green_turtle": { id: "green_turtle", name: "Green Turtle", scientific: "Chelonia mydas", rarity: "Common", tag: "Turtles", typicalRegion: "Seagrass Meadows & Reefs", description: "Named for the greenish fat beneath its shell; grazes on seagrass and algae." },
-            "hawksbill_turtle": { id: "hawksbill_turtle", name: "Hawksbill Turtle", scientific: "Eretmochelys imbricata", rarity: "Epic", tag: "Turtles", typicalRegion: "Coral Reefs", description: "Narrow, hooked beak lets it pick sponges from reef crevices most other species avoid." },
-            "loggerhead_turtle": { id: "loggerhead_turtle", name: "Loggerhead Turtle", scientific: "Caretta caretta", rarity: "Epic", tag: "Turtles", typicalRegion: "Open Ocean & Coastal Bays", description: "Powerful jaws built to crush hard-shelled prey like crabs and whelks." },
-            "olive_ridley_turtle": { id: "olive_ridley_turtle", name: "Olive Ridley Turtle", scientific: "Lepidochelys olivacea", rarity: "Epic", tag: "Turtles", typicalRegion: "Tropical Open Water", description: "The smallest and most abundant sea turtle, named for its olive-green carapace." },
-            "kemps_ridley_turtle": { id: "kemps_ridley_turtle", name: "Kemp's Ridley Turtle", scientific: "Lepidochelys kempii", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Gulf of Mexico & NW Atlantic", description: "The rarest and most endangered sea turtle, almost entirely restricted to the Gulf of Mexico." },
-            "flatback_turtle": { id: "flatback_turtle", name: "Flatback Turtle", scientific: "Natator depressus", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Northern Australian Coast", description: "Found only on Australia's continental shelf, with a distinctively flattened, upturned-edge shell." },
-            "leatherback_turtle": { id: "leatherback_turtle", name: "Leatherback Turtle", scientific: "Dermochelys coriacea", rarity: "Ultra-Rare", tag: "Turtles", typicalRegion: "Open Pelagic Waters", description: "The largest sea turtle, with a flexible, ridged leathery shell instead of a hard carapace." },
-            "turtles_other": { id: "turtles_other", name: "Turtles (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Turtles", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a sea turtle species not already in the catalog — enter the species name you observed." },
-
-            // ==================== JELLYFISH (true jellies + notable colonial/hydrozoan look-alikes) ====================
-            "moon_jellyfish": { id: "moon_jellyfish", name: "Moon Jellyfish", scientific: "Aurelia aurita", rarity: "Common", tag: "Jellyfish", typicalRegion: "Coastal Waters Worldwide", description: "Translucent bell with four horseshoe-shaped gonads visible through the tissue — often the first jellyfish divers learn to recognize." },
-            "lions_mane_jellyfish": { id: "lions_mane_jellyfish", name: "Lion's Mane Jellyfish", scientific: "Cyanea capillata", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Cold Northern Atlantic & Pacific", description: "The largest known jellyfish species, trailing tentacles that can stretch tens of metres behind its reddish-brown bell." },
-            "box_jellyfish": { id: "box_jellyfish", name: "Box Jellyfish", scientific: "Chironex fleckeri", rarity: "Ultra-Rare", tag: "Jellyfish", typicalRegion: "Northern Australian Tropical Waters", description: "Among the most venomous marine animals alive, with near-invisible tentacles and image-forming eyes unusual for a jellyfish." },
-            "portuguese_man_o_war": { id: "portuguese_man_o_war", name: "Portuguese Man o' War", scientific: "Physalia physalis", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Open Ocean & Warm Surface Currents", description: "Not a true jellyfish but a colonial siphonophore — its gas-filled float rides the surface while stinging tentacles trail below." },
-            "compass_jellyfish": { id: "compass_jellyfish", name: "Compass Jellyfish", scientific: "Chrysaora hysoscella", rarity: "Common", tag: "Jellyfish", typicalRegion: "Eastern Atlantic & Mediterranean", description: "Named for the brown radiating markings on its bell that resemble compass points." },
-            "barrel_jellyfish": { id: "barrel_jellyfish", name: "Barrel Jellyfish", scientific: "Rhizostoma pulmo", rarity: "Common", tag: "Jellyfish", typicalRegion: "Atlantic & Mediterranean Coastal Waters", description: "One of the largest jellyfish in temperate Atlantic waters, often trailed by juvenile fish sheltering beneath its bell." },
-            "cannonball_jellyfish": { id: "cannonball_jellyfish", name: "Cannonball Jellyfish", scientific: "Stomolophus meleagris", rarity: "Common", tag: "Jellyfish", typicalRegion: "Warm Atlantic & Gulf of Mexico", description: "A firm, dome-shaped bell with almost no visible tentacles, commonly seen in warm coastal shallows." },
-            "upside_down_jellyfish": { id: "upside_down_jellyfish", name: "Upside-down Jellyfish", scientific: "Cassiopea andromeda", rarity: "Common", tag: "Jellyfish", typicalRegion: "Mangrove Lagoons & Tropical Flats", description: "Rests bell-down on sandy or mangrove-lined bottoms, pulsing gently to farm light for its symbiotic algae." },
-            "atlantic_sea_nettle": { id: "atlantic_sea_nettle", name: "Atlantic Sea Nettle", scientific: "Chrysaora quinquecirrha", rarity: "Common", tag: "Jellyfish", typicalRegion: "Atlantic & Gulf Coastal Estuaries", description: "Long, spiraling oral arms trail beneath a bell striped in warm amber and cream." },
-            "pacific_sea_nettle": { id: "pacific_sea_nettle", name: "Pacific Sea Nettle", scientific: "Chrysaora fuscescens", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Eastern Pacific Upwelling Zones", description: "A striking golden-brown bell with dark maroon streamers, often drifting in large seasonal blooms." },
-            "flower_hat_jelly": { id: "flower_hat_jelly", name: "Flower Hat Jelly", scientific: "Olindias formosa", rarity: "Ultra-Rare", tag: "Jellyfish", typicalRegion: "Temperate Reefs, Japan & Brazil", description: "A small, richly patterned jelly whose curled fluorescent tentacles resemble a flower in bloom." },
-            "mauve_stinger": { id: "mauve_stinger", name: "Mauve Stinger", scientific: "Pelagia noctiluca", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Mediterranean & Open Ocean", description: "Small but potent, this open-ocean drifter glows with bioluminescence when disturbed at night." },
-            "blue_blubber_jellyfish": { id: "blue_blubber_jellyfish", name: "Blue Blubber Jellyfish", scientific: "Catostylus mosaicus", rarity: "Common", tag: "Jellyfish", typicalRegion: "Indo-Pacific Coastal Bays", description: "A firm blue-tinted bell with short, blunt oral arms — a mild sting compared to most true jellyfish." },
-            "australian_spotted_jellyfish": { id: "australian_spotted_jellyfish", name: "Australian Spotted Jellyfish", scientific: "Phyllorhiza punctata", rarity: "Common", tag: "Jellyfish", typicalRegion: "Indo-Pacific & Introduced Gulf Waters", description: "Pale bell dotted with white nodules, often seen in large aggregations in sheltered bays." },
-            "egg_yolk_jellyfish": { id: "egg_yolk_jellyfish", name: "Egg-yolk Jellyfish", scientific: "Phacellophora camtschatica", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Cold Pacific & Atlantic Waters", description: "Named for its yellow center resembling a cracked egg, trailing long, delicate frilled arms." },
-            "immortal_jellyfish": { id: "immortal_jellyfish", name: "Immortal Jellyfish", scientific: "Turritopsis dohrnii", rarity: "Ultra-Rare", tag: "Jellyfish", typicalRegion: "Mediterranean & Temperate Worldwide", description: "A pinhead-sized hydrozoan capable of reverting to its polyp stage instead of dying — effectively biologically immortal." },
-            "crystal_jellyfish": { id: "crystal_jellyfish", name: "Crystal Jellyfish", scientific: "Aequorea victoria", rarity: "Epic", tag: "Jellyfish", typicalRegion: "Pacific Coastal Waters", description: "A near-invisible bell ringed with bioluminescent points, the source of the green fluorescent protein used in modern biology." },
-            "purple_striped_jellyfish": { id: "purple_striped_jellyfish", name: "Purple-striped Jellyfish", scientific: "Chrysaora colorata", rarity: "Epic", tag: "Jellyfish", typicalRegion: "California Coastal Upwelling Waters", description: "Deep purple radial stripes fan out across a pale bell, trailing long, dark tentacles." },
-            "blue_jellyfish": { id: "blue_jellyfish", name: "Blue Jellyfish", scientific: "Cyanea lamarckii", rarity: "Common", tag: "Jellyfish", typicalRegion: "Northeast Atlantic Coastal Waters", description: "A small, deep blue bell with dense fringed tentacles, common in coastal blooms." },
-            "thimble_jellyfish": { id: "thimble_jellyfish", name: "Thimble Jellyfish", scientific: "Linuche unguiculata", rarity: "Common", tag: "Jellyfish", typicalRegion: "Caribbean & Gulf of Mexico", description: "Tiny thimble-sized jelly whose larvae are responsible for the itchy welts known as \"sea lice.\"" },
-            "jellyfish_other": { id: "jellyfish_other", name: "Jellyfish (Others)", scientific: "Custom Sighting", rarity: "Common", tag: "Jellyfish", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry for a jellyfish species not already in the catalog — enter the species name you observed." },
-
-            // ==================== OTHERS (custom / uncatalogued sightings) ====================
-            "others": { id: "others", name: "Others", scientific: "Custom Sighting", rarity: "Common", tag: "Others", typicalRegion: "Anywhere", allowCustomName: true, description: "Use this entry to log a marine life sighting that isn't in the catalog — enter the species name you observed for each sighting." }
-        };
-
-        // Static Geographic Coordinates mapping for Leaflet Markers
-        const COUNTRY_COORDS = {
-            "Afghanistan": [34.5553, 69.2075],
-            "Albania": [41.3275, 19.8187],
-            "Algeria": [36.7538, 3.0588],
-            "Andorra": [42.5063, 1.5218],
-            "Angola": [-8.839, 13.2894],
-            "Antigua and Barbuda": [17.1274, -61.8468],
-            "Argentina": [-34.6037, -58.3816],
-            "Armenia": [40.1792, 44.4991],
-            "Australia": [-35.2809, 149.13],
-            "Austria": [48.2082, 16.3738],
-            "Azerbaijan": [40.4093, 49.8671],
-            "Bahamas": [25.0343, -77.3963],
-            "Bahrain": [26.2285, 50.586],
-            "Bangladesh": [23.8103, 90.4125],
-            "Barbados": [13.1132, -59.5988],
-            "Belarus": [53.9006, 27.559],
-            "Belgium": [50.8503, 4.3517],
-            "Belize": [17.251, -88.759],
-            "Benin": [6.3703, 2.3912],
-            "Bhutan": [27.4712, 89.6339],
-            "Bolivia": [-16.4897, -68.1193],
-            "Bosnia and Herzegovina": [43.8563, 18.4131],
-            "Botswana": [-24.6282, 25.9231],
-            "Brazil": [-15.7939, -47.8828],
-            "Brunei": [4.9031, 114.9398],
-            "Bulgaria": [42.6977, 23.3219],
-            "Burkina Faso": [12.3714, -1.5197],
-            "Burundi": [-3.3822, 29.3644],
-            "Cabo Verde": [14.933, -23.5133],
-            "Cambodia": [11.5564, 104.9282],
-            "Cameroon": [3.848, 11.5021],
-            "Canada": [45.4215, -75.6972],
-            "Central African Republic": [4.3947, 18.5582],
-            "Chad": [12.1348, 15.0557],
-            "Chile": [-33.4489, -70.6693],
-            "China": [39.9042, 116.4074],
-            "Colombia": [4.711, -74.0721],
-            "Comoros": [-11.7172, 43.2473],
-            "Congo (Democratic Republic of the)": [-4.4419, 15.2663],
-            "Congo (Republic of the)": [-4.2634, 15.2429],
-            "Costa Rica": [9.9281, -84.0907],
-            "Cote d'Ivoire": [6.8276, -5.2893],
-            "Croatia": [45.815, 15.9819],
-            "Cuba": [23.1136, -82.3666],
-            "Cyprus": [35.1856, 33.3823],
-            "Czechia": [50.0755, 14.4378],
-            "Denmark": [55.6761, 12.5683],
-            "Djibouti": [11.8251, 42.5903],
-            "Dominica": [15.415, -61.371],
-            "Dominican Republic": [18.4861, -69.9312],
-            "Ecuador": [-0.1807, -78.4678],
-            "Egypt": [30.0444, 31.2357],
-            "El Salvador": [13.6929, -89.2182],
-            "Equatorial Guinea": [3.7504, 8.7371],
-            "Eritrea": [15.3229, 38.9251],
-            "Estonia": [59.437, 24.7536],
-            "Eswatini": [-26.3054, 31.1367],
-            "Ethiopia": [9.025, 38.7469],
-            "Fiji": [-18.1416, 178.4419],
-            "Finland": [60.1699, 24.9384],
-            "France": [48.8566, 2.3522],
-            "Gabon": [0.4162, 9.4673],
-            "Gambia": [13.4549, -16.579],
-            "Georgia": [41.7151, 44.8271],
-            "Germany": [52.52, 13.405],
-            "Ghana": [5.6037, -0.187],
-            "Greece": [37.9838, 23.7275],
-            "Grenada": [12.0561, -61.7488],
-            "Guatemala": [14.6349, -90.5069],
-            "Guinea": [9.6412, -13.5784],
-            "Guinea-Bissau": [11.8636, -15.5977],
-            "Guyana": [6.8013, -58.1551],
-            "Haiti": [18.5944, -72.3074],
-            "Honduras": [14.0723, -87.1921],
-            "Hungary": [47.4979, 19.0402],
-            "Iceland": [64.1466, -21.9426],
-            "India": [28.6139, 77.209],
-            "Indonesia": [-6.2088, 106.8456],
-            "Iran": [35.6892, 51.389],
-            "Iraq": [33.3152, 44.3661],
-            "Ireland": [53.3498, -6.2603],
-            "Israel": [31.7683, 35.2137],
-            "Italy": [41.9028, 12.4964],
-            "Jamaica": [18.0179, -76.8099],
-            "Japan": [35.6762, 139.6503],
-            "Jordan": [31.9454, 35.9284],
-            "Kazakhstan": [51.1694, 71.4491],
-            "Kenya": [-1.2921, 36.8219],
-            "Kiribati": [1.3382, 172.979],
-            "Kuwait": [29.3759, 47.9774],
-            "Kyrgyzstan": [42.8746, 74.5698],
-            "Laos": [17.9757, 102.6331],
-            "Latvia": [56.9496, 24.1052],
-            "Lebanon": [33.8938, 35.5018],
-            "Lesotho": [-29.3151, 27.4869],
-            "Liberia": [6.3004, -10.7969],
-            "Libya": [32.8872, 13.1913],
-            "Liechtenstein": [47.166, 9.5554],
-            "Lithuania": [54.6872, 25.2797],
-            "Luxembourg": [49.6116, 6.1319],
-            "Madagascar": [-18.8792, 47.5079],
-            "Malawi": [-13.9626, 33.7741],
-            "Malaysia": [3.139, 101.6869],
-            "Maldives": [4.1755, 73.5093],
-            "Mali": [12.6392, -8.0029],
-            "Malta": [35.8989, 14.5146],
-            "Marshall Islands": [7.1315, 171.1845],
-            "Mauritania": [18.0735, -15.9582],
-            "Mauritius": [-20.1609, 57.5012],
-            "Mexico": [19.4326, -99.1332],
-            "Micronesia": [6.9248, 158.1611],
-            "Moldova": [47.0105, 28.8638],
-            "Monaco": [43.7384, 7.4246],
-            "Mongolia": [47.8864, 106.9057],
-            "Montenegro": [42.4304, 19.2594],
-            "Morocco": [34.0209, -6.8416],
-            "Mozambique": [-25.9692, 32.5732],
-            "Myanmar": [16.8409, 96.1735],
-            "Namibia": [-22.5609, 17.0658],
-            "Nauru": [-0.5228, 166.9315],
-            "Nepal": [27.7172, 85.324],
-            "Netherlands": [52.3676, 4.9041],
-            "New Zealand": [-41.2865, 174.7762],
-            "Nicaragua": [12.1364, -86.2514],
-            "Niger": [13.5116, 2.1254],
-            "Nigeria": [9.0765, 7.3986],
-            "North Korea": [39.0392, 125.7625],
-            "North Macedonia": [41.9981, 21.4254],
-            "Norway": [59.9139, 10.7522],
-            "Oman": [23.588, 58.3829],
-            "Pakistan": [33.6844, 73.0479],
-            "Palau": [7.3419, 134.4792],
-            "Panama": [8.9824, -79.5199],
-            "Papua New Guinea": [-9.4438, 147.1803],
-            "Paraguay": [-25.2637, -57.5759],
-            "Peru": [-12.0464, -77.0428],
-            "Philippines": [14.5995, 120.9842],
-            "Poland": [52.2297, 21.0122],
-            "Portugal": [38.7223, -9.1393],
-            "Qatar": [25.2854, 51.531],
-            "Romania": [44.4268, 26.1025],
-            "Russia": [55.7558, 37.6173],
-            "Rwanda": [-1.9403, 29.8739],
-            "Saint Kitts and Nevis": [17.3026, -62.7177],
-            "Saint Lucia": [14.0101, -60.9875],
-            "Saint Vincent and the Grenadines": [13.16, -61.2248],
-            "Samoa": [-13.8506, -171.7513],
-            "San Marino": [43.9424, 12.4578],
-            "Sao Tome and Principe": [0.3302, 6.7333],
-            "Saudi Arabia": [24.7136, 46.6753],
-            "Senegal": [14.7167, -17.4677],
-            "Serbia": [44.7866, 20.4489],
-            "Seychelles": [-4.6796, 55.492],
-            "Sierra Leone": [8.4657, -13.2317],
-            "Singapore": [1.3521, 103.8198],
-            "Slovakia": [48.1486, 17.1077],
-            "Slovenia": [46.0569, 14.5058],
-            "Solomon Islands": [-9.4456, 159.9729],
-            "Somalia": [2.0469, 45.3182],
-            "South Africa": [-25.7479, 28.2293],
-            "South Korea": [37.5665, 126.978],
-            "South Sudan": [4.8594, 31.5713],
-            "Spain": [40.4168, -3.7038],
-            "Sri Lanka": [6.9271, 79.8612],
-            "Sudan": [15.5007, 32.5599],
-            "Suriname": [5.852, -55.2038],
-            "Sweden": [59.3293, 18.0686],
-            "Switzerland": [46.948, 7.4474],
-            "Syria": [33.5138, 36.2765],
-            "Tajikistan": [38.5598, 68.787],
-            "Tanzania": [-6.163, 35.7516],
-            "Thailand": [13.7563, 100.5018],
-            "Timor-Leste": [-8.5569, 125.5603],
-            "Togo": [6.1725, 1.2314],
-            "Tonga": [-21.1789, -175.1982],
-            "Trinidad and Tobago": [10.6596, -61.5019],
-            "Tunisia": [36.8065, 10.1815],
-            "Turkiye": [39.9334, 32.8597],
-            "Turkmenistan": [37.9601, 58.3261],
-            "Tuvalu": [-8.5211, 179.1983],
-            "Uganda": [0.3476, 32.5825],
-            "Ukraine": [50.4501, 30.5234],
-            "United Arab Emirates": [24.4539, 54.3773],
-            "United Kingdom": [51.5074, -0.1278],
-            "United States": [38.9072, -77.0369],
-            "Uruguay": [-34.9011, -56.1645],
-            "Uzbekistan": [41.2995, 69.2401],
-            "Vanuatu": [-17.7334, 168.3273],
-            "Venezuela": [10.4806, -66.9036],
-            "Vietnam": [21.0278, 105.8342],
-            "Yemen": [15.3694, 44.191],
-            "Zambia": [-15.3875, 28.3228],
-            "Zimbabwe": [-17.8292, 31.0522],
-        };
-
-        // Approximate "fit the whole country in view" zoom levels for the
-        // Log a Dive location-picker map, keyed the same as COUNTRY_COORDS.
-        // These are size-tier approximations, not real bounding-box math
-        // (no geo-bounds dataset available) — good enough to roughly frame
-        // a country rather than always using one fixed zoom regardless of
-        // whether it's Russia or Singapore. Anything not listed here falls
-        // back to DEFAULT_COUNTRY_ZOOM.
-        const DEFAULT_COUNTRY_ZOOM = 6;
-        const COUNTRY_ZOOM = {
-            // Huge / transcontinental — need to zoom out a lot
-            "Russia": 3, "Canada": 3, "United States": 4, "China": 4, "Brazil": 4,
-            "Australia": 4, "India": 4, "Argentina": 4, "Kazakhstan": 4, "Algeria": 5,
-            "Congo (Democratic Republic of the)": 5, "Saudi Arabia": 5, "Mexico": 5,
-            "Indonesia": 4, "Sudan": 5, "Libya": 5, "Iran": 5, "Mongolia": 5, "Peru": 5,
-            "Chad": 5, "Niger": 5, "Angola": 5, "Mali": 5, "Colombia": 5, "Ethiopia": 5,
-            "Bolivia": 5, "Nigeria": 5, "Venezuela": 5, "Namibia": 5, "Mozambique": 5,
-            "Pakistan": 5, "Turkey": 5, "Chile": 4, "Zambia": 5, "Myanmar": 5,
-            "Afghanistan": 5, "Somalia": 5, "Ukraine": 5, "Botswana": 5, "Madagascar": 5,
-            "Kenya": 5, "Papua New Guinea": 5, "Philippines": 5, "Yemen": 5, "Tanzania": 5,
-            "Morocco": 5, "Iraq": 5, "South Africa": 5, "Egypt": 5, "Paraguay": 5,
-
-            // Small / island nations — many are dive destinations, so worth
-            // getting these right rather than leaving them at the default.
-            "Singapore": 10, "Bahrain": 9, "Malta": 9, "Barbados": 10, "Grenada": 10,
-            "Saint Lucia": 10, "Dominica": 10, "Antigua and Barbuda": 9,
-            "Saint Vincent and the Grenadines": 10, "Saint Kitts and Nevis": 10,
-            "Samoa": 9, "Tonga": 8, "Palau": 8, "Nauru": 11, "Tuvalu": 10,
-            "Monaco": 13, "San Marino": 11, "Liechtenstein": 10, "Andorra": 10,
-            "Luxembourg": 9, "Cabo Verde": 8, "Mauritius": 9, "Comoros": 8,
-            "Seychelles": 7, "Maldives": 6, "Micronesia": 6, "Marshall Islands": 6,
-            "Kiribati": 5, "Belgium": 7, "Netherlands": 7, "Switzerland": 7,
-            "Denmark": 7, "Vanuatu": 7, "Solomon Islands": 6, "Belize": 7,
-            "El Salvador": 7, "Jamaica": 8, "Trinidad and Tobago": 8,
-            "Timor-Leste": 7, "Brunei": 8, "Qatar": 8, "Kuwait": 8,
-            "United Arab Emirates": 7, "Djibouti": 8, "Eritrea": 6, "Slovenia": 8,
-            "Slovakia": 7, "Croatia": 6, "Estonia": 7, "Latvia": 7, "Lithuania": 7,
-            "Cyprus": 8, "Montenegro": 8, "North Macedonia": 8, "Bosnia and Herzegovina": 7,
-            "Albania": 8, "Fiji": 7, "Israel": 7, "Lebanon": 8, "Jordan": 7,
-            "Panama": 7, "Costa Rica": 7,
-        };
+        // AquaDex species catalog, country coordinates/zoom levels and
+        // certification lists live in js/data/*.js (loaded before this script).
 
         const INITIAL_DIVE_LOGS = [];
 
-        // Certification level progression lists, keyed by diving certification
-        // organisation. The "Certification Level" dropdown in the Update Diver
-        // Credentials modal repopulates from this list whenever the diver
-        // changes their chosen Certification Organisation.
-        const CERTIFICATION_LEVELS = {
-            "PADI": [
-                "Discover Scuba Diving", "Scuba Diver", "Open Water Diver", "Advanced Open Water Diver",
-                "Rescue Diver", "Emergency First Response (Prerequisite)", "Divemaster", "Assistant Instructor",
-                "Open Water Scuba Instructor", "Master Scuba Diver Trainer", "IDC Staff Instructor",
-                "Master Instructor", "Course Director"
-            ],
-            "SSI": [
-                "Try Scuba", "Scuba Diver", "Open Water Diver", "Advanced Adventurer", "Specialty Diver",
-                "Advanced Open Water Diver", "Diver Stress & Rescue", "Master Diver", "Dive Guide",
-                "Divemaster", "Assistant Instructor", "Open Water Instructor", "Specialty Instructor",
-                "Advanced Open Water Instructor", "Master Instructor", "Instructor Trainer", "Instructor Certifier"
-            ],
-            "SDI": [
-                "Discover Scuba", "Scuba Diver", "Open Water Scuba Diver", "Advanced Adventure Diver",
-                "Rescue Diver", "Master Scuba Diver Development Program", "Divemaster", "Assistant Instructor",
-                "Open Water Instructor", "Specialty Instructor", "Master Instructor", "Instructor Trainer",
-                "Course Director"
-            ],
-            "NAUI": [
-                "Skin Diver", "Scuba Diver", "Advanced Scuba Diver", "Rescue Scuba Diver", "Master Scuba Diver",
-                "Divemaster", "Assistant Instructor", "Instructor", "Course Director", "Instructor Trainer"
-            ]
-        };
-
-        // Real specialty diver course catalogs for each organisation,
-        // compiled from each org's official course listings (padi.com,
-        // divessi.com, tdisdi.com/extremesportsscuba.com, nauisa.org) —
-        // covers each org's standard specialty courses, not every
-        // dive-shop-specific "distinctive specialty" variant (PADI alone
-        // has 70+ of those). "Other" is always last, and reveals a free-text
-        // name field in the modal for anything not in the list.
-        const SPECIALTY_CERTIFICATIONS = {
-            "PADI": [
-                "Peak Performance Buoyancy", "Wreck Diver", "Digital Underwater Photographer",
-                "Dive Against Debris Specialist", "Boat Diver", "Night Diver", "Deep Diver",
-                "Dry Suit Diver", "Enriched Air Diver", "Underwater Navigator", "Full Face Mask Diver",
-                "Self-Reliant Diver", "Drift Diver", "Search and Recovery Diver", "Sidemount Rec Diver",
-                "Diver Propulsion Vehicle (DPV) Diver", "Equipment Specialist", "Project AWARE Specialist",
-                "Coral Reef Conservation", "Emergency Oxygen Provider", "Other"
-            ],
-            "SSI": [
-                "Full Face Mask Diving", "DPV Diving", "Invasive Species Management", "Photo & Video",
-                "Recreational Sidemount Diving", "Science of Diving", "Decompression Diving",
-                "Perfect Buoyancy", "Boat Diving", "Wreck Diving", "Deep Diving",
-                "Waves, Tides & Currents", "Search & Recovery", "Navigation",
-                "Night Diving and Limited Visibility", "Equipment Techniques", "Enriched Air Nitrox",
-                "Dry Suit Diving", "Stress & Rescue", "Computer Diving", "Gas Blender Nitrox/Trimix", "Other"
-            ],
-            "SDI": [
-                "Advanced Buoyancy Control", "Boat Diver", "Computer Nitrox Diver", "Deep Diver",
-                "DPV Diver", "Drift Diver", "Dry Suit Diver", "Full Face Mask Diver",
-                "Night/Limited Visibility Diver", "Search and Recovery Diver", "Sidemount Diver",
-                "Underwater Navigation", "Underwater Photographer", "Underwater Videographer",
-                "Wreck Diver", "Solo Diver", "Other"
-            ],
-            "NAUI": [
-                "Night Diver", "Underwater Environment", "Underwater Photographer",
-                "Search and Recovery Diver", "Hunter and Collector", "Wreck Diver (External Survey)",
-                "Ice Diver", "Deep Diver", "EANx (Nitrox) Diver", "Underwater Archeologist",
-                "Underwater Ecologist: Kelp Forest", "Underwater Ecologist: Coral Reef", "Dry Suit Diver",
-                "Boat Diver", "Marine Naturalist", "Shark Ecology", "Other"
-            ]
-        };
 
         // Rebuilds the Certification Level <select> options to match whichever
         // Certification Organisation is currently chosen. If preferredLevel is
@@ -3304,6 +2740,9 @@
             // dive right after sign-out would call saveState() with a
             // truncated in-memory array and wipe the real data in IndexedDB.
             dataClearedForSignOut: false,
+            logSort: 'diveNo-desc',     // Logbook sort (see LOG_SORTS), remembered in meta 'logSort'
+            logFormMode: 'full',        // Log a Dive 'quick' | 'full', remembered in meta 'logFormMode'
+            dashPeriod: 'all',          // Dashboard stats period (see getDashboardDives)
             diverProfile: {
                 name: "Explorer",
                 org: "PADI",
@@ -3506,10 +2945,34 @@
 
             await loadState();
             await migrateLegacyPhotosToStore();
+            state.logSort = await window.AbyssDB.getMeta('logSort', 'diveNo-desc');
+            const logSortSelect = document.getElementById('log-sort');
+            if (logSortSelect) logSortSelect.value = state.logSort;
+            setLogFormMode(await window.AbyssDB.getMeta('logFormMode', 'full'), false);
             updateThemeToggleIcon();
             setupFormsAndListeners();
+            initLogDraftAutoSave();
             initModalScrollLock();
             switchTab('dashboard'); // Triggers Leaflet initialization automatically
+            refreshInstallBanner();
+            // Established logbooks ask for persistent storage on launch (new
+            // users get asked after their first save — see handleFormSubmit).
+            if (state.dives.length > 0) requestPersistentStorage(); else refreshStorageStatus();
+
+            const pendingDraft = await window.AbyssDB.getMeta(LOG_DRAFT_KEY, null);
+            if (pendingDraft && pendingDraft.dive) {
+                showToast("You have an unsaved dive log draft", "info", {
+                    actionLabel: 'Resume', duration: 8000,
+                    onAction: async () => {
+                        if (pendingDraft.editingLogId && state.dives.some(d => d.id === pendingDraft.editingLogId)) {
+                            startEditDiveLog(pendingDraft.editingLogId, { skipDraftOffer: true });
+                        } else {
+                            await prepareNewDiveLogTab({ skipDraftOffer: true });
+                        }
+                        resumeLogDraft();
+                    }
+                });
+            }
 
             // Register service worker (offline app-shell caching)
             if ('serviceWorker' in navigator) {
@@ -3713,6 +3176,11 @@
             if (event) event.stopPropagation();
             document.getElementById('export-menu').classList.toggle('hidden');
         }
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('copy-dive-menu');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) closeCopyDiveMenu();
+        });
 
         function closeExportMenu() {
             document.getElementById('export-menu').classList.add('hidden');
@@ -5586,7 +5054,17 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             }
         }
 
+        let lastSyncStatus = null;
         function updateSyncStatusUI(status) {
+            // Tell the diver once when sync starts failing or the device
+            // drops offline — not on every retry.
+            if (status !== lastSyncStatus) {
+                if (status === 'error') showToast("Couldn't sync with OneDrive — your changes are safe on this device and will retry automatically.", "error", { duration: 6000 });
+                if (status === 'offline' && lastSyncStatus !== null) showToast("You're offline — keep logging. Everything is saved on this device and syncs when you reconnect.", "info", { duration: 6000 });
+                lastSyncStatus = status;
+            }
+            refreshSyncDetail(status);
+
             const icon = document.getElementById('sync-status-icon');
             const text = document.getElementById('sync-status-text');
             if (!icon || !text) return;
@@ -5738,7 +5216,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             window.scrollTo(0, 0);
         }
 
-        async function prepareNewDiveLogTab() {
+        async function prepareNewDiveLogTab(options = {}) {
             state.editingLogId = null;
             state.userHasOverwrittenDiveNo = false;
             await ensureDivesLoaded();
@@ -5762,6 +5240,8 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             switchTab('add-log');
             rollNextDiveNo();
             setTimeout(updateDepthProfileGraph, 100);
+            markLogDraftBaseline();
+            if (!options.skipDraftOffer) await offerLogDraftIfAny();
         }
 
         function rollNextDiveNo() {
@@ -5899,7 +5379,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             // location picker) use those real coordinates; everything else
             // falls back to a jittered marker near the selected country's
             // capital, as before.
-            const siteClusters = groupDivesBySite(state.dives);
+            const siteClusters = groupDivesBySite(getDashboardDives());
             siteClusters.forEach(cluster => {
                 const jitterLat = cluster.hasExactPin ? cluster.lat : cluster.lat + (Math.random() - 0.5) * 0.6;
                 const jitterLng = cluster.hasExactPin ? cluster.lng : cluster.lng + (Math.random() - 0.5) * 0.6;
@@ -6511,7 +5991,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             return `${day}-${month}-${year}`;
         }
 
-        function showToast(message, type = 'success') {
+        // options.actionLabel + options.onAction add a button (e.g. Undo);
+        // options.duration overrides the default 4s on-screen time.
+        function showToast(message, type = 'success', options = {}) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             
@@ -6529,9 +6011,15 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             toast.innerHTML = `
                 <i class="fa-solid ${iconClass} text-lg"></i>
                 <div class="flex-1 text-xs font-semibold text-slate-900 dark:text-white">${message}</div>
-                <button class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+                ${options.actionLabel ? `<button type="button" data-toast-action class="px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-500 dark:text-cyan-300 hover:bg-cyan-500/25 text-xs font-bold">${options.actionLabel}</button>` : ''}
+                <button aria-label="Dismiss" class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
             `;
             
+            const actionBtn = toast.querySelector('[data-toast-action]');
+            if (actionBtn && options.onAction) {
+                actionBtn.addEventListener('click', () => { toast.remove(); options.onAction(); });
+            }
+
             container.appendChild(toast);
             setTimeout(() => {
                 toast.classList.remove('translate-y-2', 'opacity-0');
@@ -6540,7 +6028,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'scale-95');
                 setTimeout(() => toast.remove(), 300);
-            }, 4000);
+            }, options.duration || 4000);
         }
 
         // Time In, Time Out, and Bottom Time are kept in sync with each other:
@@ -7125,6 +6613,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 // record (see handleFormSubmit), keeping dive_data.json small.
                 const id = await storeNewPhoto(base64);
                 tempCritterPhotos[rowId] = { id, dataUrl: base64 };
+                scheduleLogDraftSave();
                 showToast(`Photo registered for ${CRITTER_DATABASE[critterId]?.name || 'sighting'}`, "info");
             };
             reader.readAsDataURL(file);
@@ -7157,6 +6646,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                     const id = await storeNewPhoto(base64);
                     tempDivePhotos.push({ id, dataUrl: base64, caption: '' });
                     renderDivePhotosGrid();
+                    scheduleLogDraftSave();
                 };
                 reader.readAsDataURL(file);
             });
@@ -7210,6 +6700,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
         }
 
         function cancelLogEntry() {
+            clearLogDraft();
             state.editingLogId = null;
             state.userHasOverwrittenDiveNo = false;
             document.getElementById('padi-log-form').reset();
@@ -7223,13 +6714,12 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             switchTab('logs');
         }
 
-        function startEditDiveLog(logId) {
+        function startEditDiveLog(logId, options = {}) {
             const dive = state.dives.find(d => d.id === logId);
             if (!dive) return;
 
             state.editingLogId = logId;
             state.userHasOverwrittenDiveNo = true;
-            state.importedDepthProfile = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : null;
 
             switchTab('add-log');
 
@@ -7237,6 +6727,18 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             document.getElementById('submit-btn-text').innerText = "Save Changes to Log";
             document.getElementById('edit-indicator').classList.remove('hidden');
 
+            fillFormFromDive(dive);
+            markLogDraftBaseline();
+            if (!options.skipDraftOffer) offerLogDraftIfAny();
+            showToast(`Loaded Dive Log #${dive.diveNo} into workspace`, "info");
+        }
+
+        // Writes a dive record (or a draft/template shaped like one — see
+        // collectDiveFromForm) into every Log a Dive field, including
+        // sighting rows, photos and an imported depth profile. Shared by
+        // editing a saved dive, resuming a draft and duplicating a dive.
+        function fillFormFromDive(dive) {
+            state.importedDepthProfile = (dive.depthProfile && dive.depthProfile.length > 1) ? dive.depthProfile : null;
             document.getElementById('form-dive-no').value = dive.diveNo || '';
             document.getElementById('form-date').value = dive.date || '';
             document.getElementById('form-dive-type').value = dive.diveType || '';
@@ -7324,21 +6826,16 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             }
             updateRealtimeSAC();
             setTimeout(updateDepthProfileGraph, 100);
-            showToast(`Loaded Dive Log #${dive.diveNo} into workspace`, "info");
         }
 
-        async function handleFormSubmit(event) {
-            event.preventDefault();
-            await ensureDivesLoaded();
-
+        // Reads every Log a Dive field into a dive-shaped object (no id /
+        // updatedAt). Used by Save, and by the draft auto-save so a draft
+        // restores through exactly the same fillFormFromDive() path.
+        function collectDiveFromForm() {
             const diveNo = parseInt(document.getElementById('form-dive-no').value);
             const date = document.getElementById('form-date').value;
             const diveType = document.getElementById('form-dive-type').value || null;
             const activityType = document.getElementById('form-activity-type').value || null;
-            if (!activityType) {
-                showToast("Select an Activity Type (Scuba, Snorkeling, or Freedive)", "error");
-                return;
-            }
             const country = document.getElementById('form-country').value;
             const site = document.getElementById('form-site').value;
 
@@ -7446,34 +6943,53 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 });
             });
 
+            return {
+                diveNo, date, diveType, activityType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
+                waterType, bodyOfWater, waves, current, surge,
+                weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear, tags: diveTags,
+                timeIn, timeOut, bottomTime, maxDepth, avgDepth,
+                gasStart, gasEnd, gasUnit, buddy, buddyNo, diveCenter, notes, critters: crittersList,
+                depthProfile: state.importedDepthProfile || null,
+                photos: divePhotos
+            };
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            await ensureDivesLoaded();
+
+            const formDive = collectDiveFromForm();
+            if (!formDive.activityType) {
+                showToast("Select an Activity Type (Scuba, Snorkeling, or Freedive)", "error");
+                return;
+            }
+            // Quick Log saves are flagged so the Logbook can nudge the diver
+            // to fill in the rest later; saving again from the full form
+            // clears the flag.
+            const isQuickLog = state.logFormMode === 'quick';
+
             if (state.editingLogId) {
                 const index = state.dives.findIndex(d => d.id === state.editingLogId);
                 if (index !== -1) {
                     state.dives[index] = {
                         ...state.dives[index],
-                        diveNo, date, diveType, activityType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
-                        waterType, bodyOfWater, waves, current, surge,
-                        weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear, tags: diveTags,
-                        timeIn, timeOut, bottomTime, maxDepth, avgDepth,
-                        gasStart, gasEnd, gasUnit, buddy, buddyNo, diveCenter, notes, critters: crittersList,
-                        depthProfile: state.importedDepthProfile || null,
-                        photos: divePhotos
+                        ...formDive,
+                        // Editing a full dive in Quick Log doesn't make it a
+                        // quick log; editing a quick log in Full Log completes it.
+                        quickLog: isQuickLog && !!state.dives[index].quickLog,
+                        updatedAt: Date.now()
                     };
-                    showToast(`Log Update Saved: Dive #${diveNo} successfully updated!`, "success");
+                    showToast(`Log Update Saved: Dive #${formDive.diveNo} successfully updated!${savedWhereSuffix()}`, "success");
                 }
             } else {
                 const newLog = {
                     id: 'log-' + Date.now(),
-                    diveNo, date, diveType, activityType, country, site, latitude, longitude, airTemp, surfaceTemp, waterTemp, visibility, weather,
-                    waterType, bodyOfWater, waves, current, surge,
-                    weight, suit, tankType, tankVol, gas, gasO2, gasN2, gasHe, additionalGear, tags: diveTags,
-                    timeIn, timeOut, bottomTime, maxDepth, avgDepth,
-                    gasStart, gasEnd, gasUnit, buddy, buddyNo, diveCenter, notes, critters: crittersList,
-                    depthProfile: state.importedDepthProfile || null,
-                    photos: divePhotos
+                    ...formDive,
+                    quickLog: isQuickLog,
+                    updatedAt: Date.now()
                 };
                 state.dives.unshift(newLog);
-                showToast(`Commit Succeeded: Dive #${diveNo} locked into logs!`, "success");
+                showToast(`Commit Succeeded: Dive #${formDive.diveNo} locked into logs!${savedWhereSuffix()}`, "success");
             }
 
             state.editingLogId = null;
@@ -7482,6 +6998,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             // Sort sequentially descending
             state.dives.sort((a,b) => b.diveNo - a.diveNo);
             saveState();
+            clearLogDraft();
+            // Now there's something worth protecting from browser clean-up.
+            requestPersistentStorage();
 
             resetLogFormFields();
 
@@ -7513,18 +7032,476 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 "Clear All",
                 () => {
                     resetLogFormFields();
+                    clearLogDraft();
+                    markLogDraftBaseline();
                     showToast("Form cleared", "info");
                 }
             );
+        }
+
+        /* ==================== LOG A DIVE: DRAFT AUTO-SAVE ==================== */
+        // The open Log a Dive form is saved to IndexedDB (meta 'logDraft') a
+        // moment after every change, and immediately when the page is
+        // hidden — so a closed tab, a reload, or the phone killing the app
+        // on the boat doesn't lose a half-typed log. The draft is shaped
+        // exactly like a dive (collectDiveFromForm), so resuming it goes
+        // through the same fillFormFromDive() path as editing a saved dive.
+        const LOG_DRAFT_KEY = 'logDraft';
+        let logDraftTimer = null;
+        // True while the "Resume draft?" banner is waiting for an answer —
+        // auto-saving then would overwrite the very draft being offered.
+        let logDraftPaused = false;
+        // JSON of the form as it was right after it was prepared (blank
+        // new log, or a dive just loaded for editing). Unchanged forms are
+        // never saved as drafts.
+        let logDraftBaseline = null;
+
+        function markLogDraftBaseline() {
+            logDraftBaseline = JSON.stringify(collectDiveFromForm());
+            const statusEl = document.getElementById('log-draft-status');
+            if (statusEl) statusEl.textContent = '';
+        }
+
+        function scheduleLogDraftSave() {
+            if (state.currentTab !== 'add-log' || logDraftPaused) return;
+            clearTimeout(logDraftTimer);
+            logDraftTimer = setTimeout(saveLogDraftNow, 600);
+        }
+
+        async function saveLogDraftNow() {
+            clearTimeout(logDraftTimer);
+            if (state.currentTab !== 'add-log' || logDraftPaused) return;
+            const dive = collectDiveFromForm();
+            if (JSON.stringify(dive) === logDraftBaseline) return;
+            await window.AbyssDB.setMeta(LOG_DRAFT_KEY, {
+                dive,
+                editingLogId: state.editingLogId || null,
+                userHasOverwrittenDiveNo: !!state.userHasOverwrittenDiveNo,
+                savedAt: Date.now()
+            });
+            const statusEl = document.getElementById('log-draft-status');
+            if (statusEl) statusEl.textContent = `· Draft saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        }
+
+        async function clearLogDraft() {
+            clearTimeout(logDraftTimer);
+            logDraftPaused = false;
+            document.getElementById('log-draft-banner')?.classList.add('hidden');
+            const statusEl = document.getElementById('log-draft-status');
+            if (statusEl) statusEl.textContent = '';
+            await window.AbyssDB.setMeta(LOG_DRAFT_KEY, null);
+        }
+
+        function describeLogDraft(draft) {
+            const d = draft.dive || {};
+            const when = new Date(draft.savedAt).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+            const what = draft.editingLogId ? `Unsaved changes to Dive #${d.diveNo || '?'}` : `An unsaved new dive log${d.site ? ` (${xmlEscape(d.site)})` : ''}`;
+            return `${what} from ${when}.`;
+        }
+
+        // Shown when the form opens. A new-log form offers any draft; an
+        // edit only offers a draft of that same dive.
+        async function offerLogDraftIfAny() {
+            const banner = document.getElementById('log-draft-banner');
+            const draft = await window.AbyssDB.getMeta(LOG_DRAFT_KEY, null);
+            const relevant = draft && draft.dive && (!state.editingLogId || draft.editingLogId === state.editingLogId);
+            logDraftPaused = !!relevant;
+            if (!banner) return;
+            banner.classList.toggle('hidden', !relevant);
+            if (relevant) {
+                document.getElementById('log-draft-banner-text').innerHTML = `${describeLogDraft(draft)} Resume or discard it to keep auto-saving.`;
+            }
+        }
+
+        async function resumeLogDraft() {
+            const draft = await window.AbyssDB.getMeta(LOG_DRAFT_KEY, null);
+            document.getElementById('log-draft-banner')?.classList.add('hidden');
+            logDraftPaused = false;
+            if (!draft || !draft.dive) return;
+
+            const editTarget = draft.editingLogId && state.dives.find(d => d.id === draft.editingLogId);
+            if (editTarget && state.editingLogId !== draft.editingLogId) {
+                startEditDiveLog(draft.editingLogId, { skipDraftOffer: true });
+            } else if (!editTarget && state.editingLogId) {
+                // A new-log draft (or one whose dive was since deleted) —
+                // open it as a new log rather than over the dive being edited.
+                await prepareNewDiveLogTab({ skipDraftOffer: true });
+            }
+            fillFormFromDive(draft.dive);
+            state.userHasOverwrittenDiveNo = !!draft.userHasOverwrittenDiveNo;
+            setTimeout(initLocationPickerMap, 100);
+            markLogDraftBaseline();
+            showToast("Draft restored", "info");
+        }
+
+        async function discardLogDraft() {
+            await clearLogDraft();
+            markLogDraftBaseline();
+            showToast("Draft discarded", "info");
+        }
+
+        function initLogDraftAutoSave() {
+            const form = document.getElementById('padi-log-form');
+            if (!form) return;
+            // Tag/activity/gear pills are buttons (click), everything else
+            // is a real field (input/change) — listen for all three.
+            ['input', 'change', 'click'].forEach(evt => form.addEventListener(evt, scheduleLogDraftSave));
+            // Phones can kill a backgrounded tab without warning — save now.
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveLogDraftNow(); });
+            window.addEventListener('pagehide', saveLogDraftNow);
+        }
+
+        /* ==================== LOG A DIVE: COPY PREVIOUS DIVE ==================== */
+        // Fields that usually stay the same from one dive to the next on a
+        // trip. Everything dive-specific (date, times, depths, pressures,
+        // conditions, sightings, photos, notes, profile) starts blank.
+        const DIVE_TEMPLATE_FIELDS = [
+            'diveType', 'activityType', 'country', 'site', 'latitude', 'longitude',
+            'weather', 'waterType', 'bodyOfWater',
+            'weight', 'suit', 'tankType', 'tankVol', 'gas', 'gasO2', 'gasN2', 'gasHe', 'gasUnit', 'additionalGear', 'tags',
+            'buddy', 'buddyNo', 'diveCenter'
+        ];
+
+        async function duplicateDiveIntoForm(diveId) {
+            const source = state.dives.find(d => d.id === diveId);
+            if (!source) return;
+            closeCopyDiveMenu();
+            await prepareNewDiveLogTab();
+            const template = collectDiveFromForm();
+            DIVE_TEMPLATE_FIELDS.forEach(key => {
+                if (source[key] !== undefined) template[key] = Array.isArray(source[key]) ? [...source[key]] : source[key];
+            });
+            fillFormFromDive(template);
+            state.userHasOverwrittenDiveNo = false;
+            rollNextDiveNo();
+            setTimeout(initLocationPickerMap, 100);
+            setTimeout(updateDepthProfileGraph, 100);
+            if (!logDraftPaused) scheduleLogDraftSave();
+            showToast(`Copied site, gear, gas & buddy from Dive #${source.diveNo} — add today's times and depths`, "info");
+        }
+
+        function duplicateFromLogDetailModal() {
+            if (!currentLogDetailId) return;
+            const id = currentLogDetailId;
+            closeLogDetailModal();
+            duplicateDiveIntoForm(id);
+        }
+
+        function toggleCopyDiveMenu(event) {
+            event.stopPropagation();
+            const menu = document.getElementById('copy-dive-menu');
+            if (!menu) return;
+            if (!menu.classList.contains('hidden')) { closeCopyDiveMenu(); return; }
+            const recent = [...state.dives].sort((a, b) => (b.diveNo || 0) - (a.diveNo || 0)).slice(0, 15);
+            menu.innerHTML = recent.length === 0
+                ? '<p class="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">No previous dives to copy yet.</p>'
+                : '<p class="px-4 pt-3 pb-1 text-[10px] font-mono-custom uppercase text-slate-600 dark:text-slate-400">Start from a previous dive</p>' +
+                  recent.map(d => `
+                    <button type="button" onclick="duplicateDiveIntoForm('${d.id}')" class="w-full text-left px-4 py-2 text-sm hover:bg-cyan-500/10 border-t border-slate-200 dark:border-ocean-900/20">
+                        <span class="font-mono-custom text-cyan-500">#${d.diveNo}</span> ${xmlEscape(d.site || 'Unnamed site')}
+                        <span class="block text-[10px] text-slate-600 dark:text-slate-400">${xmlEscape(d.country || '')} · ${formatDateDMY(d.date)}</span>
+                    </button>`).join('');
+            menu.classList.remove('hidden');
+        }
+
+        function closeCopyDiveMenu() {
+            document.getElementById('copy-dive-menu')?.classList.add('hidden');
+        }
+
+        /* ==================== LOG A DIVE: QUICK LOG MODE ==================== */
+        // Quick Log hides the sections marked data-full-log-only (conditions,
+        // equipment, gas, photos) so a dive can be logged on the boat in a
+        // few taps. Hidden fields keep their values, so switching modes never
+        // loses anything; dives saved in Quick Log are flagged (quickLog) so
+        // the Logbook can offer "add details" later. The choice is remembered.
+        const LOG_MODE_ACTIVE_CLASS = "px-4 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500 text-white";
+        const LOG_MODE_INACTIVE_CLASS = "px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-cyan-500";
+
+        function setLogFormMode(mode, persist = true) {
+            state.logFormMode = mode === 'quick' ? 'quick' : 'full';
+            const quick = state.logFormMode === 'quick';
+            document.querySelectorAll('[data-full-log-only]').forEach(el => el.classList.toggle('hidden', quick));
+            document.getElementById('log-mode-hint')?.classList.toggle('hidden', !quick);
+            const quickBtn = document.getElementById('log-mode-btn-quick');
+            const fullBtn = document.getElementById('log-mode-btn-full');
+            if (quickBtn) { quickBtn.className = quick ? LOG_MODE_ACTIVE_CLASS : LOG_MODE_INACTIVE_CLASS; quickBtn.setAttribute('aria-pressed', String(quick)); }
+            if (fullBtn) { fullBtn.className = quick ? LOG_MODE_INACTIVE_CLASS : LOG_MODE_ACTIVE_CLASS; fullBtn.setAttribute('aria-pressed', String(!quick)); }
+            if (persist) window.AbyssDB.setMeta('logFormMode', state.logFormMode);
+        }
+
+        function completeQuickLog(diveId) {
+            setLogFormMode('full');
+            startEditDiveLog(diveId);
+        }
+
+        /* ==================== UNDO FOR DELETIONS ==================== */
+        // Deleting a dive records a tombstone (meta 'deletedDives': id ->
+        // deletedAt) so the deletion syncs to other devices instead of the
+        // dive being merged back in (see sync.js mergeSnapshots). Undo drops
+        // the tombstone and re-saves the dive with a fresh updatedAt, which
+        // also beats a tombstone that already reached OneDrive.
+        async function recordDiveTombstone(diveId) {
+            const tombstones = await window.AbyssDB.getMeta('deletedDives', {}) || {};
+            tombstones[diveId] = Date.now();
+            await window.AbyssDB.setMeta('deletedDives', tombstones);
+        }
+
+        async function restoreDeletedDive(dive) {
+            await ensureDivesLoaded();
+            if (state.dives.some(d => d.id === dive.id)) return;
+            const tombstones = await window.AbyssDB.getMeta('deletedDives', {}) || {};
+            delete tombstones[dive.id];
+            await window.AbyssDB.setMeta('deletedDives', tombstones);
+            state.dives.push({ ...dive, updatedAt: Date.now() });
+            state.dives.sort((a, b) => b.diveNo - a.diveNo);
+            await saveState();
+            updateUI();
+            showToast(`Dive #${dive.diveNo} restored`, "success");
+        }
+
+        /* ==================== INSTALL PROMPT + PERSISTENT STORAGE ==================== */
+        // Browsers treat site data as "best effort" and may clear it under
+        // storage pressure (and iOS Safari after ~7 days unused). Asking for
+        // persistent storage, and getting the app installed to the home
+        // screen, are the two ways to stop that.
+        let deferredInstallPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // show our own banner instead of the browser's mini-infobar
+            deferredInstallPrompt = e;
+            refreshInstallBanner();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            refreshInstallBanner();
+            requestPersistentStorage();
+            showToast("Abyss installed — find it on your home screen", "success");
+        });
+
+        function isAppInstalled() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function isIOSDevice() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        async function refreshInstallBanner() {
+            const banner = document.getElementById('install-banner');
+            if (!banner) return;
+            const dismissed = await window.AbyssDB.getMeta('installBannerDismissed', false);
+            const btn = document.getElementById('install-banner-btn');
+            const text = document.getElementById('install-banner-text');
+            let show = false;
+            if (!isAppInstalled() && !dismissed) {
+                if (deferredInstallPrompt) {
+                    show = true;
+                    btn.classList.remove('hidden');
+                    text.textContent = 'Opens like an app, works offline at the dive site, and stops the browser from clearing your logbook.';
+                } else if (isIOSDevice()) {
+                    // iOS has no install event — explain the manual steps instead.
+                    show = true;
+                    btn.classList.add('hidden');
+                    text.innerHTML = 'Tap <i class="fa-solid fa-arrow-up-from-bracket"></i> <b>Share</b>, then <b>Add to Home Screen</b>. Installed, Safari won\'t clear your logbook after a week without use.';
+                }
+            }
+            banner.classList.toggle('hidden', !show);
+        }
+
+        async function installApp() {
+            if (!deferredInstallPrompt) return;
+            deferredInstallPrompt.prompt();
+            await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            refreshInstallBanner();
+        }
+
+        async function dismissInstallBanner() {
+            await window.AbyssDB.setMeta('installBannerDismissed', true);
+            refreshInstallBanner();
+        }
+
+        async function requestPersistentStorage() {
+            try {
+                if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) {
+                    await navigator.storage.persist();
+                }
+            } catch (e) {
+                console.warn('Persistent storage request failed:', e);
+            }
+            refreshStorageStatus();
+        }
+
+        async function refreshStorageStatus() {
+            const el = document.getElementById('storage-status-label');
+            if (!el || !navigator.storage) return;
+            try {
+                const persisted = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+                const estimate = navigator.storage.estimate ? await navigator.storage.estimate() : null;
+                const used = estimate && estimate.usage ? ` · ${(estimate.usage / (1024 * 1024)).toFixed(1)} MB used` : '';
+                el.textContent = persisted
+                    ? `Storage: protected on this device${used}`
+                    : `Storage: not protected — install the app (or sign in to OneDrive) to keep your logbook safe${used}`;
+            } catch (e) {
+                el.textContent = '';
+            }
+        }
+
+        /* ==================== LOGBOOK SORTING ==================== */
+        const LOG_SORTS = {
+            'diveNo-desc': (a, b) => (b.diveNo || 0) - (a.diveNo || 0),
+            'diveNo-asc': (a, b) => (a.diveNo || 0) - (b.diveNo || 0),
+            'date-desc': (a, b) => (b.date || '').localeCompare(a.date || '') || (b.timeIn || '').localeCompare(a.timeIn || '') || (b.diveNo || 0) - (a.diveNo || 0),
+            'date-asc': (a, b) => (a.date || '').localeCompare(b.date || '') || (a.timeIn || '').localeCompare(b.timeIn || '') || (a.diveNo || 0) - (b.diveNo || 0),
+            'depth-desc': (a, b) => (b.maxDepth ?? -1) - (a.maxDepth ?? -1),
+            'time-desc': (a, b) => (b.bottomTime ?? -1) - (a.bottomTime ?? -1),
+            'site-asc': (a, b) => (a.site || '').localeCompare(b.site || '', undefined, { sensitivity: 'base' }) || (b.diveNo || 0) - (a.diveNo || 0)
+        };
+
+        function setLogSort(value) {
+            state.logSort = LOG_SORTS[value] ? value : 'diveNo-desc';
+            const select = document.getElementById('log-sort');
+            if (select) select.value = state.logSort;
+            window.AbyssDB.setMeta('logSort', state.logSort);
+            renderLogs();
+        }
+
+        /* ==================== DASHBOARD STATS PERIOD ==================== */
+        // Narrows the Dashboard stat widgets and map to a period: all time,
+        // this year, the last 12 months, a custom date range, or a detected
+        // trip — consecutive dives in the same country with no more than
+        // TRIP_GAP_DAYS between them. Lifetime-only things (rank, recent
+        // logs) are unaffected.
+        const TRIP_GAP_DAYS = 4;
+
+        function daysBetweenIso(a, b) {
+            return Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+        }
+
+        function detectTrips() {
+            const asc = state.dives.filter(d => d.date).sort((a, b) => a.date.localeCompare(b.date) || (a.diveNo || 0) - (b.diveNo || 0));
+            const trips = [];
+            let current = null;
+            asc.forEach(d => {
+                if (current && d.country === current.country && daysBetweenIso(current.end, d.date) <= TRIP_GAP_DAYS) {
+                    current.dives.push(d);
+                    current.end = d.date;
+                } else {
+                    current = { id: `trip:${d.date}:${d.country || ''}`, country: d.country || 'Unknown', start: d.date, end: d.date, dives: [d] };
+                    trips.push(current);
+                }
+            });
+            return trips.reverse();
+        }
+
+        function tripLabel(trip) {
+            const fmt = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+            const range = trip.start === trip.end ? fmt(trip.start) : `${fmt(trip.start)} – ${fmt(trip.end)}`;
+            return `${trip.country} · ${range} (${trip.dives.length} dive${trip.dives.length === 1 ? '' : 's'})`;
+        }
+
+        function getDashboardDives() {
+            const period = state.dashPeriod || 'all';
+            const today = new Date().toISOString().split('T')[0];
+            if (period === 'all') return state.dives;
+            if (period === 'year') {
+                const year = today.slice(0, 4);
+                return state.dives.filter(d => (d.date || '').startsWith(year));
+            }
+            if (period === '12m') {
+                const from = new Date();
+                from.setFullYear(from.getFullYear() - 1);
+                const fromIso = from.toISOString().split('T')[0];
+                return state.dives.filter(d => d.date && d.date >= fromIso);
+            }
+            if (period === 'custom') {
+                const from = document.getElementById('dash-period-from')?.value || '';
+                const to = document.getElementById('dash-period-to')?.value || '';
+                return state.dives.filter(d => d.date && (!from || d.date >= from) && (!to || d.date <= to));
+            }
+            const trip = detectTrips().find(t => t.id === period);
+            return trip ? trip.dives : state.dives;
+        }
+
+        function dashboardPeriodLabel() {
+            const select = document.getElementById('dash-period');
+            if (!select || state.dashPeriod === 'all' || !state.dashPeriod) return 'all-time';
+            const opt = select.options[select.selectedIndex];
+            return opt ? opt.textContent.replace(/\s*\(\d+ dives?\)$/, '') : 'selected period';
+        }
+
+        // Rebuilt on every Dashboard render so newly logged/synced dives
+        // show up as trips straight away.
+        function refreshDashboardPeriodOptions() {
+            const select = document.getElementById('dash-period');
+            if (!select) return;
+            const trips = detectTrips();
+            if (state.dashPeriod && state.dashPeriod.startsWith('trip:') && !trips.some(t => t.id === state.dashPeriod)) state.dashPeriod = 'all';
+            select.innerHTML = `
+                <option value="all">All time</option>
+                <option value="year">This year</option>
+                <option value="12m">Last 12 months</option>
+                <option value="custom">Custom dates…</option>
+                ${trips.length ? `<optgroup label="Trips">${trips.slice(0, 40).map(t => `<option value="${xmlEscape(t.id)}">${xmlEscape(tripLabel(t))}</option>`).join('')}</optgroup>` : ''}
+            `;
+            select.value = state.dashPeriod || 'all';
+            document.getElementById('dash-period-custom')?.classList.toggle('hidden', state.dashPeriod !== 'custom');
+        }
+
+        function setDashboardPeriod(value) {
+            state.dashPeriod = value;
+            updateUI();
+            initLeafletMap();
+        }
+
+        /* ==================== SYNC / OFFLINE FEEDBACK ==================== */
+        // Appended to save toasts so the diver knows where the dive went.
+        function savedWhereSuffix() {
+            if (!navigator.onLine) return " Saved on this device — it'll sync when you're back online.";
+            if (!window.AbyssAuth || !window.AbyssAuth.isSignedIn()) return " Saved on this device only — sign in to back it up to OneDrive.";
+            return '';
+        }
+
+        function formatSyncTime(ts) {
+            const d = new Date(ts);
+            const sameDay = d.toDateString() === new Date().toDateString();
+            const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return sameDay ? `today ${time}` : `${formatDateDMY(d.toISOString().split('T')[0])} ${time}`;
+        }
+
+        // Tooltip on the sync button + the status line under the Dashboard:
+        // when it last synced, and how many changes are still waiting.
+        async function refreshSyncDetail(status) {
+            const btn = document.getElementById('sync-status-btn');
+            const label = document.getElementById('sync-detail-label');
+            const signedIn = window.AbyssAuth && window.AbyssAuth.isSignedIn();
+            const lastSyncedAt = await window.AbyssDB.getMeta('lastSyncedAt', null);
+            const queue = await window.AbyssDB.getSyncQueue();
+            const pending = queue.filter(q => q.action !== 'theme-updated').length;
+            const pendingText = pending > 0 ? `${pending} change${pending === 1 ? '' : 's'} waiting to sync` : '';
+
+            let text;
+            if (!signedIn) text = 'Not signed in — your logbook is saved on this device only.';
+            else if (status === 'offline') text = `Offline — keep logging, everything is saved on this device.${pendingText ? ` ${pendingText}.` : ''}`;
+            else if (status === 'error') text = `Couldn't reach OneDrive — your changes are safe here and will retry automatically.${pendingText ? ` ${pendingText}.` : ''}`;
+            else if (status === 'syncing') text = 'Syncing with OneDrive…';
+            else text = `${lastSyncedAt ? `Last synced ${formatSyncTime(lastSyncedAt)}` : 'Not synced yet'}${pendingText ? ` · ${pendingText}` : ''}`;
+
+            if (label) label.textContent = text;
+            if (btn) btn.title = text;
         }
 
         function updateUI() {
             const totalDives = state.dives.length;
 
             // Set up form dates default
-            if (!state.editingLogId) {
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('form-date').value = today;
+            // Only fill an EMPTY date — this runs on every re-render
+            // (including background syncs), and must not overwrite a date
+            // the diver typed or a resumed draft restored.
+            const formDateEl = document.getElementById('form-date');
+            if (!state.editingLogId && formDateEl && !formDateEl.value) {
+                formDateEl.value = new Date().toISOString().split('T')[0];
             }
 
             // Rank lookup itself is cheap (a fixed chain of comparisons) —
@@ -7546,7 +7523,10 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             // calling updateUI(), so switching tabs naturally re-renders the
             // right thing with no extra wiring needed.
             if (state.currentTab === 'dashboard') {
-                const dashAnalytics = computeDiveAnalytics();
+                refreshDashboardPeriodOptions();
+                const periodDives = getDashboardDives();
+                const periodLabel = dashboardPeriodLabel();
+                const dashAnalytics = computeDiveAnalytics(periodDives);
                 const hoursPart = Math.floor(dashAnalytics.totalMins / 60);
                 const minsPart = dashAnalytics.totalMins % 60;
 
@@ -7555,13 +7535,16 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 document.getElementById('stat-unique-sites').innerText = dashAnalytics.uniqueSites;
                 document.getElementById('stat-hours').innerText = `${hoursPart}h ${minsPart.toString().padStart(2, '0')}m`;
                 document.getElementById('stat-hours-detail').innerText = `Accumulated sub-surface bottom time`;
-                document.getElementById('stat-total-dives').innerText = totalDives;
-                document.getElementById('stat-total-dives-detail').innerText = `${totalDives} dives logged all-time`;
+                document.getElementById('stat-total-dives').innerText = periodDives.length;
+                document.getElementById('stat-total-dives-detail').innerText = state.dashPeriod && state.dashPeriod !== 'all'
+                    ? `${periodDives.length} of ${totalDives} dives · ${periodLabel}`
+                    : `${totalDives} dives logged all-time`;
                 document.getElementById('stat-cumulative-depth').innerText = fmtDepth(dashAnalytics.totalCumulativeDepth);
                 document.getElementById('stat-critters').innerText = `${dashAnalytics.unlockedCrittersCount}/${dashAnalytics.totalCrittersCount}`;
                 document.getElementById('card-rank-milestone').innerText = rankResult.current.title;
 
                 renderRecentLogsDashboard();
+                refreshSyncDetail();
             }
 
             if (state.currentTab === 'logs') {
@@ -7972,23 +7955,25 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
         function requestDeleteCertification(certId) {
             const cert = (state.diverProfile.certifications || []).find(c => c.id === certId);
             if (!cert) return;
-            openConfirmModal(
-                "Delete Certification?",
-                `This will permanently remove ${cert.level || 'this certification'} (${cert.org || ''}) from your certification history. This cannot be undone.`,
-                "Delete",
-                () => {
-                    state.diverProfile.certifications = (state.diverProfile.certifications || []).filter(c => c.id !== certId);
-                    // If the deleted entry was the current one, promote a
-                    // replacement (most recently dated) rather than leaving
-                    // no certification marked current.
-                    ensureExactlyOneCurrentCertification();
-                    syncCurrentCertificationMirror();
-                    persistDiverProfile();
-                    showToast("Certification deleted", "info");
-                    renderDiverProfileCard();
-                    renderCertificationsList();
-                }
-            );
+            // Snapshot the whole list (not just the one entry) so Undo also
+            // restores which certification was marked current.
+            const previousCertifications = JSON.parse(JSON.stringify(state.diverProfile.certifications || []));
+            const applyCertifications = (list) => {
+                state.diverProfile.certifications = list;
+                // If the deleted entry was the current one, promote a
+                // replacement (most recently dated) rather than leaving
+                // no certification marked current.
+                ensureExactlyOneCurrentCertification();
+                syncCurrentCertificationMirror();
+                persistDiverProfile();
+                renderDiverProfileCard();
+                renderCertificationsList();
+            };
+            applyCertifications(previousCertifications.filter(c => c.id !== certId));
+            showToast(`${xmlEscape(cert.level || 'Certification')} deleted`, "info", {
+                actionLabel: 'Undo', duration: 8000,
+                onAction: () => { applyCertifications(previousCertifications); showToast("Certification restored", "success"); }
+            });
         }
 
         function deleteCertificationFromModal() {
@@ -8207,18 +8192,18 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             const cert = (state.diverProfile.specialtyCertifications || []).find(c => c.id === specialtyCertId);
             if (!cert) return;
             const displayName = getSpecialtyCertificationDisplayName(cert);
-            openConfirmModal(
-                "Delete Specialty Certification?",
-                `This will permanently remove ${displayName} (${cert.org || ''}) from your specialty certification history. This cannot be undone.`,
-                "Delete",
-                () => {
-                    state.diverProfile.specialtyCertifications = (state.diverProfile.specialtyCertifications || []).filter(c => c.id !== specialtyCertId);
-                    persistDiverProfile();
-                    showToast("Specialty certification deleted", "info");
-                    renderDiverProfileCard();
-                    renderSpecialtyCertificationsList();
-                }
-            );
+            const previousSpecialties = JSON.parse(JSON.stringify(state.diverProfile.specialtyCertifications || []));
+            const applySpecialties = (list) => {
+                state.diverProfile.specialtyCertifications = list;
+                persistDiverProfile();
+                renderDiverProfileCard();
+                renderSpecialtyCertificationsList();
+            };
+            applySpecialties(previousSpecialties.filter(c => c.id !== specialtyCertId));
+            showToast(`${xmlEscape(displayName)} deleted`, "info", {
+                actionLabel: 'Undo', duration: 8000,
+                onAction: () => { applySpecialties(previousSpecialties); showToast("Specialty certification restored", "success"); }
+            });
         }
 
         function deleteSpecialtyCertificationFromModal() {
@@ -8332,8 +8317,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             return { sacLiters, sacBar };
         }
 
-        function computeDiveAnalytics() {
-            const dives = state.dives || [];
+        function computeDiveAnalytics(dives = state.dives || []) {
             const chronologicalAsc = [...dives].sort((a, b) => new Date(a.date) - new Date(b.date));
             const chronologicalDesc = [...chronologicalAsc].reverse();
             const last20Dives = chronologicalDesc.slice(0, 20);
@@ -8368,7 +8352,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             const totalCumulativeDepth = dives.reduce((sum, d) => sum + (d.maxDepth || 0), 0);
             const countriesVisited = new Set(dives.map(d => d.country).filter(Boolean)).size;
             const uniqueSites = new Set(dives.map(d => d.site).filter(Boolean)).size;
-            const sightingIndex = buildSightingIndex();
+            const sightingIndex = buildSightingIndex(dives);
             const unlockedCrittersCount = getUnlockedSpeciesCount(sightingIndex);
             // Excludes retired (deprecated:true) entries with no sightings —
             // keeps this denominator matching exactly what's actually
@@ -9147,6 +9131,8 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                 return true;
             });
 
+            filteredDives.sort(LOG_SORTS[state.logSort] || LOG_SORTS['diveNo-desc']);
+
             if (filteredDives.length === 0) {
                 container.classList.add('hidden');
                 emptyState.classList.remove('hidden');
@@ -9203,6 +9189,7 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                                 <p class="text-xs text-slate-600 dark:text-slate-400 flex items-center mt-0.5">
                                     <i class="fa-solid fa-location-dot text-cyan-400 mr-1.5"></i>${dive.country} &nbsp;·&nbsp; ${formatDateDMY(dive.date)}
                                 </p>
+                                ${dive.quickLog ? `<button onclick="completeQuickLog('${dive.id}')" class="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-500 hover:text-amber-400"><i class="fa-solid fa-bolt"></i> Quick log · add details</button>` : ''}
                             </div>
                         </div>
                         <div class="flex items-center space-x-1.5">
@@ -9211,6 +9198,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
                             </button>
                             <button onclick="startEditDiveLog('${dive.id}')" class="p-2 text-slate-600 dark:text-slate-400 hover:text-cyan-400 transition-colors" title="Edit Dive Record">
                                 <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="duplicateDiveIntoForm('${dive.id}')" class="p-2 text-slate-600 dark:text-slate-400 hover:text-cyan-400 transition-colors" title="Log Similar Dive" aria-label="Log similar dive">
+                                <i class="fa-solid fa-clone"></i>
                             </button>
                             <button onclick="requestDeleteDiveLog('${dive.id}')" class="p-2 text-slate-600 dark:text-slate-400 hover:text-rose-400 transition-colors" title="Delete Dive Record">
                                 <i class="fa-solid fa-trash-can"></i>
@@ -9612,19 +9602,17 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
             startEditDiveLog(id);
         }
 
-        function requestDeleteDiveLog(logId) {
-            openConfirmModal(
-                "Delete Dive Record?",
-                "Are you sure you want to permanently delete this sub-surface dive log? This cannot be undone.",
-                "Delete",
-                async () => {
-                    await ensureDivesLoaded();
-                    state.dives = state.dives.filter(d => d.id !== logId);
-                    saveState();
-                    showToast("Log entry successfully expunged", "info");
-                    updateUI();
-                }
-            );
+        // Deletes straight away and offers Undo, instead of asking first —
+        // quicker, and recoverable (see restoreDeletedDive).
+        async function requestDeleteDiveLog(logId) {
+            await ensureDivesLoaded();
+            const dive = state.dives.find(d => d.id === logId);
+            if (!dive) return;
+            state.dives = state.dives.filter(d => d.id !== logId);
+            await recordDiveTombstone(logId);
+            saveState();
+            updateUI();
+            showToast(`Dive #${dive.diveNo} deleted`, "info", { actionLabel: 'Undo', duration: 8000, onAction: () => restoreDeletedDive(dive) });
         }
 
         let confirmActionCallback = null;
@@ -9730,9 +9718,9 @@ ${selectedSpecialtyLines.map(l => `         ${xmlEscape(l)}`).join('\n')}
         // this once and pass it to checkSighting(), instead of re-scanning
         // every dive per species — that per-species rescan (repeated inside
         // the AquaDex sort comparator) was what made AquaDex slow to open.
-        function buildSightingIndex() {
+        function buildSightingIndex(dives = state.dives) {
             const index = new Map();
-            state.dives.forEach(dive => {
+            dives.forEach(dive => {
                 if (!dive.critters) return;
                 // Every match counts — a single dive can carry more than
                 // one sighting of the same species (e.g. two different

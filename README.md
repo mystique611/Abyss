@@ -27,6 +27,9 @@ See [CHANGELOG.md](CHANGELOG.md) for the full release history.
   Diver Profile card.
 - **Import / Export** — UDDF import (multi-dive selection, profile/gas/GPS
   pre-fill), and UDDF, CSV, and PDF export with selectable dives/fields.
+- **Usability helpers** — Log a Dive draft auto-save, Copy Previous / Log Similar Dive,
+  Quick Log mode, Undo for deletions, Logbook sorting, Dashboard stats per period or
+  detected trip, install prompt + persistent storage, and offline/sync status feedback.
 - **Light / dark theme**, synced across devices.
 
 ## File overview
@@ -41,6 +44,9 @@ js/sync.js             pushes/pulls data to the user's OneDrive app folder
 js/msal-browser.min.js vendored copy of @azure/msal-browser (not loaded from
                        a CDN — see CHANGELOG.md for why)
 js/chart.umd.min.js    vendored Chart.js (UMD build) for all charts
+js/data/               static reference data: AquaDex species catalog (critters.js),
+                       country coordinates/zoom (countries.js), certification lists
+                       (certifications.js) — plain scripts loaded before the app
 icons/                 app icons (wave mark) + icons/critters/ AquaDex category icons
 Critters Icon/         original source artwork for the AquaDex category icons
 YYMMDD-vNN/            snapshot of each shipped release (latest 10 kept)
@@ -95,12 +101,12 @@ just remember to update the Azure redirect URI to match if you do.
 3. Whenever the browser comes online (or every 60s as a backup check, or on manual tap of the sync button), `sync.js`:
    - Gets a Graph API token (silently, if already signed in)
    - Downloads whatever's currently in the OneDrive app folder
-   - Compares timestamps and keeps whichever copy (local or remote) is newer
-   - Uploads the winning copy back to OneDrive
+   - Merges dive by dive: keeps the newer copy of each dive (by its own `updatedAt`), keeps dives that exist on only one side, and drops dives recorded as deleted (`deletedDives` tombstones)
+   - Uploads the merged result back to OneDrive if OneDrive was missing anything
    - Uploads any pending photos as separate files
-4. If the *remote* copy wins (e.g. you logged dives on your phone while this device was offline), the newer data is pulled back into this device's IndexedDB and the UI refreshes automatically.
+4. If the merge brought in anything new (e.g. dives logged on your phone while this device was offline), it's written into this device's IndexedDB and the UI refreshes automatically.
 
 ## Known platform limitations (not bugs — browser constraints)
 
 - **iOS Safari** has no Background Sync API, so sync only runs while the app is actively open (not silently while backgrounded). It also may clear IndexedDB after ~7 days of inactivity unless the user "installs" the app to their home screen — encourage users to do this.
-- **Conflict resolution** here is last-write-wins on the whole dataset, which is fine for one person syncing across their own devices, but isn't built for multiple people editing simultaneously.
+- **Conflict resolution** is per dive (newest edit of each dive wins) and last-write-wins for the diver profile — fine for one person syncing across their own devices, but not built for multiple people editing the same dive simultaneously.

@@ -8,7 +8,7 @@
  * otherwise returning visitors keep getting the old cached copy.
  */
 
-const CACHE_VERSION = 'abyss-shell-v56';
+const CACHE_VERSION = 'abyss-shell-v57';
 
 // Keep this list in sync with every static asset the app needs to boot offline.
 const APP_SHELL_FILES = [
@@ -20,6 +20,9 @@ const APP_SHELL_FILES = [
     './js/sync.js',
     './js/msal-browser.min.js',
     './js/chart.umd.min.js',
+    './js/data/critters.js',
+    './js/data/countries.js',
+    './js/data/certifications.js',
     './icons/icon-192.png',
     './icons/icon-512.png',
     // AquaDex category icons — precached so they show offline on a fresh install
